@@ -1,12 +1,29 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-from .database import engine, Base
+import os
+import logging
+from .database import engine, Base, SessionLocal
+from .models import TestCase
 from .routers import test_cases, executions, comments, dashboard, import_export, audit
+
+logger = logging.getLogger(__name__)
+
+SEEDS_DIR = os.environ.get("SEEDS_DIR", os.path.join(os.path.dirname(__file__), "../../data/seeds"))
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
+    # Auto-seed if database is empty and seeds directory exists
+    if os.path.isdir(SEEDS_DIR):
+        db = SessionLocal()
+        count = db.query(TestCase).count()
+        db.close()
+        if count == 0:
+            from .seed import seed_from_directory
+            logger.info(f"Database empty, auto-seeding from {SEEDS_DIR}")
+            stats = seed_from_directory(SEEDS_DIR)
+            logger.info(f"Auto-seed complete: {stats['total_created']} created")
     yield
 
 app = FastAPI(title="PCIe Test Tracker", version="1.0.0", lifespan=lifespan)
@@ -33,7 +50,6 @@ def health():
 # Serve frontend static files
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-import os
 
 FRONTEND_DIR = os.path.join(os.path.dirname(__file__), "../../frontend/dist")
 if os.path.exists(FRONTEND_DIR):

@@ -5,8 +5,10 @@ services:
     ports: ["8000:8000"]
     volumes:
       - ./data/db:/app/data/db
+      - ./data/seeds:/app/data/seeds
     environment:
       - DATABASE_URL=sqlite:///./data/db/pcie_tracker.db
+      - SEEDS_DIR=/app/data/seeds
 
   frontend:
     build: ./frontend
