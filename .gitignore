@@ -1,7 +1,13 @@
 node_modules/
-data/db/*.db
-data/backups/
 __pycache__/
 dist/
 .env
 /tmp/
+
+# Database files (but keep seeds and spec)
+data/db/*.db
+data/db/*.db-wal
+data/db/*.db-shm
+data/backups/
+!data/seeds/
+!spec/
