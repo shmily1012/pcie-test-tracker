@@ -1,9 +1,9 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useReactTable, getCoreRowModel, getFilteredRowModel, getSortedRowModel,
-         getPaginationRowModel, flexRender, ColumnDef, SortingState } from '@tanstack/react-table';
-import { fetchTestCases, fetchFilters, updateStatus, TestCase, FilterOptions } from '../lib/api';
-import { StatusBadge, PriorityBadge } from '../components/StatusBadge';
+import { useReactTable, getCoreRowModel, getSortedRowModel,
+         getPaginationRowModel, flexRender, type ColumnDef, type SortingState } from '@tanstack/react-table';
+import { fetchTestCases, fetchFilters, updateStatus, type TestCase, type FilterOptions } from '../lib/api';
+import { PriorityBadge } from '../components/StatusBadge';
 import { Search, ChevronUp, ChevronDown } from 'lucide-react';
 
 const statusOptions = ['not_started', 'pass', 'fail', 'blocked', 'skip'];

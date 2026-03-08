@@ -29,3 +29,19 @@ app.include_router(audit.router)
 @app.get("/api/health")
 def health():
     return {"status": "ok", "version": "1.0.0"}
+
+# Serve frontend static files
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+import os
+
+FRONTEND_DIR = os.path.join(os.path.dirname(__file__), "../../frontend/dist")
+if os.path.exists(FRONTEND_DIR):
+    app.mount("/assets", StaticFiles(directory=os.path.join(FRONTEND_DIR, "assets")), name="assets")
+    
+    @app.get("/{full_path:path}")
+    async def serve_spa(full_path: str):
+        file_path = os.path.join(FRONTEND_DIR, full_path)
+        if os.path.isfile(file_path):
+            return FileResponse(file_path)
+        return FileResponse(os.path.join(FRONTEND_DIR, "index.html"))

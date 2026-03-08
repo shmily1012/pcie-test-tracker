@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { fetchTestCase, fetchExecutions, fetchComments, createExecution, createComment,
-         updateTestCase, TestCase, Execution, Comment } from '../lib/api';
+         type TestCase, type Execution, type Comment } from '../lib/api';
 import { StatusBadge, PriorityBadge } from '../components/StatusBadge';
 import { ArrowLeft, MessageSquare, Play, Clock } from 'lucide-react';
 

@@ -1,4 +1,4 @@
-import { fetchCoverage, exportCsv, CoverageItem } from '../lib/api';
+import { fetchCoverage, exportCsv, type CoverageItem } from '../lib/api';
 import { useEffect, useState } from 'react';
 import { Download } from 'lucide-react';
 

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { fetchSummary, fetchCoverage, fetchHeatmap, DashboardSummary, CoverageItem, HeatmapCell } from '../lib/api';
+import { fetchSummary, fetchCoverage, fetchHeatmap, type DashboardSummary, type CoverageItem, type HeatmapCell } from '../lib/api';
 import { Activity, CheckCircle, AlertTriangle, XCircle } from 'lucide-react';
 
 const STATUS_COLORS: Record<string, string> = {
