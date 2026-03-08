@@ -5,7 +5,7 @@ from typing import Optional
 from ..database import get_db
 from ..models import TestCase, AuditLog
 from ..schemas import ImportResult
-from ..services.importer import parse_markdown_tables
+from ..services.importer import parse_markdown_tables, parse_yaml_seed
 import csv, io, json
 
 router = APIRouter(prefix="/api", tags=["import-export"])
@@ -38,6 +38,41 @@ async def import_markdown(
         except Exception as e:
             errors.append(f"{tc_data.get('id', '?')}: {str(e)}")
     
+    db.add(AuditLog(entity_type="import", entity_id=file.filename,
+                    action="import", new_value=json.dumps({"created": created, "updated": updated})))
+    db.commit()
+    return ImportResult(created=created, updated=updated, errors=errors)
+
+@router.post("/import/yaml", response_model=ImportResult)
+async def import_yaml(
+    file: UploadFile = File(...),
+    spec_source: Optional[str] = Form(None),
+    db: Session = Depends(get_db)
+):
+    content = (await file.read()).decode("utf-8")
+    if not spec_source:
+        spec_source_override = None
+    else:
+        spec_source_override = spec_source
+
+    test_cases = parse_yaml_seed(content, spec_source_override)
+    created, updated, errors = 0, 0, []
+
+    for tc_data in test_cases:
+        try:
+            existing = db.query(TestCase).filter(TestCase.id == tc_data['id']).first()
+            if existing:
+                for k, v in tc_data.items():
+                    if v is not None:
+                        setattr(existing, k, v)
+                updated += 1
+            else:
+                obj = TestCase(**tc_data)
+                db.add(obj)
+                created += 1
+        except Exception as e:
+            errors.append(f"{tc_data.get('id', '?')}: {str(e)}")
+
     db.add(AuditLog(entity_type="import", entity_id=file.filename,
                     action="import", new_value=json.dumps({"created": created, "updated": updated})))
     db.commit()
