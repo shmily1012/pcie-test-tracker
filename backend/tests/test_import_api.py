@@ -46,3 +46,16 @@ def test_import_yaml_with_spec_source_override():
     assert response.status_code == 200
     tc = client.get("/api/test-cases/T-001").json()
     assert tc["spec_source"] == "Override"
+
+def test_export_markdown():
+    # First import some data
+    client.post(
+        "/api/import/yaml",
+        files={"file": ("test.yaml", SAMPLE_YAML, "application/x-yaml")},
+    )
+    response = client.get("/api/export/markdown")
+    assert response.status_code == 200
+    content = response.text
+    assert "T-001" in content
+    assert "Test one" in content
+    assert "| ID |" in content

@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, UploadFile, File, Form
-from fastapi.responses import StreamingResponse
+from fastapi.responses import PlainTextResponse, StreamingResponse
 from sqlalchemy.orm import Session
 from typing import Optional
 from ..database import get_db
@@ -77,6 +77,30 @@ async def import_yaml(
                     action="import", new_value=json.dumps({"created": created, "updated": updated})))
     db.commit()
     return ImportResult(created=created, updated=updated, errors=errors)
+
+@router.get("/export/markdown")
+def export_markdown(db: Session = Depends(get_db)):
+    """Export all test cases as a markdown document grouped by category."""
+    cases = db.query(TestCase).order_by(TestCase.category, TestCase.id).all()
+
+    lines = ["# PCIe Test Plan Export\n"]
+    current_category = None
+
+    for tc in cases:
+        if tc.category != current_category:
+            current_category = tc.category
+            lines.append(f"\n## {current_category}\n")
+            lines.append("| ID | Test Item | Description | Priority | Tool | Spec Ref | Status |")
+            lines.append("|-----|-----------|-------------|----------|------|----------|--------|")
+
+        status_icon = {"pass": "\u2705", "fail": "\u274c", "blocked": "\ud83d\udeab", "skip": "\u23ed\ufe0f"}.get(tc.status, "\u2b1c")
+        lines.append(
+            f"| {tc.id} | {tc.title or ''} | {tc.description or ''} "
+            f"| {tc.priority} | {tc.tool or ''} | {tc.spec_ref or ''} | {status_icon} |"
+        )
+
+    return PlainTextResponse("\n".join(lines), media_type="text/markdown",
+                             headers={"Content-Disposition": "attachment; filename=pcie_test_plan_export.md"})
 
 @router.get("/export/csv")
 def export_csv(db: Session = Depends(get_db)):
