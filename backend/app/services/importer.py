@@ -2,6 +2,8 @@
 import re
 from typing import List
 
+import yaml
+
 def parse_markdown_tables(content: str, spec_source: str = None) -> List[dict]:
     results = []
     current_category = "Uncategorized"
@@ -119,3 +121,33 @@ def parse_row(cells: list, col_map: dict, category: str, spec_source: str = None
         'pass_fail_criteria': get('pass_fail_criteria'),
         'status': status,
     }
+
+
+def parse_yaml_seed(content: str, spec_source_override: str = None) -> List[dict]:
+    """Parse YAML seed file content into a list of test case dicts."""
+    doc = yaml.safe_load(content)
+    metadata = doc.get("metadata", {})
+    spec_source = spec_source_override or metadata.get("spec_source")
+
+    results = []
+    for category in doc.get("categories", []):
+        cat_name = category.get("name", "Uncategorized")
+        for subcat in category.get("subcategories", []):
+            subcat_name = subcat.get("name")
+            for item in subcat.get("items", []):
+                tc = {
+                    "id": item["id"],
+                    "title": item.get("title", ""),
+                    "description": item.get("description", item.get("title", "")),
+                    "category": cat_name,
+                    "subcategory": subcat_name,
+                    "priority": item.get("priority", "P1"),
+                    "spec_source": spec_source,
+                    "spec_ref": item.get("spec_ref"),
+                    "ocp_req_id": item.get("ocp_req_id"),
+                    "tool": item.get("tool"),
+                    "pass_fail_criteria": item.get("pass_fail_criteria"),
+                    "status": "not_started",
+                }
+                results.append(tc)
+    return results
