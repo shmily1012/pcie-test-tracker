@@ -1,0 +1,2474 @@
+metadata:
+  version: '4.0'
+  spec_source: PCIe Base Spec 5.0
+  target: U.2 NVMe SSD, Gen4 + Gen5, x4
+categories:
+- name: Physical Layer (PHY)
+  subcategories:
+  - name: Electrical Compliance (Hardware/Lab)
+    items:
+    - id: PHY-001
+      title: TX Eye Diagram — Gen5 (32 GT/s)
+      description: Measure TX eye opening at TP2. Validate eye height/width against spec mask.
+      priority: P0
+      tool: Oscilloscope + CEM test fixture
+      spec_ref: §8.4
+    - id: PHY-002
+      title: TX Eye Diagram — Gen4 (16 GT/s)
+      description: Same as above for Gen4
+      priority: P0
+      tool: Oscilloscope + CEM test fixture
+      spec_ref: §8.4
+    - id: PHY-003
+      title: TX Eye Diagram — Gen3 (8 GT/s)
+      description: Same as above for Gen3
+      priority: P1
+      tool: Oscilloscope + CEM test fixture
+      spec_ref: §8.4
+    - id: PHY-004
+      title: TX Eye Diagram — Gen1/2
+      description: Same for Gen1 (2.5 GT/s) and Gen2 (5 GT/s)
+      priority: P2
+      tool: Oscilloscope
+      spec_ref: §8.4
+    - id: PHY-005
+      title: TX De-emphasis/Preshoot
+      description: Verify TX preset coefficients (c-1, c0, c+1) at each data rate. Gen5 uses PAM4 precoding.
+      priority: P0
+      tool: Oscilloscope
+      spec_ref: §8.3.3
+    - id: PHY-006
+      title: TX Jitter (Tj, Rj, Dj)
+      description: Measure total, random, and deterministic jitter. Must meet budget per spec.
+      priority: P0
+      tool: Oscilloscope + jitter analysis SW
+      spec_ref: §8.4.2
+    - id: PHY-007
+      title: RX Sensitivity / Eye Tolerance
+      description: "Inject stressed signal at TP4 and verify error-free operation. Calibrated with CTLE/DFE reference EQ."
+      priority: P0
+      tool: BERT + stress signal generator
+      spec_ref: §8.4.3
+    - id: PHY-008
+      title: RX CTLE/DFE Equalization
+      description: Verify receiver equalization adapts to channel loss. Test across different insertion loss profiles.
+      priority: P0
+      tool: BERT + variable ISI channel
+      spec_ref: §8.4.3
+    - id: PHY-009
+      title: Impedance (single-ended & differential)
+      description: TDR measurement of TX/RX impedance. 85Ω ± 15% differential for CEM.
+      priority: P1
+      tool: TDR / VNA
+      spec_ref: §8.5
+    - id: PHY-010
+      title: Return Loss (S11/S22)
+      description: S-parameter measurement at connector/pad.
+      priority: P1
+      tool: VNA
+      spec_ref: §8.5
+    - id: PHY-011
+      title: Insertion Loss (S21)
+      description: End-to-end channel loss. Critical for Gen5.
+      priority: P1
+      tool: VNA
+      spec_ref: §8.5
+    - id: PHY-012
+      title: Crosstalk (NEXT, FEXT)
+      description: Near-end and far-end crosstalk between lanes.
+      priority: P2
+      tool: VNA
+      spec_ref: §8.5
+    - id: PHY-013
+      title: SSC (Spread Spectrum Clocking)
+      description: Verify -0.5% down-spread SSC modulation profile. Measure frequency deviation and modulation rate.
+      priority: P0
+      tool: Oscilloscope / Protocol Analyzer
+      spec_ref: §8.2.1
+    - id: PHY-014
+      title: Reference Clock Jitter
+      description: Measure refclk jitter at device input. Verify compliance to refclk spec (100MHz ± 300ppm).
+      priority: P1
+      tool: Oscilloscope
+      spec_ref: §8.2
+    - id: PHY-015
+      title: PAM4 Linearity (Gen5 only)
+      description: Verify PAM4 eye symmetry and level spacing (RLM - Receiver Level Mismatch ratio).
+      priority: P0
+      tool: Oscilloscope + PAM4 analysis
+      spec_ref: §8.4 (Gen5)
+    - id: PHY-016
+      title: Lane Margining at Receiver
+      description: Exercise Lane Margining command set. Verify timing/voltage margin reporting.
+      priority: P0
+      tool: LeCroy / SW tool
+      spec_ref: §8.4.4
+    - id: PHY-017
+      title: Beacon Signaling
+      description: Verify beacon signal for wake from D3cold (if supported). 2-20MHz range.
+      priority: P2
+      tool: Oscilloscope
+      spec_ref: §8.8
+  - name: Link Training & LTSSM (Link Training and Status State Machine)
+    items:
+    - id: LT-001
+      title: Detect State — Cold boot
+      description: Verify device detected by RC after power-on. Check Receiver Detection timing.
+      priority: P0
+      tool: LeCroy + Linux
+      spec_ref: §4.2.6.1
+    - id: LT-002
+      title: Detect State — Warm reset
+      description: "Verify re-detection after warm reset (PERST# assertion)."
+      priority: P0
+      tool: LeCroy + Linux
+      spec_ref: §4.2.6.1
+    - id: LT-003
+      title: Polling — Compliance pattern
+      description: Enter Polling.Compliance and verify compliance pattern generation at each Gen speed.
+      priority: P1
+      tool: LeCroy / Oscilloscope
+      spec_ref: §4.2.6.2
+    - id: LT-004
+      title: Polling — Active/Config transition
+      description: Verify TS1/TS2 ordered set exchange. Lane polarity inversion detection.
+      priority: P0
+      tool: LeCroy
+      spec_ref: §4.2.6.2
+    - id: LT-005
+      title: Config — Lane number negotiation
+      description: Verify lane numbering for x4/x2/x1. PAD on unused lanes.
+      priority: P0
+      tool: LeCroy
+      spec_ref: §4.2.6.3
+    - id: LT-006
+      title: Config — Link/Lane reversal
+      description: Test with reversed lane order (Lane 0↔Lane 3). Verify auto-correction.
+      priority: P1
+      tool: LeCroy + HW adapter
+      spec_ref: §4.2.6.3
+    - id: LT-007
+      title: L0 — Normal operation
+      description: Verify successful transition to L0 and sustained data transfer.
+      priority: P0
+      tool: LeCroy + Linux
+      spec_ref: §4.2.6.4
+    - id: LT-008
+      title: Speed Change — Gen1→Gen2→Gen3→Gen4→Gen5
+      description: Verify link speed negotiation to highest mutually supported rate. Changed speed TS sequence.
+      priority: P0
+      tool: LeCroy
+      spec_ref: §4.2.6.4
+    - id: LT-009
+      title: Speed Change — Directed speed change
+      description: Software-directed speed change via Target Link Speed in Link Control 2.
+      priority: P0
+      tool: LeCroy + Linux
+      spec_ref: §4.2.6.4
+    - id: LT-010
+      title: Recovery — Auto recovery
+      description: Trigger bit errors → verify auto Recovery state entry and retrain.
+      priority: P0
+      tool: LeCroy (error inject)
+      spec_ref: §4.2.6.5
+    - id: LT-011
+      title: Recovery — Speed downgrade
+      description: Sustained errors at Gen5 → verify downgrade to Gen4 → Gen3. Check speed_change bit.
+      priority: P0
+      tool: LeCroy (error inject)
+      spec_ref: §4.2.6.5
+    - id: LT-012
+      title: Recovery — Equalization redo
+      description: Re-equalization in Recovery.EqPhase0-3 (Gen3+). Verify coefficient negotiation.
+      priority: P0
+      tool: LeCroy
+      spec_ref: §4.2.6.5
+    - id: LT-013
+      title: Width Change — x4→x2→x1
+      description: Link width downgrade via partial lane deactivation. Verify in-band signaling.
+      priority: P1
+      tool: LeCroy + Linux
+      spec_ref: §4.2.6
+    - id: LT-014
+      title: Width Change — x1→x4 upconfigure
+      description: Link width upgrade. Verify all lanes re-trained.
+      priority: P1
+      tool: LeCroy + Linux
+      spec_ref: §4.2.6
+    - id: LT-015
+      title: Hot Reset
+      description: Reset via bridge control register. Verify full retrain from Detect.
+      priority: P0
+      tool: Linux + LeCroy
+      spec_ref: §4.2.6.8
+    - id: LT-016
+      title: Disable Link
+      description: Disable link via Link Control register. Verify Disabled state entry.
+      priority: P1
+      tool: Linux + LeCroy
+      spec_ref: §4.2.6.7
+    - id: LT-017
+      title: Loopback State
+      description: Enter Loopback master/slave. Verify data loopback.
+      priority: P1
+      tool: LeCroy
+      spec_ref: §4.2.6.6
+    - id: LT-018
+      title: Equalization — Phase 0-3 (Gen3/4/5)
+      description: "Full EQ handshake. Verify preset/coeff request/response. Phase 1 ≤12ms (§4.2.6.4.2.2.2), Phase 2 ≤24ms\
+        \ (§4.2.6.4.2.2.3), Phase 3 ≤32ms (§4.2.6.4.2.2.4). Read EQ status bits per speed register after completion."
+      priority: P0
+      tool: LeCroy
+      spec_ref: §4.2.6.4.2 p.350
+    - id: LT-019
+      title: Equalization — Preset sweep
+      description: Iterate all 11 TX presets (Gen3/4) or applicable Gen5 presets. Measure BER at each.
+      priority: P1
+      tool: LeCroy + BERT
+      spec_ref: §8.3.3
+    - id: LT-020
+      title: Retimer detection & training (if applicable)
+      description: If retimer is in path, verify correct LTSSM with retimer inserted.
+      priority: P2
+      tool: LeCroy + retimer HW
+      spec_ref: §8.9
+    - id: LT-021
+      title: "PERST# timing"
+      description: "Verify PERST# assertion/de-assertion timing meets spec (100ms min after power stable)."
+      priority: P0
+      tool: Oscilloscope + LeCroy
+      spec_ref: §6.6.1
+    - id: LT-022
+      title: Link training timeout
+      description: Verify device handles training timeout (24ms-48ms) correctly per LTSSM state.
+      priority: P1
+      tool: LeCroy (delay inject)
+      spec_ref: §4.2.6
+  - name: Equalization (Gen3/4/5 Specific)
+    items:
+    - id: EQ-001
+      title: TX EQ Preset support
+      description: Verify device supports all required TX presets and can apply requested presets.
+      priority: P0
+      tool: LeCroy
+      spec_ref: §4.2.3
+    - id: EQ-002
+      title: TX EQ Coefficient range
+      description: Request specific c-1/c0/c+1 values. Verify applied values within spec range.
+      priority: P0
+      tool: LeCroy + Oscilloscope
+      spec_ref: §4.2.3
+    - id: EQ-003
+      title: RX EQ Hint
+      description: Verify device sends RX preset hint in TS1 during EQ Phase 2/3.
+      priority: P1
+      tool: LeCroy
+      spec_ref: §4.2.3
+    - id: EQ-004
+      title: EQ timeout & bypass
+      description: Verify correct behavior when EQ times out or is bypassed.
+      priority: P1
+      tool: LeCroy
+      spec_ref: §4.2.6.5
+    - id: EQ-005
+      title: Gen5 Precoding
+      description: Verify Gen5 precoding is applied correctly (Gray code PAM4).
+      priority: P0
+      tool: LeCroy / Oscilloscope
+      spec_ref: Gen5 Spec
+    - id: EQ-006
+      title: Multi-lane EQ skew
+      description: Verify per-lane EQ completes within skew tolerance.
+      priority: P1
+      tool: LeCroy
+      spec_ref: §4.2.3
+- name: Data Link Layer (DLL)
+  subcategories:
+  - name: Data Link Layer (DLL)
+    items:
+    - id: DLL-001
+      title: TLP sequence number
+      description: Verify monotonically increasing TLP sequence numbers. No gaps, no duplicates.
+      priority: P0
+      tool: LeCroy
+      spec_ref: §3.5
+    - id: DLL-002
+      title: ACK/NAK protocol
+      description: Verify DLLP ACK for good TLPs. Inject CRC error → verify NAK and replay.
+      priority: P0
+      tool: LeCroy (error inject)
+      spec_ref: §3.5.2
+    - id: DLL-003
+      title: Replay mechanism
+      description: "After NAK, verify retransmission from Replay Buffer. REPLAY_NUM incremented (2-bit counter, §3.6.2.1 p.228).\
+        \ Verify TLP content matches original."
+      priority: P0
+      tool: LeCroy (error inject)
+      spec_ref: §3.6.2.1 p.228
+    - id: DLL-003a
+      title: REPLAY_NUM rollover → Recovery
+      description: "Inject 4 consecutive NAKs (REPLAY_NUM: 00→01→10→11→rollover to 00). Verify DLL signals PHY to retrain\
+        \ link (enters Recovery). Per §3.6.2.1: \"REPLAY_NUM rolls over from 11b to 00b → retrain.\" AER CE: REPLAY_NUM Rollover."
+      priority: P0
+      tool: LeCroy (inject)
+      spec_ref: §3.6.2.1 p.230
+    - id: DLL-004
+      title: Replay timer timeout
+      description: "Verify REPLAY_TIMER fires when ACK not received. Timer starts at last symbol of TLP transmission. §3.6.2.1:\
+        \ \"not advanced during Link retraining.\""
+      priority: P1
+      tool: LeCroy (delay inject)
+      spec_ref: §3.6.2.1 p.228
+    - id: DLL-005
+      title: LCRC generation & check
+      description: Verify 32-bit LCRC on all TLPs. Inject LCRC error → verify TLP dropped + NAK.
+      priority: P0
+      tool: LeCroy
+      spec_ref: §3.5.3
+    - id: DLL-006
+      title: Flow Control Init (FC_INIT)
+      description: "Verify InitFC1/InitFC2 DLLP exchange during link init for VC0. Per §2.6.1 p.188: 6 FC types (PH/PD/NPH/NPD/CplH/CplD).\
+        \ Credit unit: 4 DW for data, 1 max-header for headers. VC0 initialized autonomously by HW; other VCs by SW."
+      priority: P0
+      tool: LeCroy
+      spec_ref: §2.6.1 p.188
+    - id: DLL-006a
+      title: FC Init — infinite credits
+      description: "If RC advertises infinite Completion credits (all 0s in InitFC), verify device handles correctly. Per\
+        \ §2.6.1: RC with no P2P must advertise infinite CplH/CplD."
+      priority: P1
+      tool: LeCroy
+      spec_ref: §2.6.1 p.188
+    - id: DLL-007
+      title: Flow Control Update
+      description: "Verify periodic UpdateFC DLLPs. Per §2.6.1.1 p.192: UpdateFC max interval = Table 2-48 values (e.g., x4\
+        \ MPS=512: 250 symbol times for 8GT/s+)."
+      priority: P0
+      tool: LeCroy
+      spec_ref: §2.6.1.1 p.192
+    - id: DLL-008
+      title: FC Credit overflow protection
+      description: "Exhaust credits → verify device stops sending until credits returned. No overflow. If only one of data/header\
+        \ is infinite, UpdateFC still required for the infinite type (set to 0). §2.6.1 p.188."
+      priority: P0
+      tool: LeCroy + Linux
+      spec_ref: §2.6.1 p.188
+    - id: DLL-009
+      title: DLL inactive/active transition
+      description: Verify DLL state machine tracks PHY LinkUp signal correctly.
+      priority: P1
+      tool: LeCroy
+      spec_ref: §3.2
+    - id: DLL-010
+      title: Data poisoning (EP bit)
+      description: Send TLP with EP bit set → verify device handles poisoned data correctly.
+      priority: P1
+      tool: LeCroy
+      spec_ref: §3.7
+- name: Transaction Layer (TLP)
+  subcategories:
+  - name: TLP Types & Formatting
+    items:
+    - id: TLP-001
+      title: Memory Read (MRd) 32-bit
+      description: Issue MRd to BAR mapped address. Verify completion with data.
+      priority: P0
+      tool: Linux + LeCroy
+      spec_ref: §2.2.1
+    - id: TLP-002
+      title: Memory Read (MRd) 64-bit
+      description: Issue MRd with 64-bit address. Verify correct routing.
+      priority: P0
+      tool: Linux + LeCroy
+      spec_ref: §2.2.1
+    - id: TLP-003
+      title: Memory Write (MWr) 32/64-bit
+      description: Issue MWr. Verify posted semantics (no completion).
+      priority: P0
+      tool: Linux + LeCroy
+      spec_ref: §2.2.1
+    - id: TLP-004
+      title: Completion (Cpl/CplD)
+      description: "Verify completion format: Requester ID, Tag, Byte Count, Lower Address."
+      priority: P0
+      tool: LeCroy
+      spec_ref: §2.2.2
+    - id: TLP-005
+      title: Completion Status codes
+      description: "Test Successful Completion (SC), Unsupported Request (UR), Completer Abort (CA), Config Request Retry\
+        \ (CRS)."
+      priority: P0
+      tool: Linux + LeCroy
+      spec_ref: §2.2.2
+    - id: TLP-006
+      title: Configuration Read/Write Type 0
+      description: Access config space via CfgRd0/CfgWr0. Verify correct header format.
+      priority: P0
+      tool: Linux (setpci) + LeCroy
+      spec_ref: §2.2.3
+    - id: TLP-007
+      title: IO Read/Write (legacy)
+      description: If device supports IO BAR, test IO transactions.
+      priority: P2
+      tool: Linux + LeCroy
+      spec_ref: §2.2.4
+    - id: TLP-008
+      title: Message (Msg/MsgD)
+      description: Test INTx messages, PM messages, error messages.
+      priority: P1
+      tool: LeCroy
+      spec_ref: §2.2.5
+  - name: TLP Processing Rules
+    items:
+    - id: TLP-010
+      title: Max Payload Size (MPS)
+      description: Set MPS to 128/256/512/1024. Verify device respects limit. No TLP exceeds MPS.
+      priority: P0
+      tool: Linux + LeCroy
+      spec_ref: §2.3.1
+    - id: TLP-011
+      title: Max Read Request Size (MRRS)
+      description: Set MRRS to 128/256/512/1024/2048/4096. Verify read completions split correctly.
+      priority: P0
+      tool: Linux + LeCroy
+      spec_ref: §2.3.1
+    - id: TLP-012
+      title: Read Completion Boundary (RCB)
+      description: Verify completions do not cross RCB boundary (64B or 128B).
+      priority: P0
+      tool: LeCroy
+      spec_ref: §2.3.1
+    - id: TLP-013
+      title: Tag field (8-bit / 10-bit extended)
+      description: Verify device supports 8-bit tags. If extended tag enabled, verify 10-bit tag handling.
+      priority: P0
+      tool: Linux + LeCroy
+      spec_ref: §2.2.6.1
+    - id: TLP-014
+      title: Tag — 14-bit (Gen5 optional)
+      description: If supported, verify 14-bit tag operation under high queue depth.
+      priority: P1
+      tool: Linux + LeCroy
+      spec_ref: §6.30
+    - id: TLP-015
+      title: Ordering — Posted before Non-Posted
+      description: Verify producer-consumer ordering. Posted writes visible before subsequent read completion.
+      priority: P0
+      tool: LeCroy
+      spec_ref: §2.4
+    - id: TLP-016
+      title: Ordering — Relaxed Ordering (RO)
+      description: Set RO bit. Verify device allows out-of-order completions.
+      priority: P1
+      tool: Linux + LeCroy
+      spec_ref: §2.4.2
+    - id: TLP-017
+      title: Ordering — ID-based Ordering (IDO)
+      description: If supported, verify IDO TLP routing.
+      priority: P2
+      tool: Linux + LeCroy
+      spec_ref: §2.4.3
+    - id: TLP-018
+      title: No Snoop
+      description: Set NS attribute bit. Verify correct cache coherency behavior.
+      priority: P1
+      tool: Linux + LeCroy
+      spec_ref: §2.4.4
+    - id: TLP-019
+      title: ECRC generation & check
+      description: Enable ECRC in AER cap. Verify ECRC appended to TLPs. Inject ECRC error.
+      priority: P1
+      tool: LeCroy
+      spec_ref: §2.7
+    - id: TLP-020
+      title: TLP Prefix — End-End / Local
+      description: If device uses TLP prefix (e.g., PASID, IDE), verify correct format.
+      priority: P2
+      tool: LeCroy
+      spec_ref: §2.2.10
+    - id: TLP-021
+      title: Unsupported Request handling
+      description: Send TLP with unsupported type/address. Verify UR completion status.
+      priority: P0
+      tool: LeCroy (inject)
+      spec_ref: §2.3.2
+- name: Configuration Space
+  subcategories:
+  - name: PCI Header (Type 0)
+    items:
+    - id: CFG-001
+      title: Vendor ID / Device ID
+      description: Read and verify correct values. Must not be FFFFh.
+      priority: P0
+      tool: Linux (lspci)
+      spec_ref: §7.5.1
+    - id: CFG-002
+      title: Command Register
+      description: Test Bus Master Enable, Memory Space Enable, IO Space Enable, INTx Disable.
+      priority: P0
+      tool: Linux (setpci)
+      spec_ref: §7.5.1.1
+    - id: CFG-003
+      title: Status Register
+      description: Read and verify supported status bits (Capabilities List, 66MHz, etc).
+      priority: P0
+      tool: Linux (lspci -vvv)
+      spec_ref: §7.5.1.2
+    - id: CFG-004
+      title: Class Code
+      description: "Verify = 01h:08h:02h (NVMe controller: Mass Storage / NVM / NVMe)."
+      priority: P0
+      tool: Linux (lspci)
+      spec_ref: §7.5.1
+    - id: CFG-005
+      title: BAR (Base Address Registers)
+      description: Verify BAR0 is 64-bit Memory, non-prefetchable (NVMe spec requirement). Size ≥ 16KB.
+      priority: P0
+      tool: Linux (lspci -vvv)
+      spec_ref: §7.5.1.3
+    - id: CFG-006
+      title: BAR sizing
+      description: Write all 1s → read back → verify size. Test with different system-assigned addresses.
+      priority: P0
+      tool: Linux + LeCroy
+      spec_ref: §7.5.1.3
+    - id: CFG-007
+      title: Subsystem Vendor/Device ID
+      description: Read and verify. Must be programmed (not 0000h).
+      priority: P1
+      tool: Linux (lspci)
+      spec_ref: §7.5.1
+    - id: CFG-008
+      title: Capability Pointer
+      description: Walk the capability linked list. Verify no loops, valid IDs.
+      priority: P0
+      tool: Linux (lspci -vvv)
+      spec_ref: §7.5.2
+    - id: CFG-009
+      title: Interrupt Pin
+      description: Read and verify (NVMe typically INTx not used, should be 00h or valid).
+      priority: P1
+      tool: Linux
+      spec_ref: §7.5.1
+    - id: CFG-010
+      title: Reserved/RO field behavior
+      description: Write to RO/Reserved fields → verify no change / no side effects.
+      priority: P1
+      tool: Linux (setpci)
+      spec_ref: §7.5
+    - id: CFG-011
+      title: RW field persistence
+      description: Write-read-verify all RW fields in config space. Check persistence across FLR.
+      priority: P1
+      tool: Linux (setpci)
+      spec_ref: §7.5
+  - name: PCIe Capability Structure (Cap ID 10h)
+    items:
+    - id: CFG-020
+      title: PCIe Capability Register
+      description: Verify Device/Port Type = 0000b (Endpoint). Slot Implemented = 0.
+      priority: P0
+      tool: Linux (lspci)
+      spec_ref: §7.8.2
+    - id: CFG-021
+      title: Device Capabilities
+      description: Check MPS Supported, Phantom Functions, Extended Tag, Endpoint L0s/L1 Latency, FLR Capable.
+      priority: P0
+      tool: Linux (lspci -vvv)
+      spec_ref: §7.8.3
+    - id: CFG-022
+      title: Device Control
+      description: Test Enable Relaxed Ordering, MPS, Extended Tag Enable, Phantom Functions Enable, No Snoop Enable.
+      priority: P0
+      tool: Linux (setpci)
+      spec_ref: §7.8.4
+    - id: CFG-023
+      title: Device Status
+      description: Check Correctable/Non-Fatal/Fatal Error Detected, Unsupported Request Detected, Transaction Pending.
+      priority: P0
+      tool: Linux
+      spec_ref: §7.8.5
+    - id: CFG-024
+      title: Link Capabilities
+      description: Verify Max Link Speed (Gen5=5, Gen4=4...), Max Link Width (x4), ASPM Support, L0s/L1 Exit Latency.
+      priority: P0
+      tool: Linux (lspci)
+      spec_ref: §7.8.6
+    - id: CFG-025
+      title: Link Control
+      description: Test ASPM Control, RCB, Link Disable, Retrain Link, Common Clock Config, Extended Synch.
+      priority: P0
+      tool: Linux (setpci)
+      spec_ref: §7.8.7
+    - id: CFG-026
+      title: Link Status
+      description: Verify Current Link Speed, Negotiated Link Width, Link Training, Slot Clock Config.
+      priority: P0
+      tool: Linux (lspci)
+      spec_ref: §7.8.8
+    - id: CFG-027
+      title: Device Capabilities 2
+      description: "Check Completion Timeout Ranges, Completion Timeout Disable, ARI Forwarding, AtomicOp, LTR, OBFF, 10-bit\
+        \ Tag."
+      priority: P0
+      tool: Linux
+      spec_ref: §7.8.9
+    - id: CFG-028
+      title: Device Control 2
+      description: Test Completion Timeout Value, Completion Timeout Disable, ARI, AtomicOp Requester, IDO, LTR Enable.
+      priority: P0
+      tool: Linux (setpci)
+      spec_ref: §7.8.10
+    - id: CFG-029
+      title: Link Capabilities 2
+      description: Verify Supported Link Speeds Vector (Gen1-Gen5), Crosslink Supported.
+      priority: P0
+      tool: Linux
+      spec_ref: §7.8.11
+    - id: CFG-030
+      title: Link Control 2
+      description: Test Target Link Speed, Enter Compliance, HW Autonomous Speed Disable, Transmit Margin.
+      priority: P0
+      tool: Linux (setpci) + LeCroy
+      spec_ref: §7.8.12
+    - id: CFG-031
+      title: Link Status 2
+      description: Check Current De-emphasis, Equalization Complete/Phase1-3, Link Equalization Request.
+      priority: P0
+      tool: Linux + LeCroy
+      spec_ref: §7.8.13
+  - name: Extended Configuration Space (ECAM 000h-FFFh)
+    items:
+    - id: CFG-040
+      title: AER (Advanced Error Reporting)
+      description: Verify AER extended capability present. Check all error mask/severity registers.
+      priority: P0
+      tool: Linux (lspci)
+      spec_ref: §7.10.1
+    - id: CFG-041
+      title: AER — Correctable Error Status/Mask
+      description: Read all CE status bits. Test mask bits.
+      priority: P0
+      tool: Linux
+      spec_ref: §7.10.2
+    - id: CFG-042
+      title: AER — Uncorrectable Error Status/Mask/Severity
+      description: Read all UCE bits. Verify severity mapping (Fatal vs Non-Fatal).
+      priority: P0
+      tool: Linux
+      spec_ref: §7.10.3
+    - id: CFG-043
+      title: AER — Header Log
+      description: Trigger UCE → verify Header Log captures TLP header.
+      priority: P1
+      tool: LeCroy + Linux
+      spec_ref: §7.10.4
+    - id: CFG-044
+      title: Power Budget Capability
+      description: If present, verify data registers.
+      priority: P2
+      tool: Linux
+      spec_ref: §7.10.6
+    - id: CFG-045
+      title: Serial Number Capability
+      description: If present, verify 64-bit unique serial number.
+      priority: P1
+      tool: Linux (lspci)
+      spec_ref: §7.10.5
+    - id: CFG-046
+      title: LTR (Latency Tolerance Reporting)
+      description: If supported, verify LTR extended cap. Read Max Snoop/No-Snoop Latency.
+      priority: P1
+      tool: Linux
+      spec_ref: §7.10.14
+    - id: CFG-047
+      title: L1 PM Substates Capability
+      description: If supported, verify L1.1/L1.2 capability bits and timing parameters.
+      priority: P1
+      tool: Linux
+      spec_ref: §7.10.15
+    - id: CFG-048
+      title: Secondary PCI Express Cap
+      description: Verify Lane Equalization Control registers per-lane (Gen3+ EQ).
+      priority: P1
+      tool: Linux (lspci)
+      spec_ref: §7.10.10
+    - id: CFG-049
+      title: Data Link Feature Cap
+      description: Verify Scaled Flow Control, if supported.
+      priority: P2
+      tool: Linux
+      spec_ref: §7.10.16
+    - id: CFG-050
+      title: Physical Layer 16.0 GT/s Cap
+      description: Verify Gen4-specific registers (if applicable).
+      priority: P1
+      tool: Linux
+      spec_ref: §7.10.17
+    - id: CFG-051
+      title: Physical Layer 32.0 GT/s Cap
+      description: "Verify Gen5-specific registers: Equalization Control, Margin, Modified TS Usage."
+      priority: P0
+      tool: Linux
+      spec_ref: §7.10.18
+    - id: CFG-052
+      title: Designated Vendor-Specific (DVSEC)
+      description: If present, enumerate DVSEC entries and verify format.
+      priority: P2
+      tool: Linux
+      spec_ref: §7.10.8
+    - id: CFG-053
+      title: IDE (Integrity & Data Encryption) Cap
+      description: If device supports IDE (PCIe 6.0 forward-port), verify cap structure.
+      priority: P2
+      tool: Linux
+      spec_ref: PCIe 6.0
+    - id: CFG-054
+      title: DOE (Data Object Exchange) Cap
+      description: If supported, verify DOE mailbox operation. Used for CMA/SPDM.
+      priority: P2
+      tool: Linux
+      spec_ref: §7.10.xx
+    - id: CFG-055
+      title: ECAM access — all 4KB
+      description: Walk entire extended config space 4 bytes at a time. Verify no hangs, no MCE.
+      priority: P0
+      tool: Linux (setpci)
+      spec_ref: §7.5
+- name: Power Management
+  subcategories:
+  - name: PCI PM (Legacy)
+    items:
+    - id: PM-001
+      title: D0 → D3hot transition
+      description: Set Power State = D3hot via PMCSR. Verify config space accessible, BAR not.
+      priority: P0
+      tool: Linux + LeCroy
+      spec_ref: §5.3
+    - id: PM-002
+      title: D3hot → D0 transition
+      description: "Restore to D0 (PMCSR[1:0]=00b). Per §5.9 Table 5-13 p.492: SW must wait ≥**10ms** before first config\
+        \ access. Device may return CRS during this period. Verify device functional after 10ms."
+      priority: P0
+      tool: Linux + LeCroy
+      spec_ref: §5.9 p.492
+    - id: PM-003
+      title: D3cold (power removed)
+      description: "Remove aux power (if PERST# controllable). Verify device re-enumerates on power restore."
+      priority: P0
+      tool: HW control + Linux
+      spec_ref: §5.3
+    - id: PM-004
+      title: "PME# generation"
+      description: If device supports PME, verify PME message from D3hot.
+      priority: P1
+      tool: LeCroy + Linux
+      spec_ref: §5.3.3
+    - id: PM-005
+      title: No_Soft_Reset behavior
+      description: "Check No_Soft_Reset bit. If set=1, verify config preserved across D3hot→D0. If 0, verify reinit needed."
+      priority: P1
+      tool: Linux (setpci)
+      spec_ref: §5.3.1.4
+  - name: ASPM (Active State Power Management)
+    items:
+    - id: PM-010
+      title: L0s entry/exit
+      description: Enable L0s. Verify entry during idle. Verify exit latency ≤ reported L0s Exit Latency.
+      priority: P0
+      tool: LeCroy
+      spec_ref: §5.4.1
+    - id: PM-011
+      title: L1 entry/exit
+      description: Enable L1. Verify entry via DLLP handshake. Verify exit latency ≤ reported L1 Exit Latency.
+      priority: P0
+      tool: LeCroy
+      spec_ref: §5.4.1
+    - id: PM-012
+      title: L1.1 (PCI-PM L1 substates)
+      description: "If supported, enable L1.1. Verify link enters L1.1 (common mode voltage removed). Measure entry/exit time."
+      priority: P1
+      tool: LeCroy + Oscilloscope
+      spec_ref: §5.5
+    - id: PM-013
+      title: "L1.2 (CLKREQ# based)"
+      description: "If supported, enable L1.2. Verify CLKREQ# de-assertion → refclk off. Measure residency."
+      priority: P1
+      tool: LeCroy + Oscilloscope + Logic Analyzer
+      spec_ref: §5.5
+    - id: PM-014
+      title: ASPM L0s + traffic burst
+      description: Heavy IO → idle → verify L0s entry within programmed time. Resume IO → verify seamless exit.
+      priority: P0
+      tool: Linux (fio) + LeCroy
+      spec_ref: §5.4
+    - id: PM-015
+      title: ASPM L1 + traffic burst
+      description: Same as above for L1. Verify no data loss, no timeout.
+      priority: P0
+      tool: Linux (fio) + LeCroy
+      spec_ref: §5.4
+    - id: PM-016
+      title: ASPM disabled
+      description: Disable ASPM. Verify link stays in L0 during idle periods. Measure idle power.
+      priority: P1
+      tool: LeCroy + power meter
+      spec_ref: §5.4
+  - name: Clock Power Management
+    items:
+    - id: PM-020
+      title: Clock PM capability
+      description: "If ClkPM bit in Link Cap = 1, verify CLKREQ# signal present and functional."
+      priority: P1
+      tool: Oscilloscope / Logic Analyzer
+      spec_ref: §5.4.2
+    - id: PM-021
+      title: "CLKREQ# assertion/de-assertion"
+      description: "Verify device asserts CLKREQ# before needing clock, de-asserts when idle."
+      priority: P1
+      tool: Logic Analyzer
+      spec_ref: §5.4.2
+- name: Interrupt Handling
+  subcategories:
+  - name: Interrupt Handling
+    items:
+    - id: INT-001
+      title: MSI capability
+      description: Verify MSI capability present. Check supported message count (1/2/4/8/16/32).
+      priority: P0
+      tool: Linux (lspci)
+      spec_ref: §7.7.1
+    - id: INT-002
+      title: MSI-X capability
+      description: Verify MSI-X capability present. Check Table Size, Table BIR/Offset, PBA BIR/Offset.
+      priority: P0
+      tool: Linux (lspci)
+      spec_ref: §7.7.2
+    - id: INT-003
+      title: MSI-X table read/write
+      description: Read all MSI-X table entries. Write valid addresses and data. Verify mask bit.
+      priority: P0
+      tool: Linux + LeCroy
+      spec_ref: §7.7.2
+    - id: INT-004
+      title: MSI-X interrupt delivery
+      description: Trigger NVMe completions → verify MSI-X interrupt fires with correct vector.
+      priority: P0
+      tool: Linux (nvme driver)
+      spec_ref: §7.7.2
+    - id: INT-005
+      title: MSI-X masking (per-vector)
+      description: Mask individual vectors → verify interrupt not delivered. Unmask → verify pending delivered.
+      priority: P0
+      tool: Linux
+      spec_ref: §7.7.2
+    - id: INT-006
+      title: MSI-X global mask
+      description: Set Function Mask → verify all interrupts blocked. Clear → verify delivery resumes.
+      priority: P1
+      tool: Linux
+      spec_ref: §7.7.2
+    - id: INT-007
+      title: INTx (legacy, if supported)
+      description: Disable MSI/MSI-X → verify INTx assert/de-assert messages.
+      priority: P2
+      tool: LeCroy + Linux
+      spec_ref: §2.2.5
+    - id: INT-008
+      title: Interrupt coalescing interaction
+      description: Verify NVMe interrupt coalescing works correctly with MSI-X vector allocation.
+      priority: P1
+      tool: Linux (nvme)
+      spec_ref: NVMe Spec
+    - id: INT-009
+      title: Multi-vector → multi-queue mapping
+      description: Assign different MSI-X vectors to different NVMe IO queues. Verify correct routing.
+      priority: P0
+      tool: Linux (nvme)
+      spec_ref: NVMe Spec
+- name: Error Handling & Recovery
+  subcategories:
+  - name: Correctable Errors
+    items:
+    - id: ERR-001
+      title: Bad TLP (receiver error)
+      description: Inject TLP with bad LCRC → verify CE logged in AER, NAK sent.
+      priority: P0
+      tool: LeCroy (inject)
+      spec_ref: §6.2
+    - id: ERR-002
+      title: Bad DLLP
+      description: Inject DLLP with bad CRC → verify CE logged, DLLP discarded.
+      priority: P0
+      tool: LeCroy (inject)
+      spec_ref: §6.2
+    - id: ERR-003
+      title: Replay Timer Timeout
+      description: Hold ACK → verify Replay Timer fires, CE logged.
+      priority: P1
+      tool: LeCroy (inject)
+      spec_ref: §6.2
+    - id: ERR-004
+      title: REPLAY_NUM Rollover
+      description: Multiple consecutive replay failures → verify CE logged per rollover.
+      priority: P1
+      tool: LeCroy (inject)
+      spec_ref: §6.2
+    - id: ERR-005
+      title: Correctable Internal Error
+      description: If device generates internal CEs, verify AER logging.
+      priority: P2
+      tool: Linux + stress test
+      spec_ref: §6.2
+    - id: ERR-006
+      title: Advisory Non-Fatal (Header Log Overflow)
+      description: Trigger multiple errors rapidly → verify Advisory Non-Fatal status.
+      priority: P2
+      tool: LeCroy (inject)
+      spec_ref: §6.2.3
+  - name: Uncorrectable Errors
+    items:
+    - id: ERR-010
+      title: Data Link Protocol Error
+      description: Sustained sequence number errors → verify UCE, link retrain.
+      priority: P0
+      tool: LeCroy (inject)
+      spec_ref: §6.2
+    - id: ERR-011
+      title: Surprise Down Error
+      description: Remove device without OS notification → verify UCE logged at RC.
+      priority: P1
+      tool: HW + Linux
+      spec_ref: §6.2
+    - id: ERR-012
+      title: Poisoned TLP (received)
+      description: Send TLP with EP=1 → verify UCE logged (or CE if advisory NF).
+      priority: P1
+      tool: LeCroy (inject)
+      spec_ref: §6.2
+    - id: ERR-013
+      title: Completion Timeout
+      description: Issue MRd → block completion → verify CTO error after programmed timeout.
+      priority: P0
+      tool: LeCroy (block) + Linux
+      spec_ref: §6.2
+    - id: ERR-014
+      title: Completer Abort
+      description: Send request to invalid function → verify CA status completion.
+      priority: P1
+      tool: LeCroy (inject)
+      spec_ref: §6.2
+    - id: ERR-015
+      title: Unexpected Completion
+      description: Send unsolicited completion to device → verify UCE logged.
+      priority: P0
+      tool: LeCroy (inject)
+      spec_ref: §6.2
+    - id: ERR-016
+      title: Malformed TLP
+      description: Send TLP with invalid header fields → verify UCE (Malformed TLP).
+      priority: P0
+      tool: LeCroy (inject)
+      spec_ref: §6.2
+    - id: ERR-017
+      title: ECRC Error
+      description: "Enable ECRC gen (AER Cap +18h bit 6) and check (bit 8). Device sends TLP with ECRC → inject ECRC corruption\
+        \ at receiver. Verify AER UCE \"ECRC Error\" logged. TLP still forwarded by switches. Per §2.7.1 p.198: polynomial=04C11DB7h,\
+        \ seed=FFFFFFFFh."
+      priority: P1
+      tool: LeCroy (inject)
+      spec_ref: §2.7.1 p.198, §7.8.4.7
+    - id: ERR-017a
+      title: ECRC generation verification
+      description: "Enable ECRC gen on device. Capture device-originated TLP on LeCroy. Verify TLP Digest field present with\
+        \ correct ECRC."
+      priority: P1
+      tool: LeCroy (capture)
+      spec_ref: §2.7.1 p.198
+    - id: ERR-018
+      title: Uncorrectable Internal Error
+      description: "Trigger internal device error (firmware crash?) → verify AER report. Masked by default (§6.2.7 Table 6-5)."
+      priority: P1
+      tool: Device-specific
+      spec_ref: §6.2
+    - id: ERR-019
+      title: ACS Violation (if ACS supported)
+      description: Inject P2P TLP that violates ACS policy → verify UCE.
+      priority: P2
+      tool: LeCroy (inject)
+      spec_ref: §6.12
+    - id: ERR-020
+      title: Header Log Overflow (CE)
+      description: "Trigger multiple rapid UCEs before SW clears Header Log. Verify CE \"Header Log Overflow\" bit set. Masked\
+        \ by default."
+      priority: P2
+      tool: LeCroy + Linux
+      spec_ref: §6.2.7 Table 6-4
+  - name: Error Escalation & System Response
+    items:
+    - id: ERR-030
+      title: ERR_COR message
+      description: Trigger CE → verify ERR_COR message sent upstream. Verify Root Port logs it.
+      priority: P0
+      tool: LeCroy + Linux
+      spec_ref: §6.2.5
+    - id: ERR-031
+      title: ERR_NONFATAL message
+      description: Trigger Non-Fatal UCE → verify ERR_NONFATAL message. Verify no link down.
+      priority: P0
+      tool: LeCroy + Linux
+      spec_ref: §6.2.5
+    - id: ERR-032
+      title: ERR_FATAL message
+      description: Trigger Fatal UCE → verify ERR_FATAL message. Verify link retrain / system response.
+      priority: P0
+      tool: LeCroy + Linux
+      spec_ref: §6.2.5
+    - id: ERR-033
+      title: DPC — ERR_FATAL trigger
+      description: "Enable DPC (Trigger Enable=01b on Root Port). Inject Fatal error → verify DPC Trigger Status set, DPC\
+        \ Trigger Reason=ERR_FATAL, Link transitions to Disabled state, DL Link Active=0."
+      priority: P0
+      tool: LeCroy + Linux
+      spec_ref: §6.2.10 p.526
+    - id: ERR-033a
+      title: DPC — ERR_NONFATAL trigger
+      description: Set DPC Trigger Enable=10b. Inject Non-Fatal error → verify DPC triggers on Non-Fatal too.
+      priority: P1
+      tool: LeCroy + Linux
+      spec_ref: §6.2.10 p.526
+    - id: ERR-033b
+      title: DPC — Recovery after clear
+      description: "After DPC triggered: wait for DL Link Active=0 and RP Busy=0. Clear DPC Trigger Status → LTSSM goes to\
+        \ Detect → Link retrains → device re-enumerates."
+      priority: P0
+      tool: LeCroy + Linux
+      spec_ref: §6.2.10 p.526
+    - id: ERR-033c
+      title: DPC — NPR during containment
+      description: "During DPC, issue config read to device. Verify Completion with UR (or CA per DPC Completion Control bit).\
+        \ Verify data=all 1s."
+      priority: P1
+      tool: Linux (lspci during DPC)
+      spec_ref: §6.2.10 p.527
+    - id: ERR-033d
+      title: DPC — Error Source ID
+      description: "After DPC trigger, read DPC Error Source ID Register. Verify it matches the device BDF that caused the\
+        \ error."
+      priority: P1
+      tool: Linux
+      spec_ref: §6.2.10 p.526
+    - id: ERR-033e
+      title: DPC — ERR_COR signaling
+      description: Verify DPC sends ERR_COR (not ERR_FATAL) upstream to indicate DPC event itself.
+      priority: P1
+      tool: LeCroy
+      spec_ref: §6.2.10.2 p.529
+    - id: ERR-034
+      title: AER interrupt delivery
+      description: Configure AER → trigger error → verify MSI/MSI-X interrupt to AER driver.
+      priority: P1
+      tool: Linux (aer driver)
+      spec_ref: §6.2.6
+    - id: ERR-035
+      title: Error during power state transition
+      description: Trigger error during D0→D3hot / D3hot→D0. Verify graceful handling.
+      priority: P1
+      tool: Linux + LeCroy
+      spec_ref: §6.2
+- name: Reset & Recovery
+  subcategories:
+  - name: Reset & Recovery
+    items:
+    - id: RST-001
+      title: Fundamental Reset (Cold Reset)
+      description: Full power cycle. Verify device re-enumerates. All state cleared.
+      priority: P0
+      tool: HW + Linux
+      spec_ref: §6.6.1
+    - id: RST-002
+      title: "Fundamental Reset (Warm Reset / PERST#)"
+      description: "Assert PERST# → release. Verify retrain from Detect. Config space reset to defaults."
+      priority: P0
+      tool: HW + Linux + LeCroy
+      spec_ref: §6.6.1
+    - id: RST-003
+      title: Hot Reset (in-band)
+      description: Set Secondary Bus Reset in bridge. Verify device resets and retrains.
+      priority: P0
+      tool: Linux + LeCroy
+      spec_ref: §6.6.1
+    - id: RST-004
+      title: FLR (Function Level Reset)
+      description: "If FLR Capable = 1, initiate FLR. Verify function resets, config preserved per spec, Transaction Pending\
+        \ clears."
+      priority: P0
+      tool: Linux + LeCroy
+      spec_ref: §6.6.2
+    - id: RST-005
+      title: FLR — Transaction Pending
+      description: Start IO → initiate FLR → verify Transaction Pending set → wait → verify clear.
+      priority: P0
+      tool: Linux (nvme) + LeCroy
+      spec_ref: §6.6.2
+    - id: RST-004a
+      title: FLR — CRS during reset
+      description: "Issue config read during FLR (within 100ms). Verify device returns CRS (Config Retry Status), not UR."
+      priority: P1
+      tool: Linux + LeCroy
+      spec_ref: §6.6.2 p.557
+    - id: RST-004b
+      title: FLR — Link state preserved
+      description: Issue FLR → verify link speed/width unchanged, no retrain event. PHY/DLL layers must NOT reset.
+      priority: P0
+      tool: Linux + LeCroy
+      spec_ref: §6.6.2 p.555
+    - id: RST-004c
+      title: FLR — Preserved registers
+      description: "After FLR, verify ASPM Control, MPS, RCB, CCC, Lane EQ regs all retain pre-FLR values. Per §6.6.2 exception\
+        \ list."
+      priority: P1
+      tool: Linux (setpci before/after)
+      spec_ref: §6.6.2 p.555
+    - id: RST-004d
+      title: FLR — Silent discard during reset
+      description: "During FLR, send TLP to function → verify silently discarded (no UR, no AER error), FC credits updated."
+      priority: P1
+      tool: LeCroy (inject + capture)
+      spec_ref: §6.6.2 p.557
+    - id: RST-004e
+      title: FLR — Stale completion safety
+      description: "Issue FLR with 1000 pending NVMe IOs → wait 100ms → re-enable → verify no data corruption from stale completions."
+      priority: P0
+      tool: Linux (fio + FLR script)
+      spec_ref: §6.6.2 p.557
+    - id: RST-006
+      title: D3hot→D0 reset behavior
+      description: Set D3hot → D0. If No_Soft_Reset=0, verify device needs full reinit.
+      priority: P0
+      tool: Linux
+      spec_ref: §5.3
+    - id: RST-007
+      title: SBR (Secondary Bus Reset) timing
+      description: Verify device responds correctly within 1.0s after SBR de-assertion.
+      priority: P1
+      tool: LeCroy
+      spec_ref: §6.6.1
+    - id: RST-008
+      title: Reset during active IO
+      description: Issue reset while NVMe IO queues are active. Verify no hang, clean recovery.
+      priority: P0
+      tool: Linux (fio + reset script)
+      spec_ref: §6.6
+    - id: RST-009
+      title: Multiple rapid resets
+      description: "100x consecutive PERST# cycles with varying intervals. Verify no link training failure."
+      priority: P1
+      tool: HW automation + LeCroy
+      spec_ref: §6.6.1
+    - id: RST-010
+      title: Reset during LTSSM states
+      description: Reset while in Recovery, L1, L0s. Verify correct behavior.
+      priority: P1
+      tool: LeCroy (trigger)
+      spec_ref: §6.6
+- name: DMA & Address Translation
+  subcategories:
+  - name: DMA & Address Translation
+    items:
+    - id: DMA-001
+      title: Bus Master DMA — Read
+      description: Verify device can DMA read from host memory (NVMe Read command).
+      priority: P0
+      tool: Linux (nvme) + LeCroy
+      spec_ref: §2.2
+    - id: DMA-002
+      title: Bus Master DMA — Write
+      description: Verify device can DMA write to host memory (NVMe Write command).
+      priority: P0
+      tool: Linux (nvme) + LeCroy
+      spec_ref: §2.2
+    - id: DMA-003
+      title: 32-bit addressing
+      description: If device supports only 32-bit, verify no access above 4GB.
+      priority: P1
+      tool: Linux
+      spec_ref: §2.2
+    - id: DMA-004
+      title: 64-bit addressing
+      description: Verify DMA to addresses > 4GB. Allocate buffer in high memory.
+      priority: P0
+      tool: Linux (nvme)
+      spec_ref: §2.2
+    - id: DMA-005
+      title: IOMMU / VT-d interaction
+      description: Enable IOMMU. Verify DMA goes through IOMMU translation. Test with restricted mapping.
+      priority: P1
+      tool: Linux (iommu=on)
+      spec_ref: System
+    - id: DMA-006
+      title: ATS (Address Translation Service)
+      description: If device supports ATS, verify ATS request/response flow. Translation caching.
+      priority: P2
+      tool: LeCroy + Linux
+      spec_ref: §10.0
+    - id: DMA-007
+      title: PASID (Process Addr Space ID)
+      description: If device supports PASID, verify per-process address space isolation.
+      priority: P2
+      tool: LeCroy + Linux
+      spec_ref: §10.4
+    - id: DMA-008
+      title: PRI (Page Request Interface)
+      description: If device supports PRI, verify page fault → page request → response flow.
+      priority: P2
+      tool: LeCroy + Linux
+      spec_ref: §10.5
+    - id: DMA-009
+      title: SGL/PRP boundary crossing
+      description: NVMe PRP/SGL that cross 4KB page boundary. Verify correct multi-page DMA.
+      priority: P0
+      tool: Linux (nvme)
+      spec_ref: NVMe Spec
+- name: Performance & Stress
+  subcategories:
+  - name: Performance & Stress
+    items:
+    - id: PERF-001
+      title: Max bandwidth — Sequential Read
+      description: fio seq read, QD=256, bs=128K. Measure bandwidth vs theoretical max (Gen5 x4 = ~16 GB/s).
+      priority: P0
+      tool: Linux (fio)
+      spec_ref: —
+    - id: PERF-002
+      title: Max bandwidth — Sequential Write
+      description: fio seq write, QD=256, bs=128K.
+      priority: P0
+      tool: Linux (fio)
+      spec_ref: —
+    - id: PERF-003
+      title: Max IOPS — Random Read 4K
+      description: fio rand read, QD=256, bs=4K.
+      priority: P0
+      tool: Linux (fio)
+      spec_ref: —
+    - id: PERF-004
+      title: Max IOPS — Random Write 4K
+      description: fio rand write, QD=256, bs=4K.
+      priority: P0
+      tool: Linux (fio)
+      spec_ref: —
+    - id: PERF-005
+      title: Mixed R/W (70/30)
+      description: fio mixed, QD=128, bs=4K, rwmixread=70.
+      priority: P1
+      tool: Linux (fio)
+      spec_ref: —
+    - id: PERF-006
+      title: MPS impact on throughput
+      description: Test throughput at MPS=128/256/512. Quantify impact.
+      priority: P1
+      tool: Linux (setpci + fio)
+      spec_ref: —
+    - id: PERF-007
+      title: MRRS impact on throughput
+      description: Test throughput at MRRS=512/1024/2048/4096.
+      priority: P1
+      tool: Linux (setpci + fio)
+      spec_ref: —
+    - id: PERF-008
+      title: Multi-queue scalability
+      description: Test IOPS scaling from 1 to N IO queues (N = core count).
+      priority: P1
+      tool: Linux (fio + nvme)
+      spec_ref: —
+    - id: PERF-009
+      title: Latency profile — QD=1 Read
+      description: fio rand read, QD=1, bs=4K. Measure avg/p99/p999 latency.
+      priority: P0
+      tool: Linux (fio)
+      spec_ref: —
+    - id: PERF-010
+      title: Latency under load — QD=1+background
+      description: Measure QD=1 latency while background fio runs QD=128.
+      priority: P1
+      tool: Linux (fio)
+      spec_ref: —
+    - id: PERF-011
+      title: TLP efficiency
+      description: Measure TLP payload/overhead ratio on LeCroy. Quantify FC credit utilization.
+      priority: P1
+      tool: LeCroy
+      spec_ref: —
+    - id: PERF-012
+      title: Completion credit starvation
+      description: High QD read → monitor for FC credit exhaustion → verify graceful throttle.
+      priority: P1
+      tool: LeCroy + fio
+      spec_ref: —
+    - id: PERF-013
+      title: 72-hour stress test
+      description: Continuous mixed IO, 72 hours. Check for errors, performance degradation, link retrains.
+      priority: P0
+      tool: Linux (fio) + LeCroy
+      spec_ref: —
+    - id: PERF-014
+      title: Thermal throttle behavior
+      description: Run heavy IO → monitor PCIe link during thermal throttle. Verify no link drop.
+      priority: P1
+      tool: Linux + LeCroy + thermal sensor
+      spec_ref: —
+- name: Platform & OS Compatibility
+  subcategories:
+  - name: Platform & OS Compatibility
+    items:
+    - id: PLAT-001
+      title: Intel platform enumeration
+      description: Test on Intel CPU (latest gen). Verify link trains to max speed/width.
+      priority: P0
+      tool: Linux + lspci
+      spec_ref: —
+    - id: PLAT-002
+      title: AMD platform enumeration
+      description: Test on AMD CPU (latest gen). Same verification.
+      priority: P0
+      tool: Linux + lspci
+      spec_ref: —
+    - id: PLAT-003
+      title: ARM platform (if applicable)
+      description: Test on ARM server (Ampere, Graviton).
+      priority: P2
+      tool: Linux + lspci
+      spec_ref: —
+    - id: PLAT-004
+      title: Bifurcation — x4 in x16 slot
+      description: Install in x16 slot configured as 4x4 bifurcation. Verify correct training.
+      priority: P1
+      tool: BIOS + Linux
+      spec_ref: —
+    - id: PLAT-005
+      title: x4 in x16 slot (non-bifurcated)
+      description: Install x4 device in x16 slot. Verify trains at x4 (not x16 with dead lanes).
+      priority: P0
+      tool: Linux + LeCroy
+      spec_ref: —
+    - id: PLAT-006
+      title: x4 in x4 slot (M.2, U.2, U.3, E1.S)
+      description: Test in each target form factor connector.
+      priority: P0
+      tool: Linux
+      spec_ref: —
+    - id: PLAT-007
+      title: Behind PCIe switch
+      description: Install behind PLX/Broadcom/Microsemi PCIe switch. Verify enumeration and IO.
+      priority: P1
+      tool: PCIe switch + Linux
+      spec_ref: —
+    - id: PLAT-008
+      title: Linux driver (kernel nvme)
+      description: Verify standard in-kernel nvme driver loads, creates /dev/nvmeX. All namespaces visible.
+      priority: P0
+      tool: Linux
+      spec_ref: —
+    - id: PLAT-009
+      title: Windows driver (inbox/vendor)
+      description: Verify Windows inbox NVMe driver loads. SMART, IO, trim functional.
+      priority: P1
+      tool: Windows
+      spec_ref: —
+    - id: PLAT-010
+      title: UEFI/BIOS boot
+      description: Verify SSD is bootable from UEFI. NVMe boot ROM (if applicable).
+      priority: P1
+      tool: BIOS
+      spec_ref: —
+    - id: PLAT-011
+      title: SR-IOV (if supported)
+      description: If device supports SR-IOV, verify VF enumeration, VF BAR, VF IO in VM.
+      priority: P2
+      tool: Linux + QEMU/KVM
+      spec_ref: §9.0
+    - id: PLAT-012
+      title: Hot-plug (if supported)
+      description: If slot supports hot-plug, insert/remove under OS control. Verify no crash, clean enum/removal.
+      priority: P1
+      tool: HW + Linux
+      spec_ref: §6.7
+    - id: PLAT-013
+      title: Surprise removal
+      description: Yank device without OS notification. Verify system survives (no kernel panic).
+      priority: P0
+      tool: HW + Linux
+      spec_ref: §6.7
+- name: Security & Advanced Features
+  subcategories:
+  - name: Security & Advanced Features
+    items:
+    - id: SEC-001
+      title: IDE (Integrity & Data Encryption)
+      description: If supported, verify IDE stream setup, encrypted TLP content.
+      priority: P2
+      tool: LeCroy + Linux
+      spec_ref: PCIe 6.0
+    - id: SEC-002
+      title: CMA/SPDM (Component Auth)
+      description: If supported, verify SPDM authentication via DOE mailbox.
+      priority: P2
+      tool: Linux + spdm-emu
+      spec_ref: PCIe 6.0
+    - id: SEC-003
+      title: ACS (Access Control Services)
+      description: If supported, verify P2P routing control, translation blocking.
+      priority: P2
+      tool: Linux
+      spec_ref: §6.12
+    - id: SEC-004
+      title: IOMMU DMA attack prevention
+      description: Verify device cannot DMA outside allocated IOMMU mapping.
+      priority: P1
+      tool: Linux (iommu strict)
+      spec_ref: System
+    - id: SEC-005
+      title: Config space lock-down
+      description: Verify critical config fields (BAR, Command) can be locked by platform.
+      priority: P2
+      tool: BIOS/Linux
+      spec_ref: System
+- name: NVMe-PCIe Interaction
+  subcategories:
+  - name: NVMe Controller Registers via PCIe
+    items:
+    - id: NP-001
+      title: BAR0 MMIO mapping
+      description: "Verify BAR0 maps NVMe controller registers (CAP, VS, INTMS, CC, CSTS, AQA, ASQ, ACQ). Read all and verify\
+        \ reset values."
+      priority: P0
+      tool: Linux (nvme show-regs)
+      spec_ref: NVMe §3
+    - id: NP-002
+      title: BAR0 alignment
+      description: Verify BAR0 is 64-bit, non-prefetchable, ≥16KB as required by NVMe spec.
+      priority: P0
+      tool: Linux (lspci -vvv)
+      spec_ref: NVMe §2.1.10
+    - id: NP-003
+      title: MMIO write ordering
+      description: "Write CC.EN=1 → poll CSTS.RDY. Verify memory-mapped write ordering is correct (no write combining on BAR0)."
+      priority: P0
+      tool: Linux + LeCroy
+      spec_ref: NVMe §3.1
+    - id: NP-004
+      title: Doorbell stride
+      description: Read CAP.DSTRD. Verify doorbell registers at correct offset (1000h + 2*y*(4 << DSTRD)).
+      priority: P0
+      tool: Linux (nvme show-regs)
+      spec_ref: NVMe §3.1.1
+    - id: NP-005
+      title: Admin Queue via PCIe
+      description: "Create Admin SQ/CQ. Submit Identify Controller. Verify PCIe MWr (doorbell write) → device DMA reads SQE\
+        \ → device DMA writes CQE → MSI-X."
+      priority: P0
+      tool: LeCroy + Linux
+      spec_ref: NVMe §3.3
+    - id: NP-006
+      title: IO Queue doorbell writes
+      description: "Heavy fio workload → capture LeCroy trace. Verify doorbell writes are MWr to correct offset. No coalescing."
+      priority: P1
+      tool: LeCroy + fio
+      spec_ref: NVMe §3.3
+    - id: NP-007
+      title: CMB (Controller Memory Buffer)
+      description: "If device supports CMB (CAP.CMBS=1), verify CMB BAR, size, SQ/CQ in CMB operation. PCIe MRd/MWr to CMB\
+        \ range."
+      priority: P2
+      tool: Linux + LeCroy
+      spec_ref: NVMe §3.5
+    - id: NP-008
+      title: PMR (Persistent Memory Region)
+      description: If supported, verify PMR BAR mapping, PCIe ordering rules for PMR writes.
+      priority: P2
+      tool: Linux + LeCroy
+      spec_ref: NVMe §3.6
+  - name: NVMe Submission/Completion Queue DMA Patterns
+    items:
+    - id: NP-010
+      title: SQ fetch — MRd pattern
+      description: "Capture PCIe trace during IO. Verify device issues MRd to host SQ memory. Check address, size (64B SQE)."
+      priority: P0
+      tool: LeCroy
+      spec_ref: NVMe §4.1
+    - id: NP-011
+      title: CQ post — MWr pattern
+      description: Verify device issues MWr to host CQ memory. Check Phase Tag toggle. CQE = 16B.
+      priority: P0
+      tool: LeCroy
+      spec_ref: NVMe §4.1
+    - id: NP-012
+      title: SQ fetch batching
+      description: Under high QD, verify device fetches multiple SQEs in single MRd (efficiency).
+      priority: P1
+      tool: LeCroy
+      spec_ref: —
+    - id: NP-013
+      title: Data DMA — Read command
+      description: NVMe Read → verify device issues MWr (DMA write to host) for data. Check MPS boundaries.
+      priority: P0
+      tool: LeCroy + nvme read
+      spec_ref: NVMe §4.2
+    - id: NP-014
+      title: Data DMA — Write command
+      description: NVMe Write → verify device issues MRd (DMA read from host) for data. Check Tag reuse.
+      priority: P0
+      tool: LeCroy + nvme write
+      spec_ref: NVMe §4.2
+    - id: NP-015
+      title: PRP List fetch
+      description: NVMe IO with PRP List (>2 pages). Verify device fetches PRP List via MRd before data transfer.
+      priority: P0
+      tool: LeCroy + custom nvme tool
+      spec_ref: NVMe §4.4
+    - id: NP-016
+      title: SGL (Scatter Gather List)
+      description: If SGL supported, verify SGL segment/descriptor fetch via PCIe MRd.
+      priority: P1
+      tool: LeCroy + fio
+      spec_ref: NVMe §4.5
+    - id: NP-017
+      title: Interrupt after CQ post
+      description: "Verify MSI-X interrupt fires after CQE written and becomes visible. Check ordering (CQE MWr before MSI-X\
+        \ MWr)."
+      priority: P0
+      tool: LeCroy
+      spec_ref: NVMe §7.5
+  - name: NVMe Shutdown & PCIe Interaction
+    items:
+    - id: NP-020
+      title: Normal Shutdown (CC.SHN)
+      description: "Set CC.SHN=01b (Normal). Poll CSTS.SHST. Verify no PCIe error during shutdown. Verify all DMA completes\
+        \ before SHST=10b."
+      priority: P0
+      tool: Linux + LeCroy
+      spec_ref: NVMe §3.1.5
+    - id: NP-021
+      title: Abrupt Shutdown (CC.SHN)
+      description: Set CC.SHN=10b (Abrupt). Verify faster shutdown. No PCIe UCE.
+      priority: P0
+      tool: Linux + LeCroy
+      spec_ref: NVMe §3.1.5
+    - id: NP-022
+      title: Shutdown + pending IO
+      description: "Issue 1000 IOs → immediately shutdown. Verify clean PCIe behavior (no Completion Timeout, no dangling\
+        \ DMA)."
+      priority: P0
+      tool: Linux + LeCroy
+      spec_ref: NVMe §3.1.5
+    - id: NP-023
+      title: Disable (CC.EN=0)
+      description: Clear CC.EN. Poll CSTS.RDY=0. Verify device ceases all DMA and returns to idle on PCIe.
+      priority: P0
+      tool: Linux + LeCroy
+      spec_ref: NVMe §3.1.5
+    - id: NP-024
+      title: FLR + NVMe state
+      description: "Issue PCIe FLR. Verify NVMe controller returns to reset state (CC.EN=0, CSTS.RDY=0). All queues deleted."
+      priority: P0
+      tool: Linux + LeCroy
+      spec_ref: NVMe §3.1, PCIe §6.6.2
+    - id: NP-025
+      title: D3hot + NVMe state
+      description: "Set PCIe PM D3hot. Verify NVMe controller state preserved per No_Soft_Reset. On D0 return, verify state."
+      priority: P1
+      tool: Linux + LeCroy
+      spec_ref: NVMe §3.1, PCIe §5.3
+    - id: NP-026
+      title: Surprise power loss
+      description: "Remove power during heavy IO. Verify on next boot: device enumerates, data integrity (if PLP)."
+      priority: P0
+      tool: HW (relay) + Linux
+      spec_ref: NVMe §8.2
+- name: CEM (Card Electromechanical) Compliance
+  subcategories:
+  - name: CEM (Card Electromechanical) Compliance
+    items:
+    - id: CEM-001
+      title: Card mechanical dimensions
+      description: "Verify PCB dimensions match CEM spec for target form factor (M.2 2230/2242/2280, U.2, U.3, E1.S, E3.S)."
+      priority: P0
+      tool: Mechanical measurement
+      spec_ref: CEM §2
+    - id: CEM-002
+      title: Connector pin assignment
+      description: "Verify pin assignment matches form factor spec. Check power, ground, PERST#, CLKREQ#, REFCLK, data lanes."
+      priority: P0
+      tool: Schematic review + continuity
+      spec_ref: CEM §4
+    - id: CEM-003
+      title: Power rail sequencing
+      description: Verify 3.3V (if applicable) and 12V rail sequencing meets CEM timing. No glitch on power-up/down.
+      priority: P0
+      tool: Oscilloscope
+      spec_ref: CEM §5
+    - id: CEM-004
+      title: Power consumption — Slot limit
+      description: "Measure total power. Verify ≤ slot power limit (M.2: varies by key/length, U.2: 25W, E1.S: 25W)."
+      priority: P0
+      tool: Power meter + thermal chamber
+      spec_ref: CEM §5
+    - id: CEM-005
+      title: "PERST# input characteristics"
+      description: "Verify PERST# input threshold levels (VIL, VIH). Measure input capacitance."
+      priority: P1
+      tool: Oscilloscope
+      spec_ref: CEM §5
+    - id: CEM-006
+      title: "CLKREQ# open drain"
+      description: "Verify CLKREQ# is open drain output. Measure pull-up, drive low voltage."
+      priority: P1
+      tool: Oscilloscope + Logic Analyzer
+      spec_ref: CEM §5
+    - id: CEM-007
+      title: Aux power (3.3Vaux)
+      description: If device uses 3.3Vaux for D3cold wake, verify current ≤ spec limit.
+      priority: P2
+      tool: Power meter
+      spec_ref: CEM §5
+    - id: CEM-008
+      title: LED indicators
+      description: If LED pin present (E1.S/U.2), verify correct behavior (activity, fault).
+      priority: P2
+      tool: Visual inspection
+      spec_ref: CEM §6
+    - id: CEM-009
+      title: Thermal design — case temp
+      description: Measure Tcase under sustained IO. Verify within datasheet Tc_max.
+      priority: P0
+      tool: Thermocouple + thermal chamber
+      spec_ref: —
+    - id: CEM-010
+      title: Vibration/shock
+      description: "Verify device survives operating vibration (SSD-specific: 5g, 5-800Hz) and non-operating shock (1500g,\
+        \ 0.5ms)."
+      priority: P2
+      tool: Vibration table + shock tester
+      spec_ref: —
+- name: Form Factor Specific Tests
+  subcategories:
+  - name: U.2 / U.3 (Primary Form Factor)
+    items:
+    - id: FF-010
+      title: SFF-8639 connector pin assignment
+      description: "Verify all pin assignments: PCIe lanes (TX0-3, RX0-3), power (3.3V, 12V), PERST#, CLKREQ#, DualPort#,\
+        \ IFDET#, Activity LED."
+      priority: P0
+      tool: Mechanical + schematic + continuity test
+      spec_ref: SFF-8639
+    - id: FF-011
+      title: U.2 mechanical dimensions
+      description: "Verify 2.5\" drive dimensions (100.45mm × 69.85mm × 7/9.5/15mm height). Screw hole pattern per SFF-8201."
+      priority: P0
+      tool: Caliper + gauge
+      spec_ref: SFF-8201
+    - id: FF-012
+      title: U.2 12V power delivery
+      description: "Measure 12V rail current under max IO load. Verify ≤ 25W total (or device datasheet limit). Check inrush\
+        \ current."
+      priority: P0
+      tool: Power meter + oscilloscope
+      spec_ref: SFF-8639
+    - id: FF-013
+      title: U.2 3.3V power delivery
+      description: Measure 3.3V rail. Verify current within spec. Check 3.3Vaux for D3cold wake (if supported).
+      priority: P0
+      tool: Power meter
+      spec_ref: SFF-8639
+    - id: FF-014
+      title: U.2 dual-port (if applicable)
+      description: "If dual-port, verify both PCIe ports enumerate independently. Test failover: disable port A → port B takes\
+        \ over."
+      priority: P1
+      tool: Linux + lspci + 2 hosts
+      spec_ref: SFF-8639
+    - id: FF-015
+      title: U.2 hot-swap
+      description: "Insert device into powered backplane. Verify enumeration without system reboot. Remove under OS control\
+        \ → clean removal."
+      priority: P0
+      tool: Hot-swap backplane + Linux
+      spec_ref: SFF-8639
+    - id: FF-016
+      title: U.2 surprise removal
+      description: Yank device without OS notification. Verify no kernel panic, AER/DPC handles cleanly.
+      priority: P0
+      tool: Hot-swap backplane + Linux
+      spec_ref: SFF-8639
+    - id: FF-017
+      title: U.2 cable assembly (if cable-attached)
+      description: "For cable-attached U.2 (SFF-8643/8644), verify cable SI at Gen4/Gen5 speeds. Check insertion loss, return\
+        \ loss, crosstalk."
+      priority: P1
+      tool: VNA + cable
+      spec_ref: SFF-8643
+    - id: FF-018
+      title: U.2 Activity LED
+      description: Verify LED signal toggles during IO. Check LED polarity matches SFF-8639 spec.
+      priority: P2
+      tool: Visual + logic analyzer
+      spec_ref: SFF-8639
+    - id: FF-019
+      title: "U.2 IFDET# (Interface Detect)"
+      description: "Verify IFDET# pin correctly indicates NVMe (not SAS/SATA). For U.3: verify tri-mode detection."
+      priority: P1
+      tool: Logic analyzer + multimeter
+      spec_ref: SFF-8639/TA-1001
+    - id: FF-020
+      title: U.3 tri-mode (if applicable)
+      description: "In U.3 backplane, verify NVMe protocol auto-selected (not SAS/SATA). Test with U.3 universal backplane."
+      priority: P1
+      tool: U.3 backplane + Linux
+      spec_ref: SFF-TA-1001
+    - id: FF-021
+      title: U.2 power sequencing
+      description: "Monitor 12V/3.3V/PERST# timing during hot-insert. Verify power stable before PERST# de-asserts. No glitches."
+      priority: P0
+      tool: Oscilloscope (4ch)
+      spec_ref: SFF-8639
+    - id: FF-022
+      title: U.2 vibration & shock (operating)
+      description: Run IO during 5g 5-800Hz random vibration. Verify no errors, no link retrain.
+      priority: P1
+      tool: Vibration table + fio
+      spec_ref: —
+    - id: FF-023
+      title: U.2 thermal — case temperature
+      description: "Measure Tcase under sustained sequential write (worst case thermal). Verify within Tc_max from datasheet."
+      priority: P0
+      tool: Thermocouple + thermal chamber
+      spec_ref: —
+    - id: FF-024
+      title: U.2 multi-drive backplane
+      description: Install 24x U.2 drives in JBOF/backplane. Verify all enumerate. Test simultaneous IO on all drives.
+      priority: P1
+      tool: 24-bay JBOF + Linux
+      spec_ref: —
+  - name: M.2 (NGFF) — Secondary
+    items:
+    - id: FF-030
+      title: M.2 Key M connector
+      description: Verify M-key socket compatibility.
+      priority: P2
+      tool: Mechanical check
+      spec_ref: M.2 Spec
+    - id: FF-031
+      title: M.2 2280 dimensions
+      description: Verify 22mm × 80mm, screw hole position.
+      priority: P2
+      tool: Caliper
+      spec_ref: M.2 Spec
+    - id: FF-032
+      title: M.2 power — 3.3V only
+      description: Verify operates on 3.3V. Current within spec.
+      priority: P2
+      tool: Power meter
+      spec_ref: M.2 Spec
+  - name: E1.S / E3.S (EDSFF) — If Applicable
+    items:
+    - id: FF-040
+      title: E1.S connector & dimensions
+      description: Verify SFF-TA-1006 connector and form factor.
+      priority: P2
+      tool: Mechanical check
+      spec_ref: SFF-TA-1006
+    - id: FF-041
+      title: E1.S power (12V)
+      description: Verify 12V power within slot budget.
+      priority: P2
+      tool: Power meter
+      spec_ref: SFF-TA-1006
+- name: BIOS/Firmware Interaction
+  subcategories:
+  - name: BIOS/Firmware Interaction
+    items:
+    - id: FW-001
+      title: UEFI enumeration
+      description: Verify device appears in UEFI setup. Correct device name, capacity displayed.
+      priority: P0
+      tool: BIOS
+      spec_ref: —
+    - id: FW-002
+      title: UEFI NVMe boot
+      description: Install OS on device → verify bootable from UEFI boot menu.
+      priority: P0
+      tool: BIOS + OS
+      spec_ref: —
+    - id: FW-003
+      title: Option ROM / UEFI driver
+      description: If device has Option ROM, verify it loads. If not, verify UEFI inbox driver handles it.
+      priority: P1
+      tool: BIOS
+      spec_ref: —
+    - id: FW-004
+      title: BIOS link speed setting
+      description: Change BIOS PCIe link speed to Gen3/Gen4. Verify device trains at restricted speed.
+      priority: P1
+      tool: BIOS + lspci
+      spec_ref: —
+    - id: FW-005
+      title: BIOS ASPM setting
+      description: Enable/disable ASPM in BIOS. Verify device respects setting.
+      priority: P1
+      tool: BIOS + lspci + LeCroy
+      spec_ref: —
+    - id: FW-006
+      title: BIOS bifurcation
+      description: Configure slot bifurcation (4x4, 8x8). Verify device trains correctly.
+      priority: P1
+      tool: BIOS + lspci
+      spec_ref: —
+    - id: FW-007
+      title: Secure Boot interaction
+      description: Verify device functions correctly with Secure Boot enabled.
+      priority: P1
+      tool: BIOS + OS
+      spec_ref: —
+    - id: FW-008
+      title: S3 (Suspend to RAM)
+      description: Suspend → resume. Verify device re-enumerates or restores without error. IO functional after resume.
+      priority: P0
+      tool: Linux (systemctl suspend) + LeCroy
+      spec_ref: —
+    - id: FW-009
+      title: S4 (Hibernate)
+      description: Hibernate → resume. Verify device state fully restored.
+      priority: P1
+      tool: Linux + LeCroy
+      spec_ref: —
+    - id: FW-010
+      title: S5 (Soft Off) + Wake
+      description: Shutdown → WoL or power button → verify clean boot with device.
+      priority: P1
+      tool: Linux
+      spec_ref: —
+    - id: FW-011
+      title: Kexec (fast reboot)
+      description: kexec into new kernel. Verify device resets and re-enumerates cleanly.
+      priority: P2
+      tool: Linux (kexec)
+      spec_ref: —
+    - id: FW-012
+      title: FW update during PCIe operation
+      description: If device supports FW update via NVMe FW Download/Commit, verify no PCIe errors during update.
+      priority: P0
+      tool: Linux (nvme fw-download) + LeCroy
+      spec_ref: NVMe §5.8
+    - id: FW-013
+      title: FW update — reset types
+      description: "FW Commit with reset required. Verify correct PCIe reset behavior (conventional vs FLR vs subsystem reset)."
+      priority: P0
+      tool: Linux (nvme fw-commit) + LeCroy
+      spec_ref: NVMe §5.8
+- name: Corner Cases & Regression
+  subcategories:
+  - name: Corner Cases & Regression
+    items:
+    - id: CC-001
+      title: Link training after long idle
+      description: Leave device powered but idle for 24h. Verify link still up, no retrain events.
+      priority: P1
+      tool: LeCroy (long capture) + Linux
+      spec_ref: —
+    - id: CC-002
+      title: Rapid D3hot↔D0 cycling
+      description: 1000 iterations of D3hot→D0 with 10ms interval. No link failure.
+      priority: P0
+      tool: Linux script + LeCroy
+      spec_ref: —
+    - id: CC-003
+      title: Rapid FLR cycling
+      description: 1000 FLR iterations with 100ms interval. Verify recovery each time.
+      priority: P0
+      tool: Linux script + LeCroy
+      spec_ref: —
+    - id: CC-004
+      title: SBR during active DMA
+      description: Issue SBR while device is mid-DMA. Verify no system hang, clean recovery.
+      priority: P0
+      tool: Linux script + LeCroy
+      spec_ref: —
+    - id: CC-005
+      title: Config access during reset
+      description: "Read config space during PERST# assertion. Verify CRS or 0xFFFFFFFF, no hang."
+      priority: P1
+      tool: Linux + HW timing
+      spec_ref: —
+    - id: CC-006
+      title: Back-to-back config writes
+      description: Rapid config register writes (no delay). Verify device handles correctly.
+      priority: P1
+      tool: Linux (setpci in loop)
+      spec_ref: —
+    - id: CC-007
+      title: Completion Timeout — vary values
+      description: "Per §7.8.3.2 p.758: Set DevCtl2[3:0] to each supported encoding (0000b=default 50μs-50ms, 0001b=50-100μs,\
+        \ 0010b=1-10ms, 0101b=16-55ms, 0110b=65-210ms, 1001b=260-900ms, 1010b=1-3.5s). Trigger CTO at each. Verify AER at\
+        \ each timeout value."
+      priority: P1
+      tool: LeCroy + Linux
+      spec_ref: §7.8.3.2 p.758
+    - id: CC-008
+      title: MPS mismatch
+      description: Set endpoint MPS different from RC MPS. Verify correct behavior (should follow minimum).
+      priority: P1
+      tool: Linux (setpci) + LeCroy
+      spec_ref: —
+    - id: CC-009
+      title: Large BAR remap
+      description: Unmap and remap BAR0 to different address. Verify device responds at new address.
+      priority: P1
+      tool: Linux (setpci)
+      spec_ref: —
+    - id: CC-010
+      title: Non-aligned MMIO access
+      description: "Issue 1-byte and 2-byte reads to NVMe registers. Verify correct behavior (may be undefined for some regs)."
+      priority: P2
+      tool: Linux (devmem2)
+      spec_ref: —
+    - id: CC-011
+      title: AER error storm
+      description: Inject 1000 CEs rapidly. Verify system handles rate limiting, no kernel crash.
+      priority: P1
+      tool: LeCroy (inject) + Linux
+      spec_ref: —
+    - id: CC-012
+      title: ASPM + heavy IO transitions
+      description: Alternate between 1s idle (enter L1) and burst IO (exit L1). 10000 cycles. No link error.
+      priority: P0
+      tool: fio script + LeCroy
+      spec_ref: —
+    - id: CC-013
+      title: Multi-function device
+      description: If device exposes multiple PCI functions, verify independent enumeration and IO isolation.
+      priority: P1
+      tool: Linux (lspci)
+      spec_ref: —
+    - id: CC-014
+      title: Link speed during thermal throttle
+      description: Monitor PCIe link speed during device thermal throttle. Verify no unexpected downgrade.
+      priority: P1
+      tool: Linux + thermal sensor
+      spec_ref: —
+    - id: CC-015
+      title: ECC/Parity error in config space
+      description: If platform supports parity checking, verify config space reads don't trigger parity errors.
+      priority: P2
+      tool: Linux (MCE log)
+      spec_ref: —
+- name: Interoperability Matrix
+  subcategories:
+  - name: CPU Platforms (U.2 Focus)
+    items:
+    - id: IOP-001
+      title: Intel Sapphire Rapids (4th Gen Xeon SP)
+    - id: IOP-002
+      title: Intel Sapphire Rapids + retimer
+    - id: IOP-003
+      title: Intel Ice Lake-SP (3rd Gen Xeon)
+    - id: IOP-004
+      title: Intel Ice Lake-SP
+    - id: IOP-005
+      title: Intel Cascade Lake (2nd Gen Xeon)
+    - id: IOP-006
+      title: AMD EPYC Genoa (4th Gen, Zen4)
+    - id: IOP-007
+      title: AMD EPYC Genoa
+    - id: IOP-008
+      title: AMD EPYC Milan (3rd Gen, Zen3)
+    - id: IOP-009
+      title: AMD EPYC Rome (2nd Gen, Zen2)
+    - id: IOP-010
+      title: Ampere Altra Max
+    - id: IOP-011
+      title: AWS Graviton3 (if available)
+  - name: PCIe Switches (Common in U.2 JBOFs)
+    items:
+    - id: IOP-020
+      title: Broadcom PEX88096
+    - id: IOP-021
+      title: Broadcom PEX88048
+    - id: IOP-022
+      title: Broadcom PEX8749
+    - id: IOP-023
+      title: Broadcom PEX8748
+    - id: IOP-024
+      title: Microsemi Switchtec PSX/PAX
+    - id: IOP-025
+      title: Microsemi PM40028
+  - name: U.2 HBA / Backplane Matrix
+    items:
+    - id: IOP-026
+      title: Supermicro AOC-SLG3-4E4T (quad U.2)
+    - id: IOP-027
+      title: Supermicro 24-bay NVMe JBOF
+    - id: IOP-028
+      title: Dell PowerEdge U.2 backplane
+    - id: IOP-029
+      title: HPE ProLiant U.2 backplane
+  - name: OS / Driver Matrix
+    items:
+    - id: IOP-030
+      title: Ubuntu 22.04 LTS
+    - id: IOP-031
+      title: Ubuntu 24.04 LTS
+    - id: IOP-032
+      title: RHEL 8.x
+      notes: Enterprise common
+    - id: IOP-033
+      title: RHEL 9.x
+    - id: IOP-034
+      title: SLES 15 SP5
+    - id: IOP-035
+      title: Rocky Linux 9
+      notes: CentOS replacement
+    - id: IOP-036
+      title: Windows Server 2022
+    - id: IOP-037
+      title: Windows Server 2025
+    - id: IOP-038
+      title: VMware ESXi 7.0 U3
+    - id: IOP-039
+      title: VMware ESXi 8.0
+    - id: IOP-040
+      title: FreeBSD 14
+    - id: IOP-041
+      title: SPDK (userspace)
+      notes: Bypasses kernel
+- name: U.2 Backplane & Cable Signal Integrity
+  subcategories:
+  - name: U.2 Backplane & Cable Signal Integrity
+    items:
+    - id: U2SI-001
+      title: Direct-attach (no cable) — Gen4 eye
+      description: "Measure TX eye diagram at U.2 connector TP2 with direct-attach (device in test fixture). Verify Gen4 eye\
+        \ mask."
+      priority: P0
+      tool: High-BW oscilloscope
+      spec_ref: PCIe §4.2
+    - id: U2SI-002
+      title: Direct-attach — Gen5 eye
+      description: Same as above at 32GT/s PAM4. Verify all 3 PAM4 eyes meet mask.
+      priority: P0
+      tool: High-BW oscilloscope (≥50GHz)
+      spec_ref: PCIe §4.2
+    - id: U2SI-003
+      title: Through 0.5m SFF-8643 cable — Gen4
+      description: Measure eye at far end of 0.5m cable. Verify link trains at Gen4 x4.
+      priority: P0
+      tool: Oscilloscope + cable
+      spec_ref: SFF-8643
+    - id: U2SI-004
+      title: Through 0.5m cable — Gen5
+      description: Same with Gen5. Higher loss at 32GT/s — may need retimer.
+      priority: P0
+      tool: Oscilloscope + cable
+      spec_ref: SFF-8643
+    - id: U2SI-005
+      title: Through 1.0m cable — Gen4
+      description: "Longer cable: verify Gen4 still trains, measure eye margin."
+      priority: P1
+      tool: Oscilloscope + cable
+      spec_ref: SFF-8643
+    - id: U2SI-006
+      title: Through 1.0m cable — Gen5
+      description: Likely marginal or fail at Gen5 without retimer. Document result.
+      priority: P1
+      tool: Oscilloscope + cable
+      spec_ref: SFF-8643
+    - id: U2SI-007
+      title: Cable insertion loss measurement
+      description: "VNA: measure S21 (insertion loss) of cable at 8/16/32 GHz."
+      priority: P0
+      tool: VNA
+      spec_ref: —
+    - id: U2SI-008
+      title: Cable return loss measurement
+      description: "VNA: measure S11 (return loss) at each connector end."
+      priority: P1
+      tool: VNA
+      spec_ref: —
+    - id: U2SI-009
+      title: Cable crosstalk (NEXT/FEXT)
+      description: "VNA: measure near-end and far-end crosstalk between adjacent lane pairs."
+      priority: P1
+      tool: VNA
+      spec_ref: —
+    - id: U2SI-010
+      title: Through enterprise backplane — Gen4
+      description: Install in enterprise JBOF backplane (e.g., 24-bay). Verify Gen4 x4 link. Measure lane margin.
+      priority: P0
+      tool: Backplane + LeCroy + margin
+      spec_ref: —
+    - id: U2SI-011
+      title: Through enterprise backplane — Gen5
+      description: Same with Gen5. Check if backplane SI supports 32GT/s.
+      priority: P1
+      tool: Backplane + LeCroy + margin
+      spec_ref: —
+    - id: U2SI-012
+      title: Backplane + cable combined
+      description: Cable from HBA to backplane + backplane trace to U.2 connector. Worst case channel.
+      priority: P1
+      tool: End-to-end measurement
+      spec_ref: —
+    - id: U2SI-013
+      title: Retimer interaction (if applicable)
+      description: If backplane has PCIe retimer, verify retimer + device EQ cooperation. Check added latency.
+      priority: P1
+      tool: LeCroy + latency measurement
+      spec_ref: —
+    - id: U2SI-014
+      title: Lane margin through cable at 25/55/85°C
+      description: Run lane margining through cable at 3 temperatures. Plot margin vs temperature.
+      priority: P1
+      tool: Thermal chamber + margin tool
+      spec_ref: —
+- name: Gen4↔Gen5 Backward Compatibility
+  subcategories:
+  - name: Gen4↔Gen5 Backward Compatibility
+    items:
+    - id: COMPAT-001
+      title: Gen4 platform — full function
+      description: Install in Gen4-only platform (e.g., AMD Ryzen 5000). Verify trains at Gen4 x4, full IO functional.
+      priority: P0
+      tool: Gen4 platform + Linux
+      spec_ref: —
+    - id: COMPAT-002
+      title: Gen5 platform — Gen5 speed
+      description: Install in Gen5 platform (e.g., Sapphire Rapids). Verify trains at Gen5 x4.
+      priority: P0
+      tool: Gen5 platform + Linux
+      spec_ref: —
+    - id: COMPAT-003
+      title: Gen5 platform — forced Gen4
+      description: In BIOS, limit slot to Gen4. Verify device trains at Gen4, not Gen5.
+      priority: P0
+      tool: BIOS + lspci
+      spec_ref: —
+    - id: COMPAT-004
+      title: Gen5 platform — forced Gen3
+      description: Limit to Gen3. Verify correct operation at 8GT/s.
+      priority: P1
+      tool: BIOS + lspci
+      spec_ref: —
+    - id: COMPAT-005
+      title: Speed switch Gen4→Gen5 runtime
+      description: From Gen4, issue directed speed change to Gen5 (setpci retrain). Verify success.
+      priority: P1
+      tool: Linux + LeCroy
+      spec_ref: —
+    - id: COMPAT-006
+      title: Speed switch Gen5→Gen4 runtime
+      description: From Gen5, downgrade to Gen4. Verify no data loss, IO continues.
+      priority: P1
+      tool: Linux + LeCroy
+      spec_ref: —
+    - id: COMPAT-007
+      title: Performance ratio Gen4 vs Gen5
+      description: "Run same fio workload at Gen4 and Gen5. Verify Gen5 is ~2x bandwidth of Gen4 (if device controller isn't\
+        \ bottleneck)."
+      priority: P0
+      tool: fio + lspci
+      spec_ref: —
+    - id: COMPAT-008
+      title: Gen5 fallback after EQ failure
+      description: "If Gen5 EQ fails (e.g., bad channel), verify device cleanly falls back to Gen4 and remains functional."
+      priority: P0
+      tool: LeCroy (inject EQ failure)
+      spec_ref: —
+    - id: COMPAT-009
+      title: Gen3 platform compatibility
+      description: Old Gen3 platform (e.g., Intel Haswell). Verify device still works at Gen3 x4.
+      priority: P1
+      tool: Gen3 platform
+      spec_ref: —
+    - id: COMPAT-010
+      title: Mixed-gen multi-drive
+      description: "In same system: one drive at Gen4, another at Gen5 (different slots). Verify no interference."
+      priority: P2
+      tool: Multi-slot platform
+      spec_ref: —
+- name: SR-IOV (Single Root I/O Virtualization)
+  subcategories:
+  - name: SR-IOV (Single Root I/O Virtualization)
+    items:
+    - id: SRIOV-001
+      title: SR-IOV capability presence
+      description: Check if device exposes SR-IOV Extended Capability (Cap ID 0010h). Read TotalVFs, InitialVFs.
+      priority: P1
+      tool: lspci -vvv
+      spec_ref: PCIe §9.3
+    - id: SRIOV-002
+      title: Enable SR-IOV
+      description: Write SR-IOV Control register VF Enable=1. Verify VFs appear in lspci.
+      priority: P1
+      tool: Linux (echo N > sriov_numvfs)
+      spec_ref: PCIe §9.3.3
+    - id: SRIOV-003
+      title: VF enumeration
+      description: "Enable max VFs. Verify each VF gets unique BDF. Check VF config space: BAR, class code."
+      priority: P1
+      tool: lspci
+      spec_ref: PCIe §9.3
+    - id: SRIOV-004
+      title: VF BAR assignment
+      description: Verify VF BAR resources allocated correctly. Each VF gets VF BAR aperture.
+      priority: P1
+      tool: lspci -vvv
+      spec_ref: PCIe §9.3.3
+    - id: SRIOV-005
+      title: VF NVMe namespace binding
+      description: Assign NVMe namespace to VF (via NVMe NS Management). Verify IO functional on VF.
+      priority: P1
+      tool: nvme + vfio
+      spec_ref: NVMe §8.11
+    - id: SRIOV-006
+      title: VF passthrough to VM
+      description: VFIO bind VF → pass to QEMU/KVM VM. Verify IO from guest OS.
+      priority: P1
+      tool: QEMU + vfio-pci
+      spec_ref: —
+    - id: SRIOV-007
+      title: PF/VF isolation
+      description: IO on PF → verify VF unaffected (and vice versa). Separate namespace, no data leakage.
+      priority: P0
+      tool: fio on both PF+VF
+      spec_ref: —
+    - id: SRIOV-008
+      title: VF FLR
+      description: Issue FLR on single VF. Verify PF and other VFs unaffected. VF resets cleanly.
+      priority: P1
+      tool: Linux + vfio
+      spec_ref: PCIe §6.6.2
+    - id: SRIOV-009
+      title: PF FLR with active VFs
+      description: Issue FLR on PF while VFs active. Verify all VFs reset.
+      priority: P1
+      tool: Linux
+      spec_ref: PCIe §6.6.2
+    - id: SRIOV-010
+      title: VF AER error isolation
+      description: Inject error on VF (e.g., invalid NVMe command). Verify error reported to VF's AER, not PF.
+      priority: P1
+      tool: Linux + nvme inject
+      spec_ref: PCIe §6.2
+    - id: SRIOV-011
+      title: VF migration (live)
+      description: If supported, verify VF state save/restore for live migration.
+      priority: P2
+      tool: QEMU + migration
+      spec_ref: —
+    - id: SRIOV-012
+      title: ARI (Alternative Routing ID)
+      description: "Verify ARI capability if device supports >8 functions. Check ARI Forwarding enabled in upstream port."
+      priority: P2
+      tool: lspci
+      spec_ref: PCIe §6.13
+    - id: SRIOV-013
+      title: VF performance isolation
+      description: Run fio on all VFs simultaneously. Verify fair bandwidth distribution (within 20%).
+      priority: P1
+      tool: fio multi-job
+      spec_ref: —
+    - id: SRIOV-014
+      title: Disable SR-IOV under load
+      description: Set sriov_numvfs=0 while VFs are doing IO. Verify clean teardown, no system hang.
+      priority: P1
+      tool: Linux script
+      spec_ref: —
+    - id: SRIOV-015
+      title: VF MSI-X vectors
+      description: Verify each VF has its own MSI-X vector allocation. No vector sharing between PF and VFs.
+      priority: P1
+      tool: lspci -vvv per VF
+      spec_ref: —
+- name: Atomic Operations
+  subcategories:
+  - name: Atomic Operations
+    items:
+    - id: ATOM-001
+      title: AtomicOp Requester capability
+      description: Check DevCap2.AtomicOpRequester for endpoint.
+      priority: P2
+      tool: lspci -vvv
+      spec_ref: PCIe §6.15
+    - id: ATOM-002
+      title: AtomicOp Routing capability
+      description: Check upstream ports for AtomicOpRouting support (required for atomics to work).
+      priority: P2
+      tool: lspci (RC + switch)
+      spec_ref: PCIe §6.15
+    - id: ATOM-003
+      title: 32-bit AtomicOp (FetchAdd)
+      description: If supported, issue 32-bit FetchAdd atomic. Verify correct result.
+      priority: P2
+      tool: LeCroy exerciser
+      spec_ref: PCIe §6.15
+    - id: ATOM-004
+      title: 64-bit AtomicOp (FetchAdd)
+      description: If supported, issue 64-bit FetchAdd atomic. Verify correct result.
+      priority: P2
+      tool: LeCroy exerciser
+      spec_ref: PCIe §6.15
+    - id: ATOM-005
+      title: 128-bit AtomicOp (CAS)
+      description: If supported, issue 128-bit Compare-and-Swap.
+      priority: P2
+      tool: LeCroy exerciser
+      spec_ref: PCIe §6.15
+    - id: ATOM-006
+      title: AtomicOp egress blocking
+      description: If RC doesn't support Atomic routing, verify device doesn't send atomics (or handles UR gracefully).
+      priority: P2
+      tool: LeCroy
+      spec_ref: PCIe §6.15
+    - id: ATOM-007
+      title: AtomicOp + CMB
+      description: If device supports CMB, verify atomics targeting CMB range work correctly.
+      priority: P2
+      tool: LeCroy + Linux
+      spec_ref: NVMe §3.5
+    - id: ATOM-008
+      title: AtomicOp ordering
+      description: Verify atomics follow PCIe ordering rules (posted after posted, non-posted ordered).
+      priority: P2
+      tool: LeCroy
+      spec_ref: PCIe §2.4
+- name: TLP Ordering & Relaxed Ordering
+  subcategories:
+  - name: TLP Ordering & Relaxed Ordering
+    items:
+    - id: ORD-001
+      title: MWr→MWr ordering (same TC)
+      description: Verify posted writes on same TC arrive in order. Write A then B → verify B appears after A.
+      priority: P0
+      tool: LeCroy
+      spec_ref: PCIe §2.4
+    - id: ORD-002
+      title: MWr→MRd ordering (same TC)
+      description: "Verify MRd pushes all preceding MWr. Device issues MWr(data) then MWr(CQE) → CQE must be visible after\
+        \ data."
+      priority: P0
+      tool: LeCroy
+      spec_ref: PCIe §2.4.2
+    - id: ORD-003
+      title: Relaxed Ordering — DMA write
+      description: Set RO bit on device MWr TLP. Verify host RC handles correctly (reorder allowed).
+      priority: P1
+      tool: LeCroy + Linux (check RO enable)
+      spec_ref: PCIe §2.4.1
+    - id: ORD-004
+      title: Relaxed Ordering — data before CQE
+      description: "Verify data MWr completes at host memory before CQE MWr. If RO disabled: strict order. If RO enabled:\
+        \ device must still fence data before CQE."
+      priority: P0
+      tool: LeCroy
+      spec_ref: NVMe §3.3.1
+    - id: ORD-005
+      title: ID-based Ordering (IDO)
+      description: If device sets IDO bit, verify host RC handles it per spec (different RequesterID can reorder).
+      priority: P2
+      tool: LeCroy
+      spec_ref: PCIe §2.4.3
+    - id: ORD-006
+      title: No Snoop attribute
+      description: "Check if device sets No Snoop on DMA TLPs. Verify host CPU cache coherency still maintained (or not, if\
+        \ No Snoop)."
+      priority: P1
+      tool: LeCroy
+      spec_ref: PCIe §2.4.1
+    - id: ORD-007
+      title: TC/VC mapping
+      description: "Verify device uses TC0 for all NVMe traffic (NVMe spec requires TC0). If device uses other TCs, verify\
+        \ VC mapping."
+      priority: P1
+      tool: LeCroy
+      spec_ref: PCIe §2.4.2
+    - id: ORD-008
+      title: Doorbell write ordering
+      description: "Verify doorbell MWr from host pushes all preceding SQE memory writes. Host must use WMB before doorbell."
+      priority: P0
+      tool: LeCroy
+      spec_ref: NVMe §3.3
+    - id: ORD-009
+      title: Multi-queue ordering independence
+      description: "IO on Queue 1 and Queue 2 can complete out of order relative to each other. Verify no false ordering dependency."
+      priority: P1
+      tool: fio multi-queue + LeCroy
+      spec_ref: NVMe §4.1
+    - id: ORD-010
+      title: Memory fence behavior
+      description: Verify device uses memory fence between data DMA and CQE DMA when RO is enabled.
+      priority: P0
+      tool: LeCroy
+      spec_ref: NVMe §3.3.1
+- name: NVMe-over-Fabrics PCIe Host Tests (if applicable)
+  subcategories:
+  - name: NVMe-over-Fabrics PCIe Host Tests (if applicable)
+    items:
+    - id: NOF-001
+      title: CMB-based SQ
+      description: Place SQ in device CMB. Verify host writes SQE via PCIe MWr to CMB BAR.
+      priority: P2
+      tool: Linux + LeCroy
+      spec_ref: NVMe §3.5
+    - id: NOF-002
+      title: CMB-based CQ
+      description: Place CQ in CMB. Verify host polls CQE via PCIe MRd from CMB.
+      priority: P2
+      tool: Linux + LeCroy
+      spec_ref: NVMe §3.5
+    - id: NOF-003
+      title: CMB + P2P DMA
+      description: If supported, verify peer-to-peer DMA between NVMe device CMB and another PCIe device (e.g., GPU).
+      priority: P2
+      tool: NVIDIA GPUDirect + NVMe
+      spec_ref: PCIe §10
+    - id: NOF-004
+      title: PMR write durability
+      description: Write to PMR → power cycle → verify data persists.
+      priority: P2
+      tool: Linux + LeCroy
+      spec_ref: NVMe §3.6
+- name: PCIe Peer-to-Peer (P2P) DMA
+  subcategories:
+  - name: PCIe Peer-to-Peer (P2P) DMA
+    items:
+    - id: P2P-001
+      title: P2P DMA capability check
+      description: Check if RC + switch support P2P (ACS, ATS). Check PCIe topology for P2P path.
+      priority: P2
+      tool: lspci + Linux
+      spec_ref: PCIe §10
+    - id: P2P-002
+      title: P2P NVMe read to GPU
+      description: Read from NVMe → DMA directly to GPU memory (bypassing CPU). Verify data integrity.
+      priority: P2
+      tool: nvidia-fs / GPUDirect
+      spec_ref: —
+    - id: P2P-003
+      title: P2P NVMe write from GPU
+      description: GPU issues DMA write → NVMe stores. Verify data integrity.
+      priority: P2
+      tool: nvidia-fs
+      spec_ref: —
+    - id: P2P-004
+      title: P2P across PCIe switch
+      description: Two NVMe SSDs behind same switch → P2P copy between them.
+      priority: P2
+      tool: Linux p2pmem
+      spec_ref: —
+    - id: P2P-005
+      title: ACS (Access Control Services)
+      description: "Verify ACS settings don't block P2P when P2P is desired. Verify ACS blocks P2P when isolation is needed\
+        \ (VM)."
+      priority: P2
+      tool: lspci + setpci
+      spec_ref: PCIe §6.12

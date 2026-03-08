@@ -1,0 +1,158 @@
+metadata:
+  version: '1.0'
+  spec_source: ASPM Deep Dive
+  target: ASPM L0s/L1/L1.2 validation
+categories:
+- name: ASPM Capability Verification
+  subcategories:
+  - name: ASPM Capability Verification
+    items:
+    - id: ASPM-01
+      title: L0s support check
+      description: "`lspci -vvv` → LnkCap: ASPM L0s"
+      pass_criteria: L0s entry latency within spec
+    - id: ASPM-02
+      title: L1 support check
+      description: "`lspci -vvv` → LnkCap: ASPM L1"
+      pass_criteria: L1 entry/exit latency within spec
+    - id: ASPM-03
+      title: L1 Substates support
+      description: '`lspci -vvv` → L1SubCap'
+      pass_criteria: Check L1.1/L1.2 PCI-PM/ASPM support bits
+    - id: ASPM-04
+      title: "CLKREQ# pin"
+      description: "Verify CLKREQ# connected and functional (required for L1.1/L1.2)"
+      pass_criteria: "Oscilloscope: CLKREQ# toggles with L1.2"
+    - id: ASPM-05
+      title: Acceptable Latency
+      description: Compare device's Acceptable Latency (DevCap) vs link's exit latency
+      pass_criteria: Device latency tolerance ≥ L1 exit latency
+- name: ASPM Functional Tests
+  subcategories:
+  - name: L0s Tests
+    items:
+    - id: ASPM-10
+      title: L0s entry during idle
+      description: "Enable L0s only (`setpci`). Idle for 10μs. LeCroy: verify L0s entry."
+      pass_criteria: Device TX enters Electrical Idle
+    - id: ASPM-11
+      title: L0s exit on IO
+      description: "In L0s state → issue single 4K read. LeCroy: measure L0s exit time."
+      pass_criteria: Exit ≤ reported L0s exit latency
+    - id: ASPM-12
+      title: L0s IO impact
+      description: Compare QD=1 latency with L0s disabled vs enabled.
+      pass_criteria: L0s overhead < 1μs (typical)
+    - id: ASPM-13
+      title: L0s during burst IO
+      description: Run bursty workload (1ms IO → 100μs idle → repeat). Count L0s entries.
+      pass_criteria: L0s entered during idle gaps
+    - id: ASPM-14
+      title: L0s asymmetric
+      description: Enable L0s on endpoint only (not RC). Verify endpoint TX can enter L0s while RC TX stays active.
+      pass_criteria: Half-duplex L0s works
+  - name: L1 Tests
+    items:
+    - id: ASPM-20
+      title: L1 entry during idle
+      description: "Enable L1 ASPM. Idle for ~100μs. LeCroy: verify L1 entry."
+      pass_criteria: Both TX/RX enter Electrical Idle
+    - id: ASPM-21
+      title: L1 exit on IO
+      description: In L1 → issue single read. Measure exit time on LeCroy.
+      pass_criteria: Exit ≤ reported L1 exit latency
+    - id: ASPM-22
+      title: L1 IO latency impact
+      description: "QD=1 latency benchmark: ASPM off vs L1 only vs L0s+L1."
+      pass_criteria: L1 adds 2-32μs typical
+    - id: ASPM-23
+      title: L1 throughput impact
+      description: "Seq read bandwidth: ASPM off vs L0s+L1."
+      pass_criteria: Throughput impact < 1% for sustained IO
+    - id: ASPM-24
+      title: L1 power measurement
+      description: Enable L1 ASPM, idle. Measure power vs D0 idle (ASPM off).
+      pass_criteria: L1 power < D0 idle power
+    - id: ASPM-25
+      title: Rapid L1 cycling
+      description: "10000 cycles: L1 → IO → L1 → IO (10ms intervals). No link errors."
+      pass_criteria: Zero AER errors, zero Recovery
+  - name: L1 Substate Tests
+    items:
+    - id: ASPM-30
+      title: L1.1 ASPM entry
+      description: "Enable L1.1 ASPM. Verify CLKREQ# stays asserted, PLL may gate."
+      pass_criteria: Power drops below L1
+    - id: ASPM-31
+      title: L1.2 ASPM entry
+      description: "Enable L1.2 ASPM. Verify CLKREQ# de-asserted."
+      pass_criteria: REFCLK stops, lowest ASPM power
+    - id: ASPM-32
+      title: L1.2 exit timing
+      description: "Per §5.5.5 Table 5-11: CLKREQ# assert → wait T_POWER_ON (programmable 0-3100μs, set in L1 PM Substates\
+        \ Control 2) → REFCLK valid → wait T_COMMONMODE (0-255μs) → TS1 → Recovery → L0. Also: T_POWER_OFF ≥ 2μs, TL1.2 ≥\
+        \ 4μs min stay."
+      pass_criteria: Total exit ≤ T_POWER_ON + T_COMMONMODE + Recovery time
+    - id: ASPM-33
+      title: L1.1 PCI-PM entry
+      description: Enter L1.1 via PCI-PM (D3hot → L1 → L1.1). Different entry path than ASPM.
+      pass_criteria: Same L1.1 power state reached
+    - id: ASPM-34
+      title: L1.2 PCI-PM entry
+      description: "Enter L1.2 via PCI-PM. Verify CLKREQ# and REFCLK behavior."
+      pass_criteria: Same as ASPM path
+    - id: ASPM-35
+      title: L1 substates + SR-IOV
+      description: If SR-IOV active, verify L1 substates still work with VFs enabled.
+      pass_criteria: Some devices disable L1 with VFs
+    - id: ASPM-36
+      title: L1.2 enable ordering
+      description: "Per §5.5.4 p.488: Enable bits must be set at Downstream Port BEFORE Upstream Port. Clear in reverse order\
+        \ (UP first, then DP). ASPM L1 must be disabled while configuring ASPM L1 substates. Violating this → undefined behavior."
+      pass_criteria: §5.5.4 p.488
+    - id: ASPM-37
+      title: T_POWER_ON / T_COMMONMODE programming
+      description: "Per §5.5.4: Must program T_POWER_ON, Common_Mode_Restore_Time, and LTR_L1.2_THRESHOLD before enabling\
+        \ L1.2. LTR_L1.2_THRESHOLD must be identical in both ports. Read back and verify programmed values."
+      pass_criteria: §5.5.4 p.488
+    - id: ASPM-38
+      title: Link Activation (if supported)
+      description: "Per §5.5.6 p.489: Optional mechanism to temporarily disable L1 substates. Verify Link Activation Control\
+        \ bit brings link out of L1.1/L1.2 and prevents re-entry until cleared."
+      pass_criteria: §5.5.6 p.489
+- name: ASPM Stress & Corner Cases
+  subcategories:
+  - name: ASPM Stress & Corner Cases
+    items:
+    - id: ASPM-40
+      title: ASPM + heavy IO alternation
+      description: "Alternate: 1s idle (L1 entry) → 1s burst IO → repeat 10000 cycles."
+      pass_criteria: Zero link errors, no CTO
+    - id: ASPM-41
+      title: ASPM + FW background activity
+      description: Enable L1. Device doing background GC/WL. Verify L1 entry doesn't cause GC failure.
+      pass_criteria: IO resumes correctly after L1 exit
+    - id: ASPM-42
+      title: ASPM + AER injection
+      description: In L1, inject error on wake. Verify AER report correct.
+      pass_criteria: Error logged, link recovers
+    - id: ASPM-43
+      title: ASPM + thermal event
+      description: In L1, device reaches Tc_max. Verify correct behavior (throttle vs wake).
+      pass_criteria: No link drop
+    - id: ASPM-44
+      title: ASPM + multi-drive
+      description: 24 U.2 drives all with L1 enabled. Verify independent L1 entry/exit.
+      pass_criteria: No cross-drive interference
+    - id: ASPM-45
+      title: ASPM setting change while active
+      description: Change ASPM setting (enable/disable) while IO running.
+      pass_criteria: No link error, setting takes effect
+    - id: ASPM-46
+      title: ASPM after FLR
+      description: Issue FLR → verify ASPM setting restored (or reset to default).
+      pass_criteria: "Per FLR spec: ASPM should reset"
+    - id: ASPM-47
+      title: ASPM + surprise removal
+      description: Remove U.2 drive while in L1 state. Verify system survives.
+      pass_criteria: No kernel panic

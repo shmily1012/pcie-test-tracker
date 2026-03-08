@@ -1,0 +1,231 @@
+metadata:
+  version: '1.0'
+  spec_source: Enterprise DC
+  target: Data center NVMe SSD validation
+categories:
+- name: Power Loss Protection (PLP) & PCIe Interaction
+  subcategories:
+  - name: Power Loss Protection (PLP) & PCIe Interaction
+    items:
+    - id: DC-001
+      title: Graceful shutdown via PCIe PM
+      description: CC.SHN=01b → poll CSTS.SHST → power off after 10b. Verify data integrity on next boot.
+      priority: P0
+      tool: Linux + power relay
+    - id: DC-002
+      title: Abrupt power loss during sequential write
+      description: fio seq write at full speed → yank 12V power (relay). Power on → fsck/data check. Repeat 100x.
+      priority: P0
+      tool: Power relay + Linux
+    - id: DC-003
+      title: Abrupt power loss during flush
+      description: Issue NVMe Flush → power loss during flush. Verify all pre-flush data intact.
+      priority: P0
+      tool: Power relay + Linux
+    - id: DC-004
+      title: Abrupt power loss during FW update
+      description: Start FW download → power loss mid-transfer. Verify device boots with old FW, no brick.
+      priority: P0
+      tool: Power relay + Linux
+    - id: DC-005
+      title: Power loss during PCIe link training
+      description: Power off during LTSSM (Detect/Polling/Config). Verify no permanent damage.
+      priority: P1
+      tool: Power relay + LeCroy
+    - id: DC-006
+      title: Capacitor-backed flush verification
+      description: "Trigger APST → verify device completes write-back from DRAM to NAND using capacitor energy. Measure cap\
+        \ discharge time."
+      priority: P0
+      tool: Oscilloscope + power relay
+    - id: DC-007
+      title: PLP 1000-cycle endurance
+      description: 1000 power cycles with pending IO. Verify no data loss, no increasing error count.
+      priority: P0
+      tool: Automated test rig
+- name: Multi-Drive System Tests
+  subcategories:
+  - name: Multi-Drive System Tests
+    items:
+    - id: DC-010
+      title: 24-drive JBOF enumeration
+      description: Install 24 U.2 drives in JBOF. Verify all 24 enumerate. Check BDF allocation, no conflicts.
+      priority: P0
+      tool: 24-bay JBOF + Linux
+    - id: DC-011
+      title: 24-drive simultaneous IO
+      description: "fio on all 24 drives simultaneously. Verify aggregate bandwidth scales linearly (within 10%). No errors."
+      priority: P0
+      tool: JBOF + fio
+    - id: DC-012
+      title: Single drive failure isolation
+      description: Inject error on 1 drive (FLR/power loss). Verify other 23 drives unaffected.
+      priority: P0
+      tool: JBOF + Linux
+    - id: DC-013
+      title: Hot-swap in JBOF
+      description: Remove 1 drive under OS control → insert new drive → verify auto-enumeration.
+      priority: P0
+      tool: JBOF + Linux
+    - id: DC-014
+      title: PCIe switch fan-out
+      description: 24 drives behind PCIe switches. Verify switch doesn't bottleneck (bandwidth, latency).
+      priority: P1
+      tool: JBOF + LeCroy + fio
+    - id: DC-015
+      title: Drive mix (Gen4 + Gen5 drives)
+      description: Mix Gen4 and Gen5 drives in same JBOF. Verify independent speed negotiation.
+      priority: P1
+      tool: JBOF + mixed drives
+- name: BMC/IPMI PCIe Monitoring
+  subcategories:
+  - name: BMC/IPMI PCIe Monitoring
+    items:
+    - id: DC-020
+      title: MCTP over SMBus/I2C
+      description: "If device supports MCTP (Management Component Transport Protocol), verify BMC can communicate with NVMe\
+        \ drive via SMBus."
+      priority: P1
+      tool: BMC + ipmitool
+    - id: DC-021
+      title: NVMe-MI (Management Interface)
+      description: Verify NVMe-MI health status polling from BMC. Temperature, SMART, wear level readable.
+      priority: P1
+      tool: BMC + nvme-mi tools
+    - id: DC-022
+      title: PCIe error reporting to BMC
+      description: When AER error occurs, verify BMC/IPMI event log captures it.
+      priority: P1
+      tool: BMC + error injection
+    - id: DC-023
+      title: Drive identification LED
+      description: If NVMe device supports Identify (SES LED), verify BMC can turn on/off locate LED.
+      priority: P2
+      tool: BMC + visual check
+- name: Firmware Update via PCIe (In-Band)
+  subcategories:
+  - name: Firmware Update via PCIe (In-Band)
+    items:
+    - id: DC-030
+      title: FW download (NVMe FW Download)
+      description: Send FW image via NVMe FW Download command. Verify TLP flow (MWr for data, CplD for status).
+      priority: P0
+      tool: nvme fw-download + LeCroy
+    - id: DC-031
+      title: FW commit — no reset
+      description: FW Commit Action 0 (download only, activate on next reset). Verify no PCIe reset during commit.
+      priority: P0
+      tool: nvme fw-commit + LeCroy
+    - id: DC-032
+      title: FW commit — controller reset
+      description: FW Commit Action 1 (activate after reset). Verify PCIe FLR or CC.EN=0/1 cycle. Link retrain.
+      priority: P0
+      tool: nvme fw-commit + LeCroy
+    - id: DC-033
+      title: FW commit — subsystem reset
+      description: "FW Commit Action 2 (activate after subsystem reset). Verify PCIe hot reset behavior. All functions reset."
+      priority: P0
+      tool: nvme fw-commit + LeCroy
+    - id: DC-034
+      title: FW rollback
+      description: Load FW A → upgrade to FW B → rollback to FW A. Verify clean PCIe behavior each transition.
+      priority: P1
+      tool: nvme fw-download/commit
+    - id: DC-035
+      title: Concurrent IO during FW download
+      description: Run background fio while downloading FW. Verify no IO errors, no PCIe errors during download phase.
+      priority: P0
+      tool: fio + nvme fw-download
+- name: Virtualization (Enterprise)
+  subcategories:
+  - name: Virtualization (Enterprise)
+    items:
+    - id: DC-040
+      title: VFIO passthrough to KVM
+      description: Bind device to vfio-pci → pass to KVM guest. Verify guest IO functional.
+      priority: P1
+      tool: QEMU/KVM + vfio
+    - id: DC-041
+      title: VFIO + SR-IOV
+      description: Enable VFs → pass individual VFs to different VMs. Verify isolation.
+      priority: P1
+      tool: QEMU/KVM + vfio + SR-IOV
+    - id: DC-042
+      title: VMware ESXi passthrough
+      description: DirectPath I/O passthrough on ESXi. Verify NVMe device functional in guest.
+      priority: P1
+      tool: VMware ESXi
+    - id: DC-043
+      title: DPDK userspace driver
+      description: Bind NVMe to DPDK SPDK. Verify IO via SPDK without kernel NVMe driver.
+      priority: P2
+      tool: SPDK + Linux
+    - id: DC-044
+      title: IOMMU group isolation
+      description: Verify device is in its own IOMMU group (important for VM passthrough).
+      priority: P1
+      tool: Linux (find /sys/kernel/iommu_groups)
+    - id: DC-045
+      title: Guest VM FLR
+      description: Inside VM, trigger FLR on VF. Verify host and other VMs unaffected.
+      priority: P1
+      tool: KVM + vfio
+- name: Endurance & Reliability (PCIe-Related)
+  subcategories:
+  - name: Endurance & Reliability (PCIe-Related)
+    items:
+    - id: DC-050
+      title: 30-day continuous IO
+      description: Run mixed IO for 30 days. Monitor PCIe link health daily (AER counters, link retrains, margin).
+      priority: P1
+      tool: fio + monitoring scripts
+    - id: DC-051
+      title: 10,000 power cycle endurance
+      description: "10,000 power cycles (PERST# assert/release). Verify device enumerates every time."
+      priority: P1
+      tool: Automated power cycler
+    - id: DC-052
+      title: Temperature cycling + PCIe
+      description: Cycle between 5°C and 55°C (operating range) while running IO. Verify no link drops.
+      priority: P1
+      tool: Thermal chamber + fio
+    - id: DC-053
+      title: Post-endurance lane margin
+      description: "After DWPD endurance testing, re-run lane margining. Compare to fresh device. Verify no SI degradation."
+      priority: P1
+      tool: Lane margin tool
+    - id: DC-054
+      title: Predictive failure — AER trend
+      description: Monitor AER correctable error rate over time. Detect increasing trend (early warning of failure).
+      priority: P2
+      tool: Custom monitoring script
+- name: Performance Consistency (DC Requirement)
+  subcategories:
+  - name: Performance Consistency (DC Requirement)
+    items:
+    - id: DC-060
+      title: Steady-state performance
+      description: "Precondition device → measure IOPS over 4 hours. Verify <20% variation between any 1-second intervals."
+      priority: P0
+      tool: fio + analysis
+    - id: DC-061
+      title: QoS — p99.9 latency under load
+      description: Under 80% load, verify p99.9 latency < 1ms (typical DC requirement).
+      priority: P0
+      tool: fio
+    - id: DC-062
+      title: QoS — p99.99 latency
+      description: Under 50% load, measure p99.99 latency. Document.
+      priority: P1
+      tool: fio
+    - id: DC-063
+      title: Tail latency during GC
+      description: "Trigger garbage collection (write 2x capacity). Measure latency spikes. Verify latency outliers don't\
+        \ cause PCIe CTO."
+      priority: P0
+      tool: fio + nvme smart-log
+    - id: DC-064
+      title: Multi-namespace QoS isolation
+      description: "Create 2 namespaces. Heavy IO on NS1 → verify NS2 latency not affected (if device supports ns-level QoS)."
+      priority: P1
+      tool: fio multi-job + nvme ns-create

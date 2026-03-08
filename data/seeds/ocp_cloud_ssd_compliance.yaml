@@ -1,0 +1,818 @@
+metadata:
+  version: '1.0'
+  spec_source: OCP Cloud SSD v2.5
+  target: OCP Cloud SSD compliance
+categories:
+- name: PCIe Requirements (§5, PCI-1 through PCI-28)
+  subcategories:
+  - name: PCIe Requirements (§5, PCI-1 through PCI-28)
+    items:
+    - id: OCP-PCI-001
+      title: MPS ≥ 256B
+      description: MPS ≥ 256B
+      priority: P0
+      tool: '`lspci -vvv`'
+      ocp_req: PCI-1
+      pass_criteria: DevCap MaxPayload ≥ 256
+    - id: OCP-PCI-002
+      title: CTO range modification
+      description: CTO range modification
+      priority: P0
+      tool: '`setpci` + fio'
+      ocp_req: PCI-2
+      pass_criteria: "Write DevCtl2[3:0], run IO, no CTO errors"
+    - id: OCP-PCI-003
+      title: CTO Ranges Supported disclosed
+      description: CTO Ranges Supported disclosed
+      priority: P1
+      tool: '`lspci`'
+      ocp_req: PCI-3
+      pass_criteria: DevCap2 "Completion Timeout Ranges Supported" field non-zero
+    - id: OCP-PCI-004
+      title: CTO disable
+      description: CTO disable
+      priority: P0
+      tool: '`setpci`'
+      ocp_req: PCI-4
+      pass_criteria: Set DevCtl2 bit 4 → device honors infinite timeout
+    - id: OCP-PCI-005
+      title: "PERST# fundamental reset (even if FW hung)"
+      description: "PERST# fundamental reset (even if FW hung)"
+      priority: P0
+      tool: GPIO/BMC
+      ocp_req: PCI-5
+      pass_criteria: "Hang FW (error inject) → toggle PERST# → device resets and re-enumerates"
+    - id: OCP-PCI-006
+      title: FLR support
+      description: FLR support
+      priority: P0
+      tool: '`lspci` + `echo 1 > /sys/bus/pci/.../reset`'
+      ocp_req: PCI-6
+      pass_criteria: DevCap FLR=1; reset completes <100ms; device re-enumerates
+    - id: OCP-PCI-007
+      title: No BAR4/BAR5 if no CMB/PMR
+      description: No BAR4/BAR5 if no CMB/PMR
+      priority: P1
+      tool: '`lspci`'
+      ocp_req: PCI-8
+      pass_criteria: BAR4/BAR5 not present (or only if CMB/PMR supported)
+    - id: OCP-PCI-008
+      title: MSI-X support
+      description: MSI-X support
+      priority: P0
+      tool: '`lspci -vvv`'
+      ocp_req: PCI-9
+      pass_criteria: MSI-X capability present
+    - id: OCP-PCI-009
+      title: MSI-X table in BAR0
+      description: MSI-X table in BAR0
+      priority: P0
+      tool: '`lspci -vvv`'
+      ocp_req: PCI-10
+      pass_criteria: MSI-X Table BIR=0
+    - id: OCP-PCI-010
+      title: MSI cap 4-byte aligned
+      description: MSI cap 4-byte aligned
+      priority: P1
+      tool: '`lspci`'
+      ocp_req: PCI-11
+      pass_criteria: MSI capability offset & 0x3 == 0
+    - id: OCP-PCI-011
+      title: CTO Ranges A, B, C
+      description: CTO Ranges A, B, C
+      priority: P0
+      tool: '`lspci`'
+      ocp_req: PCI-13
+      pass_criteria: "DevCap2 bits [3:1] = ranges A/B/C supported"
+    - id: OCP-PCI-012
+      title: Relaxed Ordering support
+      description: Relaxed Ordering support
+      priority: P0
+      tool: '`lspci`'
+      ocp_req: PCI-14
+      pass_criteria: DevCtl RO capability present
+    - id: OCP-PCI-013
+      title: RO bit clear for CQE/MSI-X writes
+      description: RO bit clear for CQE/MSI-X writes
+      priority: P0
+      tool: LeCroy capture
+      ocp_req: PCI-15
+      pass_criteria: "Capture device→host TLPs: CQE writes, MSI-X writes have RO=0"
+    - id: OCP-PCI-014
+      title: RO bit set for data DMAs (when enabled)
+      description: RO bit set for data DMAs (when enabled)
+      priority: P0
+      tool: LeCroy capture
+      ocp_req: PCI-16
+      pass_criteria: Enable RO → data read DMA TLPs have RO=1
+    - id: OCP-PCI-015
+      title: All intermediate link speeds
+      description: All intermediate link speeds
+      priority: P0
+      tool: '`lspci` + speed forcing'
+      ocp_req: PCI-17
+      pass_criteria: "For Gen5 device: verify 2.5/5.0/8.0/16.0/32.0 GT/s all train successfully"
+    - id: OCP-PCI-016
+      title: No DSI required
+      description: No DSI required
+      priority: P0
+      tool: '`lspci`'
+      ocp_req: PCI-18
+      pass_criteria: Status Register DSI bit = 0
+    - id: OCP-PCI-017
+      title: No_Soft_Reset = 1
+      description: No_Soft_Reset = 1
+      priority: P0
+      tool: '`lspci`'
+      ocp_req: PCI-19
+      pass_criteria: PMCSR No_Soft_Reset bit = 1; verify D3hot→D0 preserves config
+    - id: OCP-PCI-018
+      title: No I/O Space BARs
+      description: No I/O Space BARs
+      priority: P0
+      tool: '`lspci`'
+      ocp_req: PCI-20
+      pass_criteria: All BARs type = Memory (bit 0 = 0)
+    - id: OCP-PCI-019
+      title: All memory BARs 64-bit
+      description: All memory BARs 64-bit
+      priority: P0
+      tool: '`lspci`'
+      ocp_req: PCI-21
+      pass_criteria: "All BARs bits [2:1] = 10b; allocate above 4GB → device functional"
+    - id: OCP-PCI-020
+      title: Total BAR size ≤ 1MiB (no CMB/PMR)
+      description: Total BAR size ≤ 1MiB (no CMB/PMR)
+      priority: P1
+      tool: '`lspci`'
+      ocp_req: PCI-22
+      pass_criteria: Sum of all BAR sizes ≤ 1MiB
+    - id: OCP-PCI-021
+      title: Max 1 PCI bus number
+      description: Max 1 PCI bus number
+      priority: P0
+      tool: '`lspci -t`'
+      ocp_req: PCI-23
+      pass_criteria: No internal PCIe switches; single bus number
+    - id: OCP-PCI-022
+      title: 64-bit DMA uniform perf
+      description: 64-bit DMA uniform perf
+      priority: P0
+      tool: fio + IOMMU
+      ocp_req: PCI-24
+      pass_criteria: Map buffers >4GB, compare perf with <4GB; variance <5%
+    - id: OCP-PCI-023
+      title: Device Serial Number
+      description: Device Serial Number
+      priority: P0
+      tool: '`lspci`'
+      ocp_req: PCI-25
+      pass_criteria: DSN Extended Cap present; unique per device; same across functions
+    - id: OCP-PCI-024
+      title: AER Extended Capability
+      description: AER Extended Capability
+      priority: P0
+      tool: '`lspci`'
+      ocp_req: PCI-26
+      pass_criteria: AER cap present
+    - id: OCP-PCI-025
+      title: Silent discard VDM during FLR
+      description: Silent discard VDM during FLR
+      priority: P1
+      tool: LeCroy + FLR
+      ocp_req: PCI-27
+      pass_criteria: Send VDM during FLR → no error logged, TLP silently dropped
+    - id: OCP-PCI-026
+      title: ATS support
+      description: ATS support
+      priority: P1
+      tool: '`lspci` + IOMMU'
+      ocp_req: PCI-28
+      pass_criteria: ATS cap present; functional with IOMMU enabled
+- name: Boot Requirements (§5.1, BOOT-1/2)
+  subcategories:
+  - name: Boot Requirements (§5.1, BOOT-1/2)
+    items:
+    - id: OCP-BOOT-001
+      title: UEFI EDK2 NVMe driver boot
+      description: UEFI EDK2 NVMe driver boot
+      priority: P0
+      tool: UEFI shell/BIOS
+      ocp_req: BOOT-1
+    - id: OCP-BOOT-002
+      title: No option ROM
+      description: No option ROM
+      priority: P0
+      tool: '`lspci`'
+      ocp_req: BOOT-2
+- name: PCIe Error Logging (§5.2, PCIERR-1 through PCIERR-10)
+  subcategories:
+  - name: PCIe Error Logging (§5.2, PCIERR-1 through PCIERR-10)
+    items:
+    - id: OCP-ERR-001
+      title: Unsupported Request Error (UCE)
+      description: Unsupported Request Error (UCE)
+      priority: P0
+      tool: LeCroy inject
+      ocp_req: PCIERR-1
+    - id: OCP-ERR-002
+      title: ECRC Error (UCE)
+      description: ECRC Error (UCE)
+      priority: P1
+      tool: LeCroy inject
+      ocp_req: PCIERR-2
+    - id: OCP-ERR-003
+      title: Malformed TLP (UCE)
+      description: Malformed TLP (UCE)
+      priority: P0
+      tool: LeCroy inject
+      ocp_req: PCIERR-3
+    - id: OCP-ERR-004
+      title: Receiver Overflow (UCE)
+      description: Receiver Overflow (UCE)
+      priority: P1
+      tool: LeCroy inject
+      ocp_req: PCIERR-4
+    - id: OCP-ERR-005
+      title: Unexpected Completion (UCE)
+      description: Unexpected Completion (UCE)
+      priority: P1
+      tool: LeCroy inject
+      ocp_req: PCIERR-5
+    - id: OCP-ERR-006
+      title: Completer Abort (UCE)
+      description: Completer Abort (UCE)
+      priority: P1
+      tool: LeCroy inject
+      ocp_req: PCIERR-6
+    - id: OCP-ERR-007
+      title: Completion Timeout (UCE)
+      description: Completion Timeout (UCE)
+      priority: P0
+      tool: setpci + fio
+      ocp_req: PCIERR-7
+    - id: OCP-ERR-008
+      title: FC Protocol Error (UCE)
+      description: FC Protocol Error (UCE)
+      priority: P1
+      tool: LeCroy inject
+      ocp_req: PCIERR-8
+    - id: OCP-ERR-009
+      title: Poisoned TLP (UCE)
+      description: Poisoned TLP (UCE)
+      priority: P1
+      tool: LeCroy inject
+      ocp_req: PCIERR-9
+    - id: OCP-ERR-010
+      title: DL Protocol Error (CE→Fatal)
+      description: DL Protocol Error (CE→Fatal)
+      priority: P0
+      tool: LeCroy inject
+      ocp_req: PCIERR-10
+  - name: Clear PCIe Error Counters (§4.15.7, CPCIE-1 through CPCIE-17)
+    items:
+    - id: OCP-ERR-011
+      title: Clear PCIe Correctable Error Counters via Set Feature C3h
+      description: Clear PCIe Correctable Error Counters via Set Feature C3h
+      priority: P0
+      ocp_req: CPCIE-13
+    - id: OCP-ERR-012
+      title: Verify SMART C0h PCIe error counters all reset to 0 after clear
+      description: Verify SMART C0h PCIe error counters all reset to 0 after clear
+      priority: P0
+      ocp_req: CPCIE-13
+    - id: OCP-ERR-013
+      title: SV bit=1 → abort with Feature Not Saveable
+      description: SV bit=1 → abort with Feature Not Saveable
+      priority: P1
+      ocp_req: CPCIE-10
+- name: Low Power (§5.3, LPWR-1/2)
+  subcategories:
+  - name: Low Power (§5.3, LPWR-1/2)
+    items:
+    - id: OCP-LP-001
+      title: ASPM disabled after power cycle/reset
+      description: ASPM disabled after power cycle/reset
+      priority: P0
+      tool: '`lspci` after reset'
+      ocp_req: LPWR-1
+    - id: OCP-LP-002
+      title: ASPM L1 supported
+      description: ASPM L1 supported
+      priority: P0
+      tool: '`lspci`'
+      ocp_req: LPWR-2
+    - id: OCP-LP-003
+      title: ASPM L1 functional
+      description: ASPM L1 functional
+      priority: P0
+      tool: powertop + LeCroy
+      ocp_req: LPWR-2
+- name: PCIe Eye Capture (§5.4, EYE-1)
+  subcategories:
+  - name: PCIe Eye Capture (§5.4, EYE-1)
+    items:
+    - id: OCP-EYE-001
+      title: Eye data decode utility exists
+      description: Eye data decode utility exists
+      priority: P1
+      tool: Vendor utility
+      ocp_req: EYE-1
+    - id: OCP-EYE-002
+      title: Eye capture at all supported speeds
+      description: Eye capture at all supported speeds
+      priority: P1
+      tool: Vendor utility + Lane Margining
+      ocp_req: —
+- name: SMART / Health Information Extended (§4.8.6, Log C0h)
+  subcategories:
+  - name: SMART / Health Information Extended (§4.8.6, Log C0h)
+    items:
+    - id: OCP-SM-001
+      title: Physical Media Units Written
+      priority: P0
+      ocp_req: SMART-1
+      pass_criteria: Non-zero after writes; tracks WAF
+      notes: "15:0"
+    - id: OCP-SM-002
+      title: Physical Media Units Read
+      priority: P0
+      ocp_req: SMART-2
+      pass_criteria: Non-zero after reads
+      notes: "31:16"
+    - id: OCP-SM-003
+      title: Bad User NAND Blocks
+      priority: P0
+      ocp_req: SMART-3
+      pass_criteria: Normalized=100 (64h) at factory; raw=0
+      notes: "39:32"
+    - id: OCP-SM-004
+      title: Bad System NAND Blocks
+      priority: P0
+      ocp_req: SMART-4
+      pass_criteria: Same format as SMART-3
+      notes: "47:40"
+    - id: OCP-SM-005
+      title: XOR Recovery Count
+      priority: P0
+      ocp_req: SMART-5
+      pass_criteria: Cleared at factory; increments on XOR recovery
+      notes: "55:48"
+    - id: OCP-SM-006
+      title: Uncorrectable Read Error Count
+      priority: P0
+      ocp_req: SMART-6
+      pass_criteria: Total unrecoverable NAND read errors
+      notes: "63:56"
+    - id: OCP-SM-007
+      title: Soft ECC Error Count
+      priority: P0
+      ocp_req: SMART-7
+      pass_criteria: Multi-level ECC recovery count
+      notes: "71:64"
+    - id: OCP-SM-008
+      title: End-to-End Correction Counts
+      priority: P0
+      ocp_req: SMART-8
+      pass_criteria: "Detected (bytes 75:72) + Corrected (79:76)"
+      notes: "79:72"
+    - id: OCP-SM-009
+      title: System Data % Used
+      priority: P0
+      ocp_req: SMART-9
+      pass_criteria: 0 at factory; 100=endurance consumed
+      notes: '80'
+    - id: OCP-SM-010
+      title: Refresh Counts
+      priority: P1
+      ocp_req: SMART-10
+      pass_criteria: Block reallocation for data integrity
+      notes: "87:81"
+    - id: OCP-SM-011
+      title: User Data Erase Counts
+      priority: P0
+      ocp_req: SMART-11
+      pass_criteria: Min (4B) + Max (4B); non-resettable
+      notes: "95:88"
+    - id: OCP-SM-012
+      title: Thermal Throttling Status
+      priority: P0
+      ocp_req: SMART-12
+      pass_criteria: Byte 97=status (00h-03h); byte 96=count
+      notes: "97:96"
+    - id: OCP-SM-013
+      title: DSSD Spec Version
+      priority: P0
+      ocp_req: SMART-13
+      pass_criteria: Major=02h, Minor=0005h for v2.5
+      notes: "103:98"
+    - id: OCP-SM-014
+      title: PCIe Correctable Error Count
+      priority: P0
+      ocp_req: SMART-14
+      pass_criteria: Sum of all CE types; cleared at factory; runtime only
+      notes: "111:104"
+    - id: OCP-SM-015
+      title: Incomplete Shutdowns
+      priority: P0
+      ocp_req: SMART-15
+      pass_criteria: Increments on non-clean shutdown
+      notes: "115:112"
+    - id: OCP-SM-016
+      title: '% Free Blocks'
+      priority: P0
+      ocp_req: SMART-17
+      pass_criteria: '% erased spare blocks available'
+      notes: '120'
+    - id: OCP-SM-017
+      title: Capacitor Health
+      priority: P0
+      ocp_req: SMART-19
+      pass_criteria: '>100% at BOL; FFFFh if no PLP; 0%=minimum'
+      notes: "129:128"
+- name: Error Injection (§4.15.3, Feature C0h)
+  subcategories:
+  - name: Error Injection (§4.15.3, Feature C0h)
+    items:
+    - id: OCP-EINJ-001
+      title: "Set Feature C0h: inject uncorrectable read error"
+      description: "Set Feature C0h: inject uncorrectable read error"
+      priority: P0
+      ocp_req: —
+    - id: OCP-EINJ-002
+      title: Verify read to injected LBA returns error
+      description: Verify read to injected LBA returns error
+      priority: P0
+      ocp_req: —
+    - id: OCP-EINJ-003
+      title: "Get Feature C0h: confirm injection state"
+      description: "Get Feature C0h: confirm injection state"
+      priority: P1
+      ocp_req: —
+    - id: OCP-EINJ-004
+      title: Clear error injection; verify read succeeds
+      description: Clear error injection; verify read succeeds
+      priority: P1
+      ocp_req: —
+- name: Error Recovery (§4.8.7, Log C1h)
+  subcategories:
+  - name: Error Recovery (§4.8.7, Log C1h)
+    items:
+    - id: OCP-EREC-001
+      title: Panic → AEN with Log ID=C1h, Type=111b (Vendor Specific)
+      description: Panic → AEN with Log ID=C1h, Type=111b (Vendor Specific)
+      priority: P0
+      ocp_req: EREC-AEN-1
+    - id: OCP-EREC-002
+      title: Device transparent recovery (no AEN if self-recovered)
+      description: Device transparent recovery (no AEN if self-recovered)
+      priority: P0
+      ocp_req: EREC-FUNC-1
+    - id: OCP-EREC-003
+      title: "Read Error Recovery log C1h: Panic ID, Recovery Action"
+      description: "Read Error Recovery log C1h: Panic ID, Recovery Action"
+      priority: P0
+      ocp_req: —
+    - id: OCP-EREC-004
+      title: "Panic workflow: AEN → host reads C1h → reset per Panic Reset Action → device ..."
+      description: "Panic workflow: AEN → host reads C1h → reset per Panic Reset Action → device recovers"
+      priority: P0
+      ocp_req: —
+- name: Power Loss Protection (§7.8, PLP-1 through PLP-9)
+  subcategories:
+  - name: Power Loss Protection (§7.8, PLP-1 through PLP-9)
+    items:
+    - id: OCP-PLP-001
+      title: Full PLP for all acked data + metadata
+      description: Full PLP for all acked data + metadata
+      priority: P0
+      tool: Power cut under IO
+      ocp_req: PLP-1
+    - id: OCP-PLP-002
+      title: PLP health check no IO impact
+      description: PLP health check no IO impact
+      priority: P0
+      tool: fio latency monitor
+      ocp_req: PLP-2
+    - id: OCP-PLP-003
+      title: Health check at power-on + every interval (default 15min per PLP-7)
+      description: Health check at power-on + every interval (default 15min per PLP-7)
+      priority: P0
+      tool: Log analysis
+      ocp_req: PLP-3
+    - id: OCP-PLP-004
+      title: During health check, still enough energy for power loss
+      description: During health check, still enough energy for power loss
+      priority: P0
+      tool: Power cut during check
+      ocp_req: PLP-4
+    - id: OCP-PLP-005
+      title: False detection safeguards
+      description: False detection safeguards
+      priority: P1
+      tool: Stress test
+      ocp_req: PLP-5
+    - id: OCP-PLP-006
+      title: Capacitor energy margin measurement (not just open/short)
+      description: Capacitor energy margin measurement (not just open/short)
+      priority: P0
+      tool: SMART-19 monitoring
+      ocp_req: PLP-6
+    - id: OCP-PLP-007
+      title: Default interval = 15 minutes
+      description: Default interval = 15 minutes
+      priority: P0
+      tool: Get Feature C6h
+      ocp_req: PLP-7
+    - id: OCP-PLP-008
+      title: "PLP workflow: check → fail → AEN → flush → EOL/PLP mode"
+      description: "PLP workflow: check → fail → AEN → flush → EOL/PLP mode"
+      priority: P0
+      tool: Simulated cap failure
+      ocp_req: PLP-9
+- name: Time to Ready & Shutdown (§7.2.1, TTR-1 through TTR-16)
+  subcategories:
+  - name: Time to Ready & Shutdown (§7.2.1, TTR-1 through TTR-16)
+    items:
+    - id: OCP-TTR-001
+      title: Identify responds within 1s of CC.EN=1
+      description: Identify responds within 1s of CC.EN=1
+      priority: P0
+      tool: nvme-cli + timer
+      ocp_req: TTR-1
+    - id: OCP-TTR-002
+      title: IO commands succeed within 20s of CC.EN=1
+      description: IO commands succeed within 20s of CC.EN=1
+      priority: P0
+      tool: fio + timer
+      ocp_req: TTR-2
+    - id: OCP-TTR-003
+      title: Admin commands work once CSTS.RDY=1
+      description: Admin commands work once CSTS.RDY=1
+      priority: P0
+      tool: nvme-cli
+      ocp_req: TTR-3
+    - id: OCP-TTR-004
+      title: CSTS.RDY=0 until ready for Admin
+      description: CSTS.RDY=0 until ready for Admin
+      priority: P0
+      tool: Poll CSTS
+      ocp_req: TTR-4
+    - id: OCP-TTR-005
+      title: Normal shutdown complete ≤10s (CSTS.SHST=10b)
+      description: Normal shutdown complete ≤10s (CSTS.SHST=10b)
+      priority: P0
+      tool: nvme-cli + timer
+      ocp_req: TTR-5
+    - id: OCP-TTR-006
+      title: CC.SHN Normal + Abrupt both supported
+      description: CC.SHN Normal + Abrupt both supported
+      priority: P0
+      tool: nvme-cli
+      ocp_req: TTR-6
+    - id: OCP-TTR-007
+      title: No rebuild after normal shutdown
+      description: No rebuild after normal shutdown
+      priority: P0
+      tool: Power cycle + time TTR
+      ocp_req: TTR-7
+    - id: OCP-TTR-008
+      title: Normal shutdown flushes all volatile cache
+      description: Normal shutdown flushes all volatile cache
+      priority: P0
+      tool: Data integrity check
+      ocp_req: TTR-8
+    - id: OCP-TTR-009
+      title: Metadata rebuild ≤120s after unexpected power loss
+      description: Metadata rebuild ≤120s after unexpected power loss
+      priority: P0
+      tool: Power cut + timer
+      ocp_req: TTR-12
+    - id: OCP-TTR-010
+      title: Normal shutdown = zero data loss even if PLP failed
+      description: Normal shutdown = zero data loss even if PLP failed
+      priority: P0
+      tool: Disable PLP + shutdown
+      ocp_req: TTR-15
+- name: Incomplete Shutdown (§7.2.2, INCS-1 through INCS-7)
+  subcategories:
+  - name: Incomplete Shutdown (§7.2.2, INCS-1 through INCS-7)
+    items:
+    - id: OCP-INCS-001
+      title: PLP fail during operation → Critical Warning bit 4 = 1 → EOL/PLP mode
+      description: PLP fail during operation → Critical Warning bit 4 = 1 → EOL/PLP mode
+      priority: P0
+      tool: Simulate cap fail
+      ocp_req: INCS-1
+    - id: OCP-INCS-002
+      title: Shutdown checksum/flag; verified at next power-on
+      description: Shutdown checksum/flag; verified at next power-on
+      priority: P0
+      tool: Power cut + boot log
+      ocp_req: INCS-2/3
+    - id: OCP-INCS-003
+      title: Incomplete shutdown → SMART C0h counter +1 + Critical Warning bit 3 = 1
+      description: Incomplete shutdown → SMART C0h counter +1 + Critical Warning bit 3 = 1
+      priority: P0
+      tool: Power cut + SMART
+      ocp_req: INCS-4
+    - id: OCP-INCS-004
+      title: "Read-only mode: Admin commands still work, including purge"
+      description: "Read-only mode: Admin commands still work, including purge"
+      priority: P0
+      tool: Force read-only + test
+      ocp_req: INCS-5
+- name: Thermal (§9, TTHROTTLE-1 through TTHROTTLE-9)
+  subcategories:
+  - name: Thermal (§9, TTHROTTLE-1 through TTHROTTLE-9)
+    items:
+    - id: OCP-TH-001
+      title: Thermal throttle mechanism exists; temp check ≥1/sec
+      description: Thermal throttle mechanism exists; temp check ≥1/sec
+      priority: P0
+      tool: Thermal chamber
+      ocp_req: TTHROTTLE-1
+    - id: OCP-TH-002
+      title: Over-temp → AER Type=001b Info=01h; Critical Warning bit 1 = 1
+      description: Over-temp → AER Type=001b Info=01h; Critical Warning bit 1 = 1
+      priority: P0
+      tool: Thermal chamber + AEN
+      ocp_req: TTHROTTLE-2
+    - id: OCP-TH-003
+      title: False activation safeguards (no glitch-triggered throttle)
+      description: False activation safeguards (no glitch-triggered throttle)
+      priority: P1
+      tool: Stress test
+      ocp_req: TTHROTTLE-4
+    - id: OCP-TH-004
+      title: Throttle starts at composite temp 77°C
+      description: Throttle starts at composite temp 77°C
+      priority: P0
+      tool: Thermal chamber
+      ocp_req: TTHROTTLE-5
+    - id: OCP-TH-005
+      title: No throttle on rate-of-change/slew rate alone
+      description: No throttle on rate-of-change/slew rate alone
+      priority: P1
+      tool: Rapid heat ramp test
+      ocp_req: TTHROTTLE-6
+    - id: OCP-TH-006
+      title: Exit throttle when temp drops below 75°C; AER + clear Critical Warning
+      description: Exit throttle when temp drops below 75°C; AER + clear Critical Warning
+      priority: P0
+      tool: Thermal chamber
+      ocp_req: TTHROTTLE-7
+    - id: OCP-TH-007
+      title: Critical temp → report 85°C composite; AER before shutdown
+      description: Critical temp → report 85°C composite; AER before shutdown
+      priority: P0
+      tool: Thermal chamber
+      ocp_req: TTHROTTLE-8
+    - id: OCP-TH-008
+      title: WCTEMP = 015Eh (77°C)
+      description: WCTEMP = 015Eh (77°C)
+      priority: P0
+      tool: nvme-cli identify
+      ocp_req: TTHROTTLE-9
+- name: U.2/U.3 Form Factor (§10.8, FF8639-1 through FF8639-4)
+  subcategories:
+  - name: U.2/U.3 Form Factor (§10.8, FF8639-1 through FF8639-4)
+    items:
+    - id: OCP-FF-001
+      title: SFF-TA-1001 r1.1+; PCIe SFF-8639 Module Spec r4.0v1.0 compliance
+      description: SFF-TA-1001 r1.1+; PCIe SFF-8639 Module Spec r4.0v1.0 compliance
+      priority: P0
+      tool: Mechanical + electrical
+      ocp_req: FF8639-1
+    - id: OCP-FF-002
+      title: SRIS support with 5600ppm clock tolerance
+      description: SRIS support with 5600ppm clock tolerance
+      priority: P0
+      tool: LeCroy + clock source
+      ocp_req: FF8639-2
+    - id: OCP-FF-003
+      title: "Activity LED (Pin 11): 50ms on/50ms off during IO; off when idle"
+      description: "Activity LED (Pin 11): 50ms on/50ms off during IO; off when idle"
+      priority: P1
+      tool: Oscilloscope + fio
+      ocp_req: FF8639-3
+    - id: OCP-FF-004
+      title: LED active = logic 0 (<0.3V); inactive = logic 1 (>3.3V); no LED on backgroun...
+      description: LED active = logic 0 (<0.3V); inactive = logic 1 (>3.3V); no LED on background ops
+      priority: P1
+      tool: Oscilloscope
+      ocp_req: FF8639-4
+- name: Firmware Crash / Panic (§7.4, CRASH-1 through CRASH-5)
+  subcategories:
+  - name: Firmware Crash / Panic (§7.4, CRASH-1 through CRASH-5)
+    items:
+    - id: OCP-CRASH-001
+      title: "Failed state: read-only if data integrity guaranteed"
+      description: "Failed state: read-only if data integrity guaranteed"
+      priority: P0
+      tool: FW crash inject
+      ocp_req: CRASH-1
+    - id: OCP-CRASH-002
+      title: "Failed state: Admin commands still work (log retrieval)"
+      description: "Failed state: Admin commands still work (log retrieval)"
+      priority: P0
+      tool: FW crash + nvme-cli
+      ocp_req: CRASH-2
+    - id: OCP-CRASH-003
+      title: Recovery → full normal operation + performance
+      description: Recovery → full normal operation + performance
+      priority: P0
+      tool: FW crash → recover → fio
+      ocp_req: CRASH-3
+    - id: OCP-CRASH-004
+      title: Watchdog timer recovery from FW hang
+      description: Watchdog timer recovery from FW hang
+      priority: P0
+      tool: FW hang inject
+      ocp_req: CRASH-5
+- name: Latency Monitor (§4.15.11, Feature C5h + Log C3h)
+  subcategories:
+  - name: Latency Monitor (§4.15.11, Feature C5h + Log C3h)
+    items:
+    - id: OCP-LAT-001
+      title: "Set Feature C5h: configure latency monitor buckets"
+      description: "Set Feature C5h: configure latency monitor buckets"
+      priority: P0
+      ocp_req: —
+    - id: OCP-LAT-002
+      title: "Get Log C3h: read latency histogram; verify IO distribution"
+      description: "Get Log C3h: read latency histogram; verify IO distribution"
+      priority: P0
+      ocp_req: —
+    - id: OCP-LAT-003
+      title: Compare Log C3h data with host-side fio latency measurement
+      description: Compare Log C3h data with host-side fio latency measurement
+      priority: P1
+      ocp_req: —
+- name: Relaxed Ordering Compliance (Cross-ref with PCIe spec §2.4.1)
+  subcategories:
+  - name: Relaxed Ordering Compliance (Cross-ref with PCIe spec §2.4.1)
+    items:
+    - id: OCP-RO-001
+      title: "CQE writes: RO=0"
+      description: "CQE writes: RO=0"
+      priority: P0
+      tool: LeCroy TLP capture
+      ocp_req: PCI-15
+    - id: OCP-RO-002
+      title: "MSI/MSI-X interrupt writes: RO=0"
+      description: "MSI/MSI-X interrupt writes: RO=0"
+      priority: P0
+      tool: LeCroy TLP capture
+      ocp_req: PCI-15
+    - id: OCP-RO-003
+      title: "Data DMA reads: RO=1 when enabled"
+      description: "Data DMA reads: RO=1 when enabled"
+      priority: P0
+      tool: LeCroy TLP capture
+      ocp_req: PCI-16
+    - id: OCP-RO-004
+      title: Disable RO → verify all TLPs have RO=0
+      description: Disable RO → verify all TLPs have RO=0
+      priority: P1
+      tool: LeCroy TLP capture
+      ocp_req: —
+    - id: OCP-RO-005
+      title: Data integrity under RO enabled (high queue depth)
+      description: Data integrity under RO enabled (high queue depth)
+      priority: P0
+      tool: fio verify
+      ocp_req: —
+- name: EOL/PLP Failure Mode (§4.15.5, Feature C2h)
+  subcategories:
+  - name: EOL/PLP Failure Mode (§4.15.5, Feature C2h)
+    items:
+    - id: OCP-EOL-001
+      title: "Set Feature C2h: Read Only Mode (001b)"
+      description: "Set Feature C2h: Read Only Mode (001b)"
+      priority: P0
+      ocp_req: —
+    - id: OCP-EOL-002
+      title: "Set Feature C2h: Write Through Mode (010b)"
+      description: "Set Feature C2h: Write Through Mode (010b)"
+      priority: P1
+      ocp_req: —
+    - id: OCP-EOL-003
+      title: "Set Feature C2h: Normal + ROM at EOL (011b)"
+      description: "Set Feature C2h: Normal + ROM at EOL (011b)"
+      priority: P0
+      ocp_req: —
+    - id: OCP-EOL-004
+      title: Verify saved state persists across power cycle
+      description: Verify saved state persists across power cycle
+      priority: P0
+      ocp_req: —
+- name: Device Limits (§7.9, DEVLMT-1)
+  subcategories:
+  - name: Device Limits (§7.9, DEVLMT-1)
+    items:
+    - id: OCP-DEVLMT-001
+      title: "No architectural limit on: FW downloads, TCG ownership, purge, power cycles, ..."
+      description: "No architectural limit on: FW downloads, TCG ownership, purge, power cycles, Set/Get Features, log retrievals"
+      priority: P1
+      ocp_req: DEVLMT-1

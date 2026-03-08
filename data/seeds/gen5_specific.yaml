@@ -1,0 +1,184 @@
+metadata:
+  version: '1.0'
+  spec_source: PCIe Gen5 Specific
+  target: U.2 NVMe SSD, Gen5 32GT/s
+categories:
+- name: PAM4 Signaling Tests
+  subcategories:
+  - name: PAM4 Eye Diagram
+    items:
+    - id: G5-001
+      title: PAM4 3-eye diagram at TP2
+      description: Capture all three PAM4 eyes (upper, middle, lower). Each must meet individual mask spec.
+      priority: P0
+      tool: High-BW scope (>50GHz)
+      notes: Gen5 requires measuring 3 separate eye openings
+    - id: G5-002
+      title: Eye height per level
+      description: "Measure voltage difference between adjacent PAM4 levels (00→01→10→11). Check RLM (Receiver Level Mismatch)\
+        \ ratio ≥ 0.9."
+      priority: P0
+      tool: High-BW scope
+      notes: RLM < 0.9 indicates level spacing imbalance
+    - id: G5-003
+      title: Eye width per level
+      description: Measure timing opening for each of the 3 eyes. All must meet minimum spec.
+      priority: P0
+      tool: High-BW scope
+      notes: Middle eye typically tightest
+    - id: G5-004
+      title: PAM4 linearity
+      description: Verify equal spacing between PAM4 voltage levels. Plot DNL (Differential Non-Linearity).
+      priority: P0
+      tool: High-BW scope + analysis SW
+      notes: Non-linearity causes BER floor
+  - name: Gen5 Precoding
+    items:
+    - id: G5-010
+      title: Precoder operation
+      description: Verify device applies Gray-coded precoding on TX. Decode received data to verify precoding.
+      priority: P0
+      tool: LeCroy / BERT
+      notes: Gen5 mandates precoding to mitigate error propagation
+    - id: G5-011
+      title: Precoder bypass (if supported)
+      description: If device supports precoder bypass for test mode, verify bypass operation.
+      priority: P2
+      tool: LeCroy
+      notes: Used for compliance testing
+  - name: Gen5 Equalization
+    items:
+    - id: G5-020
+      title: EQ Phase 0-3 at 32GT/s
+      description: Full equalization handshake specific to Gen5. Verify coefficient negotiation with PAM4 constraints.
+      priority: P0
+      tool: LeCroy
+      notes: Gen5 EQ uses different preset definitions than Gen3/4
+    - id: G5-021
+      title: Gen5 TX Preset list
+      description: Verify device supports all required Gen5 TX presets. Request each preset → measure eye quality.
+      priority: P0
+      tool: LeCroy + scope
+      notes: Gen5 has different preset table than Gen4
+    - id: G5-022
+      title: CTLE + DFE at 32GT/s
+      description: "Verify receiver equalization at 32GT/s. PAM4 requires more aggressive equalization. Check DFE tap values."
+      priority: P0
+      tool: BERT + variable ISI channel
+      notes: Gen5 PAM4 has ~6dB SNR penalty vs NRZ
+    - id: G5-023
+      title: EQ adaptation time
+      description: Measure time from EQ Phase 0 start to Phase 3 completion at Gen5. Spec allows up to 24ms per phase.
+      priority: P1
+      tool: LeCroy
+      notes: Longer EQ time may indicate marginal channel
+- name: Lane Margining at Receiver
+  subcategories:
+  - name: Lane Margining Basics
+    items:
+    - id: LM-001
+      title: Margining Ready check
+      description: "Read Lane Margining Cap register. Verify Margining Ready bit = 1 after link training. **Required for all\
+        \ 16GT/s+ devices per §8.4.4.** Verify MNumTimingSteps ≥ 6, MMaxTimingOffset ≥ 20% UI. At 32GT/s: verify MVoltageSupported=1\
+        \ (mandatory)."
+      priority: P0
+      tool: Linux / LeCroy
+      notes: Required per PCIe §8.4.4 p.1066
+    - id: LM-002
+      title: Timing margin — left
+      description: "Issue margin command: Step Left N steps. Record margin at each step until error."
+      priority: P0
+      tool: Linux (pcm tool) / LeCroy
+      notes: Reports how much timing margin exists to the left of optimal sampling
+    - id: LM-003
+      title: Timing margin — right
+      description: Same as above, Step Right.
+      priority: P0
+      tool: Linux / LeCroy
+    - id: LM-004
+      title: Voltage margin — up
+      description: "Issue margin command: Step Up N steps. Record margin."
+      priority: P0
+      tool: Linux / LeCroy
+      notes: Reports voltage margin above optimal
+    - id: LM-005
+      title: Voltage margin — down
+      description: Same as above, Step Down.
+      priority: P0
+      tool: Linux / LeCroy
+    - id: LM-006
+      title: Per-lane margining
+      description: Execute timing + voltage margin on each of the 4 lanes independently.
+      priority: P0
+      tool: Linux / LeCroy
+      notes: Identifies weak lanes
+    - id: LM-007
+      title: Margin reporting format
+      description: "Verify device reports: Margin Payload (error count or percentage), Status (NAK/margin/error)."
+      priority: P0
+      tool: Linux / LeCroy
+    - id: LM-008
+      title: Independent error sampler
+      description: "Read MIndErrorSampler bit. If 1b: margining will NOT produce errors in data stream. If 0b: margining MAY\
+        \ produce errors — IO must be quiesced during margining. Per §8.4.4 Table 8-11."
+      priority: P0
+      tool: Linux / LeCroy
+      notes: §8.4.4 p.1067
+    - id: LM-009
+      title: Margin with traffic
+      description: Execute margining while running fio workload. Verify no IO errors during margining.
+      priority: P0
+      tool: Linux (fio + pcm tool)
+      notes: Real-world validation
+    - id: LM-010
+      title: Margin at different temperatures
+      description: Run margin at 25°C, 55°C, 85°C. Plot margin bathtub curve.
+      priority: P1
+      tool: Thermal chamber + margin tool
+      notes: Identifies thermal margin sensitivity
+    - id: LM-011
+      title: Margin after aging/stress
+      description: Run 72h stress → re-margin. Compare to pre-stress. Verify no degradation.
+      priority: P1
+      tool: Linux + margin tool
+      notes: Catches degradation over time
+- name: Gen5 Specific Corner Cases
+  subcategories:
+  - name: Gen5 Specific Corner Cases
+    items:
+    - id: G5-030
+      title: Gen5→Gen4 fallback
+      description: Verify clean fallback to Gen4 (NRZ) if Gen5 (PAM4) training fails.
+      priority: P0
+      tool: LeCroy
+      notes: Critical for backward compat
+    - id: G5-031
+      title: Modified TS Usage
+      description: Verify Modified TS1/TS2 for Gen5 EQ carry correct information.
+      priority: P1
+      tool: LeCroy
+      notes: Gen5 adds modified TS for EQ
+    - id: G5-032
+      title: Gen5 FEC (Forward Error Correction)
+      description: Verify FEC is operational at 32GT/s. Check FEC corrected/uncorrected error counters.
+      priority: P0
+      tool: LeCroy / Linux (if exposed)
+      notes: Gen5 mandates FEC
+    - id: G5-033
+      title: Channel insertion loss tolerance
+      description: Test at max specified insertion loss for Gen5 (varies by channel length). Verify BER < 1e-12.
+      priority: P1
+      tool: BERT + attenuator
+      notes: Gen5 PAM4 more sensitive to loss
+    - id: G5-034
+      title: SKP ordered set at Gen5
+      description: Verify SKP OS interval and elastic buffer management at 32GT/s.
+      priority: P1
+      tool: LeCroy
+      notes: SKP frequency differs at Gen5
+    - id: G5-035
+      title: Gen5 retimer (if in path)
+      description: Verify correct 2-retimer behavior per Gen5 spec.
+      priority: P2
+      tool: LeCroy + retimer
+      notes: Gen5 allows max 2 retimers

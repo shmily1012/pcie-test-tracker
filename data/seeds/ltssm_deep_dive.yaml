@@ -1,0 +1,224 @@
+metadata:
+  version: '1.0'
+  spec_source: LTSSM Deep Dive
+  target: LTSSM state machine validation
+categories:
+- name: Detect State
+  subcategories:
+  - name: "Tests:"
+    items:
+    - id: LTSSM-D01
+      title: Receiver Detection pulse
+      description: "Oscilloscope: capture Detect pulse on lane 0"
+      pass_criteria: Pulse current ≥ Imin, duration within spec
+    - id: LTSSM-D02
+      title: All lanes detected
+      description: "LeCroy: verify Detect shows all 4 lanes detected"
+      pass_criteria: All configured lanes pass detection
+    - id: LTSSM-D03
+      title: Detect.Quiet timeout
+      description: Remove device → verify RC stays in Detect.Quiet
+      pass_criteria: No false lane detection
+    - id: LTSSM-D04
+      title: "Detect after PERST#"
+      description: "Assert PERST# → release → verify Detect starts within 20ms"
+      pass_criteria: tDetect ≤ 20ms per spec
+- name: Polling State
+  subcategories:
+  - name: "Tests:"
+    items:
+    - id: LTSSM-P01
+      title: TS1 at Gen1
+      description: "LeCroy: first TS1 at 2.5GT/s, 8b/10b encoded"
+      pass_criteria: Correct TS1 format
+    - id: LTSSM-P02
+      title: Polling.Active → Config
+      description: "LeCroy: verify both sides exit Polling.Active after 1024 TS1 received"
+      pass_criteria: Transition within spec timeout
+    - id: LTSSM-P03
+      title: Polling.Compliance (avoided)
+      description: "LeCroy: verify device does NOT enter Polling.Compliance during normal boot"
+      pass_criteria: Clean transition to Config
+    - id: LTSSM-P04
+      title: Compliance pattern (forced)
+      description: Force device into compliance (BIOS or test mode) → verify correct Gen1 compliance pattern
+      pass_criteria: Pattern matches spec §4.2
+    - id: LTSSM-P05
+      title: Polling timeout
+      description: If partner never responds, verify timeout to Detect
+      pass_criteria: 24ms timeout per spec
+- name: Configuration State
+  subcategories:
+  - name: "Tests:"
+    items:
+    - id: LTSSM-C01
+      title: Lane number assignment
+      description: "LeCroy: decode TS1 Lane Number field"
+      pass_criteria: Lanes 0-3 assigned correctly
+    - id: LTSSM-C02
+      title: Link number assignment
+      description: "LeCroy: decode TS1 Link Number field"
+      pass_criteria: Single link number for all 4 lanes
+    - id: LTSSM-C03
+      title: N_FTS exchange
+      description: "LeCroy: decode N_FTS in TS1"
+      pass_criteria: Device reports valid N_FTS count
+    - id: LTSSM-C04
+      title: Width negotiation
+      description: "LeCroy: if x4 slot, verify x4 negotiated (not x1/x2)"
+      pass_criteria: Width matches expectations
+    - id: LTSSM-C05
+      title: Lane reversal
+      description: If lanes are physically reversed (lane 3→pin 0), verify auto-reversal
+      pass_criteria: Device detects and handles reversal
+    - id: LTSSM-C06
+      title: Config.Complete
+      description: "LeCroy: verify TS2 with Config.Complete bit set"
+      pass_criteria: Both sides agree on config
+    - id: LTSSM-C07
+      title: Config → L0 transition
+      description: After TS2 handshake, verify idle data symbols, then L0
+      pass_criteria: Clean transition
+- name: L0 (Normal Operation)
+  subcategories:
+  - name: "Tests:"
+    items:
+    - id: LTSSM-L0-01
+      title: Stable L0 operation
+      description: "LeCroy: no Recovery entries during 1 hour idle"
+      pass_criteria: Zero Recovery in 1 hour
+    - id: LTSSM-L0-02
+      title: SKP ordered set interval
+      description: "LeCroy: measure SKP interval. Per §4.2.7 p.386: 8b/10b (Gen1/2): 1180-1538 symbol times. 128b/130b (Gen3+):\
+        \ 370-375 Blocks. SRIS mode: <154 symbol times (8b/10b) or <38 Blocks (128b/130b)."
+      pass_criteria: 1180-1538 sym (Gen1/2), 370-375 Blocks (Gen3+)
+    - id: LTSSM-L0-03
+      title: FC Init
+      description: "LeCroy: verify InitFC1/InitFC2 DLLP exchange after L0 entry"
+      pass_criteria: All FC types initialized
+    - id: LTSSM-L0-04
+      title: TLP flow
+      description: Issue NVMe IO → verify MRd/MWr/CplD TLPs on trace
+      pass_criteria: Correct TLP format and flow
+    - id: LTSSM-L0-05
+      title: ACK/NAK DLLP
+      description: "LeCroy: verify ACK DLLPs for received TLPs"
+      pass_criteria: Sequence numbers match
+- name: Recovery State
+  subcategories:
+  - name: "Tests:"
+    items:
+    - id: LTSSM-R01
+      title: Recovery from bit errors
+      description: "LeCroy: inject errors → observe Recovery entry → L0"
+      pass_criteria: Recovery ≤ 24ms, returns to L0
+    - id: LTSSM-R02
+      title: Speed Change via Recovery
+      description: "Linux: set Target Link Speed → retrain → LeCroy"
+      pass_criteria: Correct TS with Changed bit, new speed in L0
+    - id: LTSSM-R03
+      title: Recovery.EqPhase0~3 (Gen3+)
+      description: "LeCroy: decode EQ phases during first speed upgrade"
+      pass_criteria: All 4 phases complete
+    - id: LTSSM-R04
+      title: Recovery failure → downgrade
+      description: Fail Recovery at Gen5 → verify fallback to Gen4 Recovery
+      pass_criteria: Clean downgrade, stable at Gen4
+    - id: LTSSM-R05
+      title: Recovery timeout
+      description: If Recovery fails entirely → Detect (link down)
+      pass_criteria: Timeout = 24ms per sub-state
+    - id: LTSSM-R06
+      title: Recovery preserves data
+      description: Pending TLPs before Recovery → verify retransmission after
+      pass_criteria: No data loss, DLLP replay works
+- name: L0s (Low Power — TX Idle)
+  subcategories:
+  - name: "Tests:"
+    items:
+    - id: LTSSM-L0s01
+      title: L0s entry
+      description: "LeCroy: idle period → observe L0s entry"
+      pass_criteria: Entry after idle timeout
+    - id: LTSSM-L0s02
+      title: L0s exit latency
+      description: "LeCroy: measure L0s exit (FTS → L0)"
+      pass_criteria: ≤ reported L0s exit latency
+    - id: LTSSM-L0s03
+      title: L0s → L0 → immediate IO
+      description: Enter L0s → trigger IO → verify first TLP latency
+      pass_criteria: No dropped TLPs
+    - id: LTSSM-L0s04
+      title: Asymmetric L0s
+      description: Only TX enters L0s (RX stays active). Verify half-duplex OK.
+      pass_criteria: No link errors
+- name: L1 (Low Power — Link Idle)
+  subcategories:
+  - name: "Tests:"
+    items:
+    - id: LTSSM-L1-01
+      title: L1 entry
+      description: "LeCroy: observe L1 entry after PM DLLP handshake"
+      pass_criteria: PM_Enter_L1 DLLP → Electrical Idle
+    - id: LTSSM-L1-02
+      title: L1 exit latency
+      description: "LeCroy: measure L1 exit (Recovery → L0)"
+      pass_criteria: ≤ reported L1 exit latency (typ 2-64 μs)
+    - id: LTSSM-L1-03
+      title: L1.1 entry
+      description: "LeCroy: verify common mode voltage changes (CLKREQ# still asserted)"
+      pass_criteria: Per L1 PM Substates spec
+    - id: LTSSM-L1-04
+      title: L1.2 entry
+      description: "LeCroy: verify CLKREQ# de-asserted, reference clock stopped"
+      pass_criteria: Lowest power L1 state
+    - id: LTSSM-L1-05
+      title: L1.2 exit
+      description: "IO triggers exit → CLKREQ# → REFCLK start → training → L0"
+      pass_criteria: Total exit time within spec
+    - id: LTSSM-L1-06
+      title: L1 PCI-PM vs ASPM
+      description: Verify L1 entry via PCI-PM (D3hot) vs ASPM (auto idle) are both functional
+      pass_criteria: Both paths work
+- name: L2 (Low Power — Ready for Power Off)
+  subcategories:
+  - name: "Tests:"
+    items:
+    - id: LTSSM-L2-01
+      title: L2 entry
+      description: Shutdown → verify L2 transition (PME_Turn_Off → PME_TO_Ack → L2)
+      pass_criteria: Clean L2 entry
+    - id: LTSSM-L2-02
+      title: L2 → Detect (power cycle)
+      description: After L2, power cycle → verify Detect starts
+      pass_criteria: Clean re-enumeration
+    - id: LTSSM-L2-03
+      title: L2 — Beacon (if supported)
+      description: In L2, verify device can send Beacon for PME wakeup
+      pass_criteria: Beacon detected
+  - name: "EQ Tests:"
+    items:
+    - id: LTSSM-EQ01
+      title: Phase 0 preset
+      description: "LeCroy: decode initial preset in TS1"
+      pass_criteria: Valid Gen5 preset index
+    - id: LTSSM-EQ02
+      title: Phase 1 evaluation
+      description: "LeCroy: device requests coefficient change"
+      pass_criteria: Valid coefficient request
+    - id: LTSSM-EQ03
+      title: Phase 2 adjustment
+      description: "LeCroy: RC adjusts TX per request"
+      pass_criteria: New coefficients in TS
+    - id: LTSSM-EQ04
+      title: Phase 3 acceptance
+      description: "LeCroy: device sends EQ_Complete"
+      pass_criteria: Clean EQ completion
+    - id: LTSSM-EQ05
+      title: Re-equalization
+      description: From L0 at Gen5, trigger re-EQ → verify phases redo
+      pass_criteria: Can be triggered via Recovery
+    - id: LTSSM-EQ06
+      title: EQ timeout per phase
+      description: If phase times out (24ms), verify correct fallback
+      pass_criteria: Downgrade to lower speed

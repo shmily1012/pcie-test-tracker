@@ -1,0 +1,461 @@
+metadata:
+  version: '1.0'
+  spec_source: Linux Kernel
+  target: Linux kernel PCIe/NVMe subsystem
+categories:
+- name: PCIe Quirks — Real-World Device Failures (drivers/pci/quirks.c)
+  subcategories:
+  - name: PCIe Quirks — Real-World Device Failures (drivers/pci/quirks.c)
+    items:
+    - id: LK-QUIRK-001
+      title: ASPM L0s data corruption
+      description: "Some devices corrupt data when transitioning out of L0s (Intel 82575/82598). Test: enable L0s → run sustained\
+        \ DMA traffic → verify data integrity."
+      priority: P0
+      tool: fio + ASPM enable
+      spec_ref: Linux `quirk_disable_aspm_l0s`
+    - id: LK-QUIRK-002
+      title: Link retrain after speed change
+      description: "Some PCIe-PCI bridges (Pericom PI7C9X110) require Retrain Link bit cleared after starting retrain. Test:\
+        \ force link retrain → verify link comes up within spec timeout."
+      priority: P1
+      tool: LeCroy + `setpci`
+      spec_ref: Linux `quirk_enable_clear_retrain_link`
+    - id: LK-QUIRK-003
+      title: FLR causes device hang
+      description: "AMD Starship/Matisse USB, Intel 82579LM etc. hang on FLR. Test: issue FLR → verify device responds within\
+        \ 100ms → check CSTS.RDY recovery."
+      priority: P0
+      tool: '`echo 1 > reset` + timeout'
+      spec_ref: Linux `quirk_no_flr`
+    - id: LK-QUIRK-004
+      title: Bus reset link retrain failure
+      description: "NVIDIA GB10 Root Port fails link retrain after Secondary Bus Reset. Test: SBR → verify link retrains →\
+        \ check negotiated speed/width correct."
+      priority: P0
+      tool: SBR + `lspci`
+      spec_ref: Linux `quirk_nvidia_no_bus_reset`
+    - id: LK-QUIRK-005
+      title: D3hot transition delay insufficient
+      description: "NVIDIA Ampere HDA wedges if bus reset too soon after D3hot→D0. Test: D3hot→D0 → immediate bus reset →\
+        \ verify no hang. Extend d3hot_delay if fails."
+      priority: P0
+      tool: '`setpci` PM + SBR'
+      spec_ref: Linux `quirk_nvidia_hda_pm`
+    - id: LK-QUIRK-006
+      title: D3cold resume failure
+      description: "Ryzen5/7 XHCI controllers fail resume from D3cold. Test: force D3cold → resume → verify device functional.\
+        \ Check if runtime PM works."
+      priority: P1
+      tool: PM runtime + `lspci`
+      spec_ref: Linux `quirk_ryzen_xhci_d3hot`
+    - id: LK-QUIRK-007
+      title: Relaxed Ordering TLP corruption
+      description: "Some devices (T5 Chelsio) fail to copy TLP Attributes from Request to Completion. Test: enable RO → run\
+        \ IO → verify completions carry correct attributes."
+      priority: P0
+      tool: LeCroy capture
+      spec_ref: Linux `quirk_relaxedordering_disable`, `quirk_chelsio_T5_disable_root_port_attributes`
+    - id: LK-QUIRK-008
+      title: BAR sizing causes decode conflict
+      description: "Disabling decode during BAR sizing can crash host bridges. Test: re-enumerate device → verify no MMIO\
+        \ conflicts during BAR sizing."
+      priority: P1
+      tool: '`setpci` BAR write + monitor'
+      spec_ref: Linux `quirk_mmio_always_on`
+    - id: LK-QUIRK-009
+      title: AER capability not linked
+      description: "Some chipsets (NVIDIA CK804) have AER not linked in extended cap chain. Test: walk extended cap chain\
+        \ → verify AER at expected offset."
+      priority: P1
+      tool: '`lspci -vvv`'
+      spec_ref: Linux `quirk_nvidia_ck804_pcie_aer_ext_cap`
+    - id: LK-QUIRK-010
+      title: MSI-X broken under SHPC+ACPI
+      description: "PXH bridges corrupt MSI when SHPC and ACPI used together. Test: MSI-X interrupt storm → verify no lost/corrupted\
+        \ interrupts."
+      priority: P1
+      tool: Interrupt stress + `mpstat`
+      spec_ref: Linux `quirk_pcie_pxh`
+    - id: LK-QUIRK-011
+      title: Downstream PM broken on Intel chipsets
+      description: "Intel PCIe chipsets have trouble with downstream device PM. Test: put downstream device in D3hot → verify\
+        \ upstream port handles correctly."
+      priority: P1
+      tool: PM cycling
+      spec_ref: Linux `quirk_intel_pcie_pm`
+    - id: LK-QUIRK-012
+      title: MSI-X not supported despite advertising
+      description: "Amazon Annapurna Labs Root Ports advertise MSI-X but don't support it. Test: verify MSI-X table accessible\
+        \ and functional."
+      priority: P1
+      tool: MSI-X probe
+      spec_ref: Linux `quirk_al_msi_disable`
+    - id: LK-QUIRK-013
+      title: Hotplug MSI broken (Thunderbolt gen1/2)
+      description: "TB controllers (Light Ridge, Eagle Ridge, Cactus Ridge) have broken MSI hotplug. Test: hotplug event →\
+        \ verify MSI delivered → verify no missed events."
+      priority: P2
+      tool: Hot-plug + interrupt monitor
+      spec_ref: Linux `quirk_thunderbolt_hotplug_msi`
+    - id: LK-QUIRK-014
+      title: BW Notification causes boot hang
+      description: "Enabling Link BW Management Interrupts on P45 causes boot hangs. Test: enable BW notification → link speed\
+        \ change → verify no hang."
+      priority: P1
+      tool: BW notification enable
+      spec_ref: Linux `quirk_p45_bw_notifications`
+    - id: LK-QUIRK-015
+      title: MPS vs coalescing erratum
+      description: "Intel 5000/5100 MC erratum: read completion coalescing + MPS 256B = data corruption. Test: set MPS=256\
+        \ → high-bandwidth reads → verify data integrity."
+      priority: P0
+      tool: fio + MPS=256
+      spec_ref: Linux `quirk_intel_mc_errata`
+    - id: LK-QUIRK-016
+      title: ACS disable for multifunction
+      description: "Some devices need ACS disabled for proper P2P. Test: enable ACS → verify P2P still works. Disable ACS\
+        \ → verify P2P improves."
+      priority: P2
+      tool: P2P DMA + ACS toggle
+      spec_ref: Linux `quirk_disable_acs_*`
+- name: ASPM State Machine Tests (drivers/pci/pcie/aspm.c)
+  subcategories:
+  - name: ASPM State Machine Tests (drivers/pci/pcie/aspm.c)
+    items:
+    - id: LK-ASPM-001
+      title: L1 SS requires dword access
+      description: "Some devices only support dword access to L1 SS registers (byte access returns garbage). Test: read L1\
+        \ SS via byte → verify matches dword read."
+      priority: P0
+      tool: '`setpci` byte vs dword'
+      spec_ref: Linux aspm.c "broken devices only support dword access"
+    - id: LK-ASPM-002
+      title: L1.2 disable before update
+      description: "Must disable L1.2 while updating L1 SS config (spec §5.5.4). Linux enforces this. Test: update L1 SS while\
+        \ L1.2 enabled → verify no corruption."
+      priority: P0
+      tool: '`setpci` + `lspci`'
+      spec_ref: Linux aspm.c "Disable L1.2 while updating"
+    - id: LK-ASPM-003
+      title: L0s/L1 disable before L1 SS config
+      description: "Must disable L0s/L1 before configuring L1 substates. Test: configure L1 SS without disabling ASPM first\
+        \ → verify device behavior."
+      priority: P0
+      tool: '`setpci` ASPM + L1SS'
+      spec_ref: Linux aspm.c "Disable L0s/L1 before updating"
+    - id: LK-ASPM-004
+      title: D0 required for ASPM latency check
+      description: "Device not in D0 doesn't need latency check. Test: device in D3 → verify ASPM state correct after D0 return."
+      priority: P1
+      tool: PM state + ASPM
+      spec_ref: Linux aspm.c "Device not in D0"
+    - id: LK-ASPM-005
+      title: L0s exit latency vs acceptable
+      description: "Compare L0s exit latency against endpoint acceptable latency. If exit > acceptable → L0s should be disabled.\
+        \ Test: verify kernel correctly disables."
+      priority: P0
+      tool: '`lspci` DevCap + LnkCap'
+      spec_ref: Linux aspm.c latency check logic
+    - id: LK-ASPM-006
+      title: L1 exit latency vs acceptable
+      description: Same as above for L1. Upstream and downstream latencies must both be checked.
+      priority: P0
+      tool: '`lspci` + traffic'
+      spec_ref: Linux aspm.c L1 latency check
+    - id: LK-ASPM-007
+      title: Both ports in D0 for L1 PM substates
+      description: "Spec says both ports must be in D0 before enabling PCI PM substates. Test: one port in D1 → enable L1\
+        \ SS → verify behavior."
+      priority: P1
+      tool: PM state + L1 SS
+      spec_ref: Linux aspm.c "both ports must be in D0"
+    - id: LK-ASPM-008
+      title: Clock PM interaction
+      description: "Verify Clock PM and ASPM don't conflict. Test: enable both simultaneously → IO traffic → verify no link\
+        \ down."
+      priority: P1
+      tool: '`setpci` + fio'
+      spec_ref: Linux aspm.c "Disable ASPM and Clock PM"
+    - id: LK-ASPM-009
+      title: LTR dword access quirk
+      description: "Some devices need dword access for LTR registers. Test: byte write to LTR → verify value persists."
+      priority: P1
+      tool: '`setpci`'
+      spec_ref: Linux aspm.c "broken devices only support dword access to LTR"
+- name: DPC Behavior Tests (drivers/pci/pcie/dpc.c)
+  subcategories:
+  - name: DPC Behavior Tests (drivers/pci/pcie/dpc.c)
+    items:
+    - id: LK-DPC-001
+      title: DPC triggers only on ERR_FATAL
+      description: "Linux configures DPC for ERR_FATAL only (not ERR_NONFATAL). Test: inject ERR_NONFATAL → verify DPC does\
+        \ NOT trigger. Inject ERR_FATAL → verify DPC triggers."
+      priority: P0
+      tool: LeCroy inject
+      spec_ref: Linux dpc.c "only triggers on ERR_FATAL"
+    - id: LK-DPC-002
+      title: DPC RP PIO error detail
+      description: "When DPC triggers, First Error Pointer identifies the specific error. Test: trigger DPC → read RP PIO\
+        \ log → verify error details correct."
+      priority: P1
+      tool: LeCroy + `lspci`
+      spec_ref: Linux dpc.c "Get First Error Pointer"
+    - id: LK-DPC-003
+      title: DPC rp_log_size quirk
+      description: "Some devices/firmware report wrong DPC RP log size. Test: read RP PIO log → verify log size matches DPC\
+        \ cap register."
+      priority: P1
+      tool: '`lspci -vvv`'
+      spec_ref: Linux dpc.c "Quirks may set dpc_rp_log_size"
+    - id: LK-DPC-004
+      title: DPC disable sequence
+      description: "Verify DPC triggering and interrupts can be fully disabled. Test: disable DPC → inject error → verify\
+        \ no DPC trigger."
+      priority: P1
+      tool: '`setpci` + LeCroy'
+      spec_ref: Linux dpc.c "Disable DPC triggering and DPC interrupts"
+- name: NVMe Error Recovery Tests (drivers/nvme/host/pci.c)
+  subcategories:
+  - name: NVMe Error Recovery Tests (drivers/nvme/host/pci.c)
+    items:
+    - id: LK-NVME-001
+      title: IO timeout → abort → reset escalation
+      description: "Linux NVMe timeout handler: 1st timeout → abort command. 2nd timeout (same cmd) → disable controller +\
+        \ reset. Test: inject single IO timeout → verify abort sent. Inject double timeout → verify controller reset."
+      priority: P0
+      tool: fio + blktrace + error inject
+      spec_ref: Linux nvme_timeout()
+    - id: LK-NVME-002
+      title: Admin queue timeout → immediate reset
+      description: "Timeout on admin queue (qid=0) triggers immediate controller reset (no abort attempt). Test: hang admin\
+        \ command → verify controller resets."
+      priority: P0
+      tool: nvme-cli + timeout inject
+      spec_ref: Linux nvme_timeout() "admin queue" path
+    - id: LK-NVME-003
+      title: CSTS.CFS detected → reset
+      description: "If CSTS Controller Fatal Status is set, driver should reset immediately. Test: inject CSTS.CFS → verify\
+        \ driver calls nvme_dev_disable + reset."
+      priority: P0
+      tool: Register inject
+      spec_ref: Linux nvme_should_reset()
+    - id: LK-NVME-004
+      title: PCIe device disconnected during IO
+      description: "If pci_dev_is_disconnected() returns true during timeout, driver transitions to DELETING state. Test:\
+        \ surprise remove during heavy IO → verify graceful shutdown."
+      priority: P0
+      tool: Hot-plug during fio
+      spec_ref: Linux nvme_timeout() "disconnected"
+    - id: LK-NVME-005
+      title: AER frozen channel → reset → recovery
+      description: "AER error_detected(pci_channel_io_frozen) → nvme_dev_disable → slot_reset → pci_restore_state → nvme_reset.\
+        \ Full cycle. Test: inject frozen channel → verify full recovery."
+      priority: P0
+      tool: AER inject + recovery
+      spec_ref: Linux nvme_error_detected/nvme_slot_reset
+    - id: LK-NVME-006
+      title: AER permanent failure → disconnect
+      description: "AER error_detected(pci_channel_io_perm_failure) → disconnect. Test: inject perm failure → verify driver\
+        \ detaches cleanly without crash."
+      priority: P0
+      tool: AER inject
+      spec_ref: Linux nvme_error_detected perm case
+    - id: LK-NVME-007
+      title: Concurrent reset and disable
+      description: "If nvme_dev_disable() is already running, nvme_reset_work must wait. Test: trigger reset during ongoing\
+        \ disable → verify no race/crash."
+      priority: P0
+      tool: Concurrent error inject
+      spec_ref: Linux "racing with nvme_dev_disable"
+    - id: LK-NVME-008
+      title: Abort limit exhaustion
+      description: "Controller has abort_limit; when exhausted, driver extends timer instead of aborting. Test: exhaust abort\
+        \ limit → verify timer extended, not hung."
+      priority: P1
+      tool: Multi-IO timeout
+      spec_ref: Linux nvme_timeout() abort_limit check
+    - id: LK-NVME-009
+      title: Missed interrupt recovery
+      description: "Timeout handler polls completion queue to catch missed interrupts. Test: mask MSI-X → verify timeout handler\
+        \ polls and completes IO."
+      priority: P0
+      tool: MSI-X mask + fio
+      spec_ref: Linux nvme_timeout() "Did we miss an interrupt?"
+    - id: LK-NVME-010
+      title: PCI error during reset
+      description: "If pci_channel_offline() during timeout, driver cannot reset (would break AER recovery). Timer is extended.\
+        \ Test: AER recovery + IO timeout simultaneously."
+      priority: P1
+      tool: AER + fio timeout
+      spec_ref: Linux nvme_timeout() pci_channel_offline check
+- name: NVMe Quirk Flag Tests (drivers/nvme/host/pci.c)
+  subcategories:
+  - name: NVMe Quirk Flag Tests (drivers/nvme/host/pci.c)
+    items:
+    - id: LK-NQUIRK-001
+      title: DELAY_BEFORE_CHK_RDY
+      description: "Some controllers need extra delay before checking CSTS.RDY after enable. Test: set CC.EN=1 → immediately\
+        \ poll CSTS.RDY → verify no false ready."
+      priority: P0
+      tool: nvme-cli + timing
+      spec_ref: '`NVME_QUIRK_DELAY_BEFORE_CHK_RDY` (most common quirk)'
+    - id: LK-NQUIRK-002
+      title: BROKEN_MSI
+      description: "Device MSI doesn't work; must fall back to MSI-X or INTx. Test: enable MSI only → run IO → verify interrupts\
+        \ arrive."
+      priority: P0
+      tool: '`/proc/interrupts` + fio'
+      spec_ref: '`NVME_QUIRK_BROKEN_MSI`'
+    - id: LK-NQUIRK-003
+      title: NO_DEEPEST_PS
+      description: "Device hangs in deepest power state. Test: allow all NVMe power states → verify device doesn't hang in\
+        \ PS4/PS5."
+      priority: P0
+      tool: APST enable + idle
+      spec_ref: '`NVME_QUIRK_NO_DEEPEST_PS` (very common)'
+    - id: LK-NQUIRK-004
+      title: NO_APST
+      description: "Device doesn't support Autonomous Power State Transitions at all. Test: enable APST → verify device doesn't\
+        \ crash/hang during idle transitions."
+      priority: P1
+      tool: APST enable + sleep/wake
+      spec_ref: '`NVME_QUIRK_NO_APST`'
+    - id: LK-NQUIRK-005
+      title: SIMPLE_SUSPEND
+      description: "Device supports simple S3 suspend (no shutdown needed). Test: S3 suspend → resume → verify device functional\
+        \ without full reset."
+      priority: P1
+      tool: '`systemctl suspend` + fio'
+      spec_ref: '`NVME_QUIRK_SIMPLE_SUSPEND`'
+    - id: LK-NQUIRK-006
+      title: FORCE_NO_SIMPLE_SUSPEND
+      description: "Device MUST have full shutdown before suspend (simple suspend causes data loss). Test: simple suspend\
+        \ → resume → verify data integrity."
+      priority: P0
+      tool: Suspend + data verify
+      spec_ref: '`NVME_QUIRK_FORCE_NO_SIMPLE_SUSPEND`'
+    - id: LK-NQUIRK-007
+      title: DMA_ADDRESS_BITS_48
+      description: "Device only supports 48-bit DMA (not full 64-bit). Test: allocate buffers above 2^48 → verify DMA works\
+        \ or fails gracefully."
+      priority: P0
+      tool: IOMMU + high memory
+      spec_ref: '`NVME_QUIRK_DMA_ADDRESS_BITS_48`'
+    - id: LK-NQUIRK-008
+      title: SINGLE_VECTOR
+      description: "Device supports only 1 interrupt vector. Test: request multiple MSI-X vectors → verify fallback to single\
+        \ vector works."
+      priority: P1
+      tool: MSI-X allocation
+      spec_ref: '`NVME_QUIRK_SINGLE_VECTOR`'
+    - id: LK-NQUIRK-009
+      title: QDEPTH_ONE
+      description: "Device queue depth limited to 1. Test: submit >1 IO → verify no queue overflow or corruption."
+      priority: P1
+      tool: fio depth=1 vs depth=32
+      spec_ref: '`NVME_QUIRK_QDEPTH_ONE`'
+    - id: LK-NQUIRK-010
+      title: 128_BYTES_SQES
+      description: "Device needs 128-byte SQ entries (not standard 64). Test: verify SQ entry size correctly negotiated."
+      priority: P2
+      tool: nvme-cli identify
+      spec_ref: '`NVME_QUIRK_128_BYTES_SQES`'
+    - id: LK-NQUIRK-011
+      title: DMAPOOL_ALIGN_512
+      description: "DMA pool must be 512-byte aligned. Test: allocate DMA with various alignments → verify 512B alignment\
+        \ requirement."
+      priority: P1
+      tool: DMA allocation test
+      spec_ref: '`NVME_QUIRK_DMAPOOL_ALIGN_512`'
+    - id: LK-NQUIRK-012
+      title: NO_TEMP_THRESH_CHANGE
+      description: "Device crashes if temperature threshold is changed. Test: write new value to TMPTH → verify device doesn't\
+        \ crash."
+      priority: P1
+      tool: nvme-cli set-feature
+      spec_ref: '`NVME_QUIRK_NO_TEMP_THRESH_CHANGE`'
+    - id: LK-NQUIRK-013
+      title: DISABLE_WRITE_ZEROES
+      description: "Write Zeroes command broken on device. Test: issue Write Zeroes → verify data is actually zeroed → read\
+        \ back."
+      priority: P1
+      tool: nvme-cli write-zeroes
+      spec_ref: '`NVME_QUIRK_DISABLE_WRITE_ZEROES` (very common)'
+- name: AER Error Handler Tests (drivers/pci/pcie/aer.c)
+  subcategories:
+  - name: AER Error Handler Tests (drivers/pci/pcie/aer.c)
+    items:
+    - id: LK-AER-001
+      title: Correctable error → log only
+      description: "CE should be logged in AER registers but not trigger reset. Test: inject CE → verify AER CE Status updated,\
+        \ no link down."
+      priority: P0
+      tool: AER inject
+      spec_ref: Linux aer.c CE handling
+    - id: LK-AER-002
+      title: Uncorrectable non-fatal → driver callback
+      description: "UCE non-fatal → driver error_detected(io_normal) → CAN_RECOVER. Test: inject UCE non-fatal → verify driver\
+        \ notified, recovers."
+      priority: P0
+      tool: AER inject
+      spec_ref: Linux aer.c UCE handling
+    - id: LK-AER-003
+      title: Uncorrectable fatal → slot reset
+      description: "UCE fatal → error_detected(io_frozen) → NEED_RESET → slot_reset → resume. Test: inject UCE fatal → verify\
+        \ full recovery cycle."
+      priority: P0
+      tool: AER inject
+      spec_ref: Linux aer.c fatal error path
+    - id: LK-AER-004
+      title: Multiple simultaneous errors
+      description: Inject CE + UCE at same time → verify both logged, UCE takes priority.
+      priority: P1
+      tool: LeCroy multi-inject
+      spec_ref: Linux aer.c multi-error
+    - id: LK-AER-005
+      title: AER during driver reset
+      description: AER fires while driver is already resetting → verify no deadlock.
+      priority: P0
+      tool: AER inject during reset
+      spec_ref: Linux aer.c + nvme_timeout interaction
+    - id: LK-AER-006
+      title: AER error source identification
+      description: After multi-device error, verify AER Header Log identifies correct source.
+      priority: P1
+      tool: LeCroy + `lspci`
+      spec_ref: Linux aer.c source ID
+- name: Suspend/Resume Tests (drivers/nvme/host/pci.c)
+  subcategories:
+  - name: Suspend/Resume Tests (drivers/nvme/host/pci.c)
+    items:
+    - id: LK-PM-001
+      title: S3 suspend with queued IO
+      description: Issue IO → S3 suspend before completion → resume → verify IO completes or is properly cancelled.
+      priority: P0
+      tool: fio + `systemctl suspend`
+      spec_ref: Linux nvme_suspend/nvme_resume
+    - id: LK-PM-002
+      title: Runtime PM D3hot transition
+      description: Verify device enters D3hot during idle, returns to D0 on IO, no data loss.
+      priority: P0
+      tool: Runtime PM + fio
+      spec_ref: Linux nvme pci_pm_ops
+    - id: LK-PM-003
+      title: Resume after long sleep
+      description: S3 suspend → wait 8+ hours → resume → verify device functional + data intact.
+      priority: P1
+      tool: Long sleep + verify
+      spec_ref: Linux nvme_resume
+    - id: LK-PM-004
+      title: Rapid suspend/resume cycling
+      description: 100 rapid S3 cycles → verify no resource leak, no hang, device always recovers.
+      priority: P0
+      tool: rtcwake loop
+      spec_ref: Linux suspend/resume paths
+    - id: LK-PM-005
+      title: D3cold transition (if supported)
+      description: Verify D3cold entry → full power removal → re-power → device re-enumerates correctly.
+      priority: P1
+      tool: PM runtime + PCI remove/rescan
+      spec_ref: Linux D3cold path
