@@ -14,7 +14,9 @@ Web-based test plan management for PCIe NVMe SSD validation teams.
 - ✅ **Execution Tracking** — Record pass/fail/blocked/skip per test, with environment, FW version, notes
 - 💬 **Comments** — Threaded discussion per test case
 - 📥 **Markdown Import** — Drop in existing `.md` test plans, auto-parsed into DB
+- 📥 **YAML Seed Import** — Bulk-load structured test definitions from `data/seeds/`
 - 📤 **CSV Export** — One-click export for Excel users
+- 📤 **Markdown Export** — Export test cases back to markdown format
 - 🔍 **Audit Log** — Who changed what, when
 - 🌙 **Dark Theme** — Professional slate-900 UI, optimized for desktop
 
@@ -51,15 +53,33 @@ npm run dev
 # → http://localhost:3000 (proxies /api → localhost:8100)
 ```
 
+### Seed Database from YAML
+
+The recommended way to populate the database is from the curated YAML test definitions in `data/seeds/`:
+
+```bash
+# Seed all YAML files (734 test items across 7 files)
+python -m backend.app.seed --seeds-dir data/seeds
+
+# Reset database and re-seed from scratch
+python -m backend.app.seed --seeds-dir data/seeds --reset
+```
+
 ### Import Test Data
 
 **Via UI:** Go to Import page → upload `.md` file → set spec source → click Import
 
-**Via CLI:**
+**Via CLI (Markdown):**
 ```bash
 curl -X POST http://localhost:8100/api/import/markdown \
   -F "file=@your_test_plan.md" \
   -F "spec_source=PCIe Base 5.0"
+```
+
+**Via CLI (YAML):**
+```bash
+curl -X POST http://localhost:8100/api/import/yaml \
+  -F "file=@data/seeds/pcie_test_plan.yaml"
 ```
 
 **Via Python:**
@@ -85,18 +105,19 @@ pcie-test-tracker/
 │   │   ├── models.py            # SQLAlchemy models (4 tables)
 │   │   ├── schemas.py           # Pydantic request/response schemas
 │   │   ├── database.py          # SQLite connection (WAL mode)
+│   │   ├── seed.py              # YAML seed loader CLI
 │   │   ├── routers/
 │   │   │   ├── test_cases.py    # CRUD + bulk status update
 │   │   │   ├── executions.py    # Test execution records
 │   │   │   ├── comments.py      # Per-test-case comments
 │   │   │   ├── dashboard.py     # Summary, coverage, heatmap
-│   │   │   ├── import_export.py # MD import, CSV export
+│   │   │   ├── import_export.py # MD/YAML import, CSV/MD export
 │   │   │   └── audit.py         # Change audit log
 │   │   └── services/
-│   │       └── importer.py      # Markdown table parser
+│   │       └── importer.py      # Markdown + YAML parsers
 │   ├── requirements.txt
 │   └── Dockerfile
-├── frontend/
+├── frontend/                    # React + Vite SPA
 │   ├── src/
 │   │   ├── pages/
 │   │   │   ├── Dashboard.tsx    # Stats cards + charts
@@ -112,9 +133,26 @@ pcie-test-tracker/
 │   │       └── api.ts           # Typed API client (axios)
 │   ├── Dockerfile
 │   └── nginx.conf               # Production proxy config
+├── data/
+│   ├── seeds/                   # YAML test definitions (734 items)
+│   │   ├── pcie_test_plan.yaml
+│   │   ├── ocp_cloud_ssd_compliance.yaml
+│   │   ├── gen5_specific.yaml
+│   │   ├── enterprise_dc_tests.yaml
+│   │   ├── aspm_deep_dive.yaml
+│   │   ├── ltssm_deep_dive.yaml
+│   │   └── linux_kernel_tests.yaml
+│   └── db/                      # SQLite database (gitignored)
+├── knowledge/
+│   ├── guides/                  # 6 operational how-to guides
+│   ├── references/              # 7 reference docs (specs, correlations)
+│   └── templates/               # 3 checklists and prioritization templates
+├── spec/                        # Source specs (PCIe 5.0, NVMe 2.3, OCP v2.5)
+├── scripts/
+│   ├── pcie_full_audit.sh       # Comprehensive audit runner
+│   └── convert_md_to_yaml.py    # Migrate markdown test plans to YAML
 ├── docker-compose.yml
 ├── backup.sh                    # SQLite backup (cron-able, 30-day retention)
-├── data/db/                     # SQLite database (gitignored)
 └── SPEC.md                      # Full build specification
 ```
 
@@ -135,7 +173,9 @@ All endpoints documented at `/docs` (Swagger UI) when backend is running.
 | GET | `/api/dashboard/coverage` | Per-category coverage breakdown |
 | GET | `/api/dashboard/heatmap` | Category × Priority matrix |
 | POST | `/api/import/markdown` | Import markdown test plan |
+| POST | `/api/import/yaml` | Import YAML test definitions |
 | GET | `/api/export/csv` | Export all test cases as CSV |
+| GET | `/api/export/markdown` | Export all test cases as markdown |
 | GET | `/api/audit` | Audit log with filters |
 
 ## Database
@@ -158,14 +198,43 @@ Keeps timestamped copies for 30 days.
 
 ## Current Data
 
-Pre-loaded with 553 test cases from:
+734 test items defined across 7 YAML seed files. After seeding, the database contains:
 
-| Source | Items | P0 | P1 | P2 |
-|--------|------:|---:|---:|---:|
-| PCIe Base Spec 5.0 | 404 | 189 | 152 | 63 |
-| OCP Cloud SSD v2.5 | 122 | 93 | 29 | 0 |
-| PCIe Gen5 Specific | 27 | 6 | 21 | 0 |
-| **Total** | **553** | **288** | **202** | **63** |
+| Source File | Items | Description |
+|-------------|------:|-------------|
+| `pcie_test_plan.yaml` | 404 | PCIe Base Spec 5.0 core tests |
+| `ocp_cloud_ssd_compliance.yaml` | 122 | OCP Cloud SSD v2.5 requirements |
+| `gen5_specific.yaml` | 27 | PCIe Gen5-specific signal/equalization |
+| `enterprise_dc_tests.yaml` | 36 | Enterprise data center scenarios |
+| `aspm_deep_dive.yaml` | 38 | ASPM L0s/L1/L1.x power management |
+| `ltssm_deep_dive.yaml` | 44 | Link Training & Status State Machine |
+| `linux_kernel_tests.yaml` | 63 | Linux kernel quirks, AER, DPC, NVMe driver |
+
+## Knowledge Base
+
+The `knowledge/` directory contains operational guides and reference material for PCIe/NVMe validation engineers.
+
+**Guides** (`knowledge/guides/`) — hands-on procedures:
+- `debug_playbook.md` — Systematic debug workflow for common PCIe failures
+- `error_injection_guide.md` — AER/correctable/uncorrectable error injection
+- `fio_recipes.md` — fio workload recipes for NVMe performance testing
+- `power_measurement.md` — ASPM/power state measurement procedures
+- `test_procedures.md` — Step-by-step execution procedures
+- `thermal_testing.md` — Thermal throttling and DPTC test methods
+
+**References** (`knowledge/references/`) — lookup material:
+- `common_failures.md` — Known failure signatures and root causes
+- `nvme_pcie_correlation.md` — NVMe ↔ PCIe error correlation matrix
+- `register_quick_ref.md` — PCIe config/capability register quick reference
+- `spec_corrections.md` — Spec errata and clarifications
+- `spec_cross_reference.md` — Cross-spec requirement mapping
+- `u2_signal_integrity.md` — U.2 connector signal integrity notes
+- `workload_matrix.md` — Workload ↔ test coverage matrix
+
+**Templates** (`knowledge/templates/`) — checklists and planning:
+- `checklists.md` — Pre-test and post-test checklists
+- `compliance_checklist.md` — Full compliance verification checklist
+- `prioritization_guide.md` — Test prioritization decision framework
 
 ## Roadmap
 
