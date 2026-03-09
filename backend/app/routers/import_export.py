@@ -102,6 +102,51 @@ def export_markdown(db: Session = Depends(get_db)):
     return PlainTextResponse("\n".join(lines), media_type="text/markdown",
                              headers={"Content-Disposition": "attachment; filename=pcie_test_plan_export.md"})
 
+@router.get("/export/jsonl")
+def export_jsonl(
+    category: str = None,
+    priority: str = None,
+    status: str = None,
+    db: Session = Depends(get_db)
+):
+    """Export test cases as JSON Lines (one JSON object per line).
+    Ideal for feeding into LLM pipelines one-by-one."""
+    query = db.query(TestCase).order_by(TestCase.category, TestCase.id)
+    if category:
+        query = query.filter(TestCase.category == category)
+    if priority:
+        query = query.filter(TestCase.priority == priority)
+    if status:
+        query = query.filter(TestCase.status == status)
+    cases = query.all()
+
+    lines = []
+    for tc in cases:
+        obj = {
+            "id": tc.id,
+            "title": tc.title,
+            "description": tc.description,
+            "category": tc.category,
+            "subcategory": tc.subcategory,
+            "priority": tc.priority,
+            "spec_source": tc.spec_source,
+            "spec_ref": tc.spec_ref,
+            "ocp_req_id": tc.ocp_req_id,
+            "tool": tc.tool,
+            "pass_fail_criteria": tc.pass_fail_criteria,
+            "status": tc.status,
+            "owner": tc.owner,
+            "tags": json.loads(tc.tags) if tc.tags else [],
+            "notes": tc.notes,
+        }
+        lines.append(json.dumps(obj, ensure_ascii=False))
+
+    return PlainTextResponse(
+        "\n".join(lines) + "\n",
+        media_type="application/x-ndjson",
+        headers={"Content-Disposition": "attachment; filename=pcie_test_cases.jsonl"}
+    )
+
 @router.get("/export/csv")
 def export_csv(db: Session = Depends(get_db)):
     cases = db.query(TestCase).order_by(TestCase.category, TestCase.id).all()
