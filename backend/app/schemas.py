@@ -121,3 +121,12 @@ class ImportResult(BaseModel):
     created: int
     updated: int
     errors: List[str]
+
+class TreemapNode(BaseModel):
+    name: str
+    total: int = 0
+    passed: int = 0
+    failed: int = 0
+    blocked: int = 0
+    not_started: int = 0
+    children: list["TreemapNode"] = []

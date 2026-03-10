@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func as sqlfunc
 from ..database import get_db
 from ..models import TestCase
-from ..schemas import DashboardSummary, CoverageItem, HeatmapCell
+from ..schemas import DashboardSummary, CoverageItem, HeatmapCell, TreemapNode
 from typing import List
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
@@ -69,3 +69,47 @@ def get_heatmap(db: Session = Depends(get_db)):
             coverage_pct=round((passed or 0) / total * 100, 1) if total > 0 else 0
         ))
     return result
+
+@router.get("/treemap", response_model=TreemapNode)
+def get_treemap(db: Session = Depends(get_db)):
+    rows = db.query(
+        TestCase.category,
+        TestCase.subcategory,
+        TestCase.status,
+        sqlfunc.count(TestCase.id)
+    ).group_by(TestCase.category, TestCase.subcategory, TestCase.status).all()
+
+    # Build hierarchy: category -> subcategory -> status counts
+    cat_map: dict = {}
+    for category, subcategory, status, count in rows:
+        sub = subcategory or "General"
+        if category not in cat_map:
+            cat_map[category] = {}
+        if sub not in cat_map[category]:
+            cat_map[category][sub] = {"total": 0, "passed": 0, "failed": 0, "blocked": 0, "not_started": 0}
+        cat_map[category][sub]["total"] += count
+        if status == "pass":
+            cat_map[category][sub]["passed"] += count
+        elif status == "fail":
+            cat_map[category][sub]["failed"] += count
+        elif status == "blocked":
+            cat_map[category][sub]["blocked"] += count
+        elif status == "not_started":
+            cat_map[category][sub]["not_started"] += count
+
+    children = []
+    for cat_name, subs in sorted(cat_map.items()):
+        sub_children = []
+        cat_totals = {"total": 0, "passed": 0, "failed": 0, "blocked": 0, "not_started": 0}
+        for sub_name, counts in sorted(subs.items()):
+            sub_children.append(TreemapNode(name=sub_name, **counts))
+            for k in cat_totals:
+                cat_totals[k] += counts[k]
+        children.append(TreemapNode(name=cat_name, children=sub_children, **cat_totals))
+
+    root_totals = {"total": 0, "passed": 0, "failed": 0, "blocked": 0, "not_started": 0}
+    for c in children:
+        for k in root_totals:
+            root_totals[k] += getattr(c, k)
+
+    return TreemapNode(name="root", children=children, **root_totals)
