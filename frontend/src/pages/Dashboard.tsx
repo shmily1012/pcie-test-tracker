@@ -1,21 +1,29 @@
-import { useEffect, useState } from 'react';
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { fetchSummary, fetchCoverage, fetchHeatmap, type DashboardSummary, type CoverageItem, type HeatmapCell } from '../lib/api';
-import { Activity, CheckCircle, AlertTriangle, XCircle } from 'lucide-react';
+import { useEffect, useState, useRef } from 'react';
+import { fetchSummary, fetchTreemap, type DashboardSummary, type TreemapNode } from '../lib/api';
+import Treemap from '../components/Treemap';
+import { Activity, CheckCircle, AlertTriangle } from 'lucide-react';
 
-const STATUS_COLORS: Record<string, string> = {
-  pass: '#22c55e', fail: '#ef4444', blocked: '#eab308', skip: '#6b7280', not_started: '#334155'
+const COLORS = {
+  bg: '#0f0e0d',
+  cardBg: '#2d2a27',
+  orange: '#FE7B23',
+  cream: '#fff5e3',
+  green: '#4ade80',
+  red: '#ef4444',
 };
 
-function StatCard({ label, value, icon: Icon, color }: { label: string; value: string | number; icon: any; color: string }) {
+function StatPill({ label, value, icon: Icon, color }: {
+  label: string; value: string | number; icon: any; color: string;
+}) {
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm text-slate-400">{label}</p>
-          <p className="text-3xl font-bold mt-1" style={{ color }}>{value}</p>
-        </div>
-        <Icon size={32} className="opacity-30" style={{ color }} />
+    <div
+      className="flex items-center gap-3 px-5 py-3 rounded-xl"
+      style={{ background: COLORS.cardBg, border: `1px solid ${color}33` }}
+    >
+      <Icon size={20} style={{ color, opacity: 0.7 }} />
+      <div>
+        <div className="text-xs" style={{ color: `${COLORS.cream}99` }}>{label}</div>
+        <div className="text-xl font-bold" style={{ color }}>{value}</div>
       </div>
     </div>
   );
@@ -23,100 +31,64 @@ function StatCard({ label, value, icon: Icon, color }: { label: string; value: s
 
 export default function Dashboard() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
-  const [coverage, setCoverage] = useState<CoverageItem[]>([]);
-  const [heatmap, setHeatmap] = useState<HeatmapCell[]>([]);
+  const [treemapData, setTreemapData] = useState<TreemapNode | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [dimensions, setDimensions] = useState({ width: 800, height: 500 });
 
   useEffect(() => {
     fetchSummary().then(setSummary);
-    fetchCoverage().then(setCoverage);
-    fetchHeatmap().then(setHeatmap);
+    fetchTreemap().then(setTreemapData);
   }, []);
 
-  if (!summary) return <div className="p-8 text-slate-400">Loading...</div>;
+  useEffect(() => {
+    const updateSize = () => {
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        setDimensions({
+          width: Math.floor(rect.width),
+          height: Math.max(400, Math.floor(window.innerHeight - 200)),
+        });
+      }
+    };
+    updateSize();
+    window.addEventListener('resize', updateSize);
+    return () => window.removeEventListener('resize', updateSize);
+  }, []);
 
-  const pieData = Object.entries(summary.by_status).map(([name, value]) => ({ name, value }));
-  const barData = coverage.map(c => ({
-    name: c.category.length > 20 ? c.category.slice(0, 18) + '…' : c.category,
-    Pass: c.passed, Fail: c.failed, Blocked: c.blocked, 'Not Started': c.not_started
-  }));
+  if (!summary || !treemapData) {
+    return (
+      <div className="flex items-center justify-center h-full" style={{ color: COLORS.orange }}>
+        Loading...
+      </div>
+    );
+  }
 
-  // Heatmap data
-  const categories = [...new Set(heatmap.map(h => h.category))].sort();
-  const priorities = ['P0', 'P1', 'P2'];
+  const needsAttention = (summary.by_status.fail || 0) + (summary.by_status.blocked || 0);
 
   return (
-    <div className="p-6 space-y-6">
-      <h2 className="text-2xl font-bold">Dashboard</h2>
-
-      <div className="grid grid-cols-4 gap-4">
-        <StatCard label="Total Tests" value={summary.total} icon={Activity} color="#3b82f6" />
-        <StatCard label="Pass Rate" value={`${summary.pass_rate}%`} icon={CheckCircle} color="#22c55e" />
-        <StatCard label="P0 Coverage" value={`${summary.p0_coverage}%`} icon={AlertTriangle} color="#eab308" />
-        <StatCard label="Blocked" value={summary.by_status.blocked || 0} icon={XCircle} color="#ef4444" />
-      </div>
-
-      <div className="grid grid-cols-2 gap-6">
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
-          <h3 className="text-sm font-semibold text-slate-300 mb-4">Status Distribution</h3>
-          <ResponsiveContainer width="100%" height={260}>
-            <PieChart>
-              <Pie data={pieData} cx="50%" cy="50%" innerRadius={60} outerRadius={100}
-                   dataKey="value" paddingAngle={2}>
-                {pieData.map((entry) => (
-                  <Cell key={entry.name} fill={STATUS_COLORS[entry.name] || '#334155'} />
-                ))}
-              </Pie>
-              <Tooltip contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8 }} />
-              <Legend />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
-
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
-          <h3 className="text-sm font-semibold text-slate-300 mb-4">Coverage by Category</h3>
-          <ResponsiveContainer width="100%" height={260}>
-            <BarChart data={barData} layout="vertical">
-              <XAxis type="number" stroke="#64748b" />
-              <YAxis type="category" dataKey="name" width={150} stroke="#64748b" tick={{ fontSize: 11 }} />
-              <Tooltip contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8 }} />
-              <Bar dataKey="Pass" stackId="a" fill="#22c55e" />
-              <Bar dataKey="Fail" stackId="a" fill="#ef4444" />
-              <Bar dataKey="Blocked" stackId="a" fill="#eab308" />
-              <Bar dataKey="Not Started" stackId="a" fill="#334155" />
-            </BarChart>
-          </ResponsiveContainer>
+    <div className="p-6 h-full flex flex-col" style={{ background: COLORS.bg }}>
+      {/* Top stat pills */}
+      <div className="flex items-center gap-4 mb-5">
+        <StatPill label="Total Tests" value={summary.total} icon={Activity} color={COLORS.orange} />
+        <StatPill label="Pass Rate" value={`${summary.pass_rate}%`} icon={CheckCircle} color={
+          summary.pass_rate >= 70 ? COLORS.green : summary.pass_rate >= 40 ? COLORS.orange : COLORS.red
+        } />
+        <StatPill label="Needs Attention" value={needsAttention} icon={AlertTriangle} color={
+          needsAttention > 0 ? COLORS.red : COLORS.green
+        } />
+        <div className="flex-1" />
+        <div className="text-xs" style={{ color: `${COLORS.cream}44` }}>
+          Click a category to drill down
         </div>
       </div>
 
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
-        <h3 className="text-sm font-semibold text-slate-300 mb-4">Category × Priority Heatmap</h3>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr>
-                <th className="text-left p-2 text-slate-400">Category</th>
-                {priorities.map(p => <th key={p} className="p-2 text-center text-slate-400">{p}</th>)}
-              </tr>
-            </thead>
-            <tbody>
-              {categories.map(cat => (
-                <tr key={cat} className="border-t border-slate-800">
-                  <td className="p-2 text-slate-300">{cat}</td>
-                  {priorities.map(pri => {
-                    const cell = heatmap.find(h => h.category === cat && h.priority === pri);
-                    const pct = cell?.coverage_pct || 0;
-                    const bg = pct >= 80 ? 'bg-green-500/30' : pct >= 40 ? 'bg-yellow-500/30' : pct > 0 ? 'bg-red-500/30' : 'bg-slate-800';
-                    return (
-                      <td key={pri} className={`p-2 text-center ${bg} rounded`}>
-                        {cell ? `${cell.passed}/${cell.total}` : '—'}
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      {/* Treemap */}
+      <div ref={containerRef} className="flex-1 min-h-0">
+        <Treemap
+          data={treemapData}
+          width={dimensions.width}
+          height={dimensions.height}
+        />
       </div>
     </div>
   );
