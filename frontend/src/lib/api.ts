@@ -34,6 +34,16 @@ export interface HeatmapCell {
   category: string; priority: string; total: number; passed: number; coverage_pct: number;
 }
 
+export interface TreemapNode {
+  name: string;
+  total: number;
+  passed: number;
+  failed: number;
+  blocked: number;
+  not_started: number;
+  children: TreemapNode[];
+}
+
 export interface FilterOptions {
   categories: string[]; priorities: string[]; statuses: string[]; spec_sources: string[];
 }
@@ -76,6 +86,9 @@ export const fetchCoverage = () =>
 
 export const fetchHeatmap = () =>
   api.get<HeatmapCell[]>('/dashboard/heatmap').then(r => r.data);
+
+export const fetchTreemap = () =>
+  api.get<TreemapNode>('/dashboard/treemap').then(r => r.data);
 
 export const importMarkdown = (file: File, specSource?: string) => {
   const fd = new FormData();
