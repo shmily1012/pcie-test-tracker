@@ -23,7 +23,7 @@ categories:
         width, and mask margin for each rate on all 4 lanes.
       priority: P0
       priority_rationale: Mandatory electrical compliance gate; all further PHY testing depends on TX signal quality.
-      spec_ref: "PCIe 5.0 §8.4.1, Tables 8-5, 8-6"
+      spec_ref: "PCIe 5.0 §8.3.6, Table 8-6, §8.5.1.4.3, Figure 8-63"
       pass_criteria: >
         Eye height ≥ 120 mV (Gen3), ≥ 75 mV (Gen4), ≥ 50 mV (Gen5) at BER 1e-12.
         Eye width ≥ 0.30 UI (Gen3), ≥ 0.30 UI (Gen4), ≥ 0.25 UI (Gen5). All lanes
@@ -44,7 +44,7 @@ categories:
         equalization requirements at 32 GT/s.
       priority: P0
       priority_rationale: TX equalization directly affects link margin; incorrect coefficients cause training failures.
-      spec_ref: "PCIe 5.0 §8.3.3, Tables 8-3, 8-3a"
+      spec_ref: "PCIe 5.0 §8.3.3.3, Table 8-1, §8.3.3.5"
       pass_criteria: >
         All 11 presets produce measured coefficients within ±10% of Table 8-3/8-3a
         target values at Gen3, Gen4, and Gen5. c-1 + c0 + c+1 = 1.0 (full swing
@@ -62,7 +62,7 @@ categories:
         All rates Gen1–Gen5 use NRZ (2-level) signaling.
       priority: P0
       priority_rationale: Out-of-range TX voltage causes receiver saturation or insufficient SNR.
-      spec_ref: "PCIe 5.0 §8.4.1, Table 8-4"
+      spec_ref: "PCIe 5.0 §8.3.3.7, Table 8-6"
       pass_criteria: >
         Gen1–Gen5 NRZ: 800 mV ≤ Vdiff,TX(p-p) ≤ 1200 mV at P0 (flat). All 4
         lanes within range at each supported data rate.
@@ -77,7 +77,7 @@ categories:
         oscilloscope for Gen5. Verify symmetry between rise and fall.
       priority: P1
       priority_rationale: Asymmetric rise/fall contributes to deterministic jitter but is not a standalone compliance gate.
-      spec_ref: "PCIe 5.0 §8.4.1"
+      spec_ref: "PCIe 5.0 §8.3.9, Table 8-7"
       pass_criteria: >
         Rise/fall time: Gen3 ≥ 30 ps (20–80%), Gen4 ≥ 18 ps, Gen5 ≥ 9 ps.
         Rise/fall asymmetry (|Tr - Tf|) ≤ 15% of UI at each rate. All 4 lanes pass.
@@ -93,7 +93,7 @@ categories:
         period-based analysis.
       priority: P0
       priority_rationale: SSC is mandatory for all PCIe devices; incorrect SSC profile causes EMI failures and link instability.
-      spec_ref: "PCIe 5.0 §8.2.1, Table 8-1"
+      spec_ref: "PCIe 5.0 §8.6.3, Table 8-17"
       pass_criteria: >
         Frequency deviation: -5000 ppm (nominal -5300 ppm max) to 0 ppm (down-spread
         only, no up-spread). Modulation rate: 30–33 kHz. No frequency discontinuities
@@ -110,7 +110,7 @@ categories:
         stays in L0 with zero errors.
       priority: P1
       priority_rationale: Validates REFCLK jitter filtering; device must tolerate host-side clock impairments.
-      spec_ref: "PCIe 5.0 §8.2, Table 8-2"
+      spec_ref: "PCIe 5.0 §8.6.2, Table 8-16"
       pass_criteria: >
         REFCLK frequency accuracy: 100 MHz ± 300 ppm. Device TX eye remains within
         mask when REFCLK jitter is at tolerance boundary per Table 8-2 (e.g.,
@@ -130,7 +130,7 @@ categories:
         (BER < 1e-12) while receiving stressed signal at each rate.
       priority: P0
       priority_rationale: Mandatory RX compliance test; proves receiver can handle worst-case real-world signals.
-      spec_ref: "PCIe 5.0 §8.4.3, Table 8-8"
+      spec_ref: "PCIe 5.0 §8.4.2, §8.4.1, Table 8-8"
       pass_criteria: >
         BER < 1e-12 at each rate with stressed eye input per Table 8-8 parameters.
         Gen3: 35 mV eye height, 0.27 UI eye width at TP4. Gen4: 20 mV eye height,
@@ -149,7 +149,7 @@ categories:
         operation (BER < 1e-12).
       priority: P0
       priority_rationale: Gen5 NRZ at 32 GT/s has tighter RX specs than Gen4; separate validation confirms receiver performance at highest NRZ rate.
-      spec_ref: "PCIe 5.0 §8.4.3, Table 8-9 (Gen5)"
+      spec_ref: "PCIe 5.0 §8.4.2, §8.4.1.9, Table 8-8"
       pass_criteria: >
         BER < 1e-12 at 32 GT/s with stressed eye input per Table 8-9 parameters.
         Gen5: eye height and width meet Table 8-9 stressed eye specification at TP4.
@@ -167,7 +167,7 @@ categories:
         loss level.
       priority: P0
       priority_rationale: Equalization adaptation is critical for operation across diverse platform channels.
-      spec_ref: "PCIe 5.0 §8.4.3"
+      spec_ref: "PCIe 5.0 §8.4.1.7, §8.4.1.8, §8.4.1.9, §8.4.1.10"
       pass_criteria: >
         Link trains successfully at Gen4 through channels with up to 20 dB insertion
         loss at 8 GHz. Link trains at Gen5 through channels with up to 28 dB insertion
@@ -185,7 +185,7 @@ categories:
         silicon.
       priority: P1
       priority_rationale: Impedance mismatch causes reflections that degrade signal integrity, but is typically caught during board design.
-      spec_ref: "PCIe 5.0 §8.5, Table 8-12"
+      spec_ref: "PCIe 5.0 §8.4.5.4, §8.4.3, Table 8-10"
       pass_criteria: >
         Differential impedance: 85 Ω ± 15% (72.25–97.75 Ω) at connector pad.
         Single-ended impedance: 42.5 Ω ± 15% (36.1–48.9 Ω). Impedance profile
@@ -201,7 +201,7 @@ categories:
         impedance at the connector pad.
       priority: P1
       priority_rationale: TX impedance matching prevents reflections; tested alongside RX impedance for complete characterization.
-      spec_ref: "PCIe 5.0 §8.5, Table 8-12"
+      spec_ref: "PCIe 5.0 §8.4.5.4, §8.3.7, Table 8-7"
       pass_criteria: >
         Differential impedance: 85 Ω ± 15% (72.25–97.75 Ω) at connector pad.
         Single-ended impedance: 42.5 Ω ± 15% (36.1–48.9 Ω). All 4 TX lane pairs
@@ -271,7 +271,7 @@ categories:
         analysis software. Verify each component is within budget.
       priority: P0
       priority_rationale: Jitter budget compliance is mandatory for TX qualification; excessive jitter causes link failure.
-      spec_ref: "PCIe 5.0 §8.4.2, Table 8-7"
+      spec_ref: "PCIe 5.0 §8.3.5, Table 8-6"
       pass_criteria: >
         Gen3 (8 GT/s): Tj ≤ 0.30 UI at BER 1e-12, Rj(rms) ≤ 1.5 ps.
         Gen4 (16 GT/s): Tj ≤ 0.30 UI at BER 1e-12, Rj(rms) ≤ 0.9 ps.
@@ -288,7 +288,7 @@ categories:
         uncorrelated jitter (BUj) per Gen5 jitter methodology.
       priority: P0
       priority_rationale: Gen5 NRZ at 32 GT/s has the tightest jitter budget of any NRZ rate; separate measurement confirms compliance.
-      spec_ref: "PCIe 5.0 §8.4.2 (Gen5)"
+      spec_ref: "PCIe 5.0 §8.3.5, Table 8-6"
       pass_criteria: >
         Tj ≤ 0.28 UI at BER 1e-12. Rj(rms) ≤ 0.5 ps. Single NRZ eye meets
         Gen5 jitter budget. All 4 lanes pass independently.
@@ -303,7 +303,7 @@ categories:
         measurement. Verify SSC does not push total jitter beyond budget.
       priority: P1
       priority_rationale: SSC adds systematic jitter; must verify it does not consume excessive jitter budget.
-      spec_ref: "PCIe 5.0 §8.4.2, §8.2.1"
+      spec_ref: "PCIe 5.0 §8.3.5, §8.6.3, Table 8-6"
       pass_criteria: >
         SSC-induced jitter contribution ≤ 0.10 UI at each supported data rate.
         Total jitter with SSC enabled still meets Table 8-7 limits. No
@@ -319,7 +319,7 @@ categories:
         which can cause EMI issues and receiver sensitivity degradation.
       priority: P1
       priority_rationale: Excessive common-mode noise causes EMI compliance failures; measured as part of electrical qualification.
-      spec_ref: "PCIe 5.0 §8.4.1"
+      spec_ref: "PCIe 5.0 §8.3.9, Table 8-7"
       pass_criteria: >
         AC common-mode voltage (Vcm,AC) ≤ 20 mV (rms) at all supported data rates.
         Common-mode to differential conversion ≤ -20 dB. All 4 TX lane pairs pass.
@@ -358,7 +358,7 @@ categories:
         presets.
       priority: P1
       priority_rationale: Characterizes DUT TX performance across all supported presets; identifies margin bottlenecks at 32 GT/s.
-      spec_ref: "PCIe 5.0 §8.3.3, Table 8-3a (Gen5 Presets)"
+      spec_ref: "PCIe 5.0 §8.3.3.3, §8.3.3.5, Table 8-1"
       pass_criteria: >
         All mandatory Gen5 presets produce valid NRZ eyes meeting mask. Optimal
         preset achieves BER < 1e-12 with margin. Worst-case mandatory preset still
@@ -376,7 +376,7 @@ categories:
         BER < 1e-12 across channel range.
       priority: P0
       priority_rationale: Gen5 NRZ at 32 GT/s faces significant channel loss at 16 GHz; aggressive equalization is essential.
-      spec_ref: "PCIe 5.0 §8.4.3 (Gen5 RX)"
+      spec_ref: "PCIe 5.0 §8.4.1.9, §8.4.1.10"
       pass_criteria: >
         Link trains at Gen5 x4 through channels with up to 28 dB insertion loss
         at 16 GHz (Nyquist). BER < 1e-12 sustained for ≥10 minutes at each channel
@@ -448,7 +448,7 @@ categories:
         requiring stricter TX/RX electrical specs.
       priority: P0
       priority_rationale: Gen5 NRZ at 32 GT/s pushes NRZ signaling to its practical limit; electrical specs must be verified precisely.
-      spec_ref: "PCIe 5.0 §8.4.1, §8.4.3 (Gen5 electrical limits)"
+      spec_ref: "PCIe 5.0 §8.3.6, §8.4.3, Table 8-6, Table 8-10"
       pass_criteria: >
         All Gen5-specific electrical parameters within spec. TX eye opening meets
         Gen5 mask. RX input sensitivity per Table 8-9. TX/RX termination impedance
@@ -467,7 +467,7 @@ categories:
         effects.
       priority: P1
       priority_rationale: Return loss exceeding limits causes reflections; important for SI qualification but not a standalone compliance test.
-      spec_ref: "PCIe 5.0 §8.5, Figure 8-14"
+      spec_ref: "PCIe 5.0 §8.3.7, Figure 8-20, Figure 8-21"
       pass_criteria: >
         Return loss (S11) ≤ -10 dB from 100 MHz to 8 GHz (Gen4 Nyquist).
         Return loss ≤ -8 dB from 8 GHz to 16 GHz (Gen5 Nyquist). Meets
@@ -518,7 +518,7 @@ categories:
         measurements are NRZ single-eye at both rates.
       priority: P0
       priority_rationale: Quantifies cable-induced signal degradation; determines if Gen5 is viable through cable.
-      spec_ref: "PCIe 5.0 §8.4.1, SFF-8643"
+      spec_ref: "PCIe 5.0 §8.3.6, §8.5.1.4.3, SFF-8643"
       pass_criteria: >
         Direct-attach Gen4 eye meets Table 8-5 mask. Cable-attach Gen4 eye meets
         mask with ≥10% margin. Direct-attach Gen5 NRZ eye meets Table 8-6 mask.
@@ -552,7 +552,7 @@ categories:
         from retimer. Verify link trains at target speed.
       priority: P1
       priority_rationale: Gen5 channels frequently require retimers; must verify compatibility and quantify latency impact.
-      spec_ref: "PCIe 5.0 §8.9 (Retimers)"
+      spec_ref: "PCIe 5.0 §4.3.5"
       pass_criteria: >
         Link trains at Gen5 x4 through 1 retimer. EQ completes on both upstream
         and downstream retimer links. Added latency from retimer ≤ 50 ns per
@@ -792,7 +792,7 @@ categories:
         frequency and amplitude meet spec.
       priority: P1
       priority_rationale: Beacon wake from D3cold is optional but affects power management compliance if advertised.
-      spec_ref: "PCIe 5.0 §8.8"
+      spec_ref: "PCIe 5.0 §8.4.5.5"
       pass_criteria: >
         Beacon frequency: 2–20 MHz. Beacon amplitude: single-ended 200–600 mV.
         Wake event triggers device transition from D3cold to D0 within 100 ms.

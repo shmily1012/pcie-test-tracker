@@ -1,0 +1,1027 @@
+metadata:
+  version: "5.0"
+  layer: "Power Management"
+  spec_sources:
+    - "PCIe Base Spec 5.0"
+
+categories:
+- name: Power Management
+  subcategories:
+  - name: Link Power States Overview
+    items:
+    - id: PM-001
+      title: Link Power State Transition Map Verification
+      description: >
+        Verify the DUT supports all mandatory link power management states as defined in
+        Figure 5-1 and Table 5-1. Enumerate the device and read the ASPM Support, L1 PM
+        Substates Capability, and PMC registers to determine which L-states are advertised.
+        Confirm the device correctly reports support for L0, L0s (if applicable), L1, and
+        L2/L3 Ready. Cross-reference advertised capabilities with actual state transitions
+        observed via protocol analyzer during controlled power state changes.
+      priority: P0
+      priority_rationale: Correct L-state advertisement is the foundation for all power management testing; incorrect capability reporting breaks ASPM and PM software.
+      spec_ref: "PCIe 5.0 §5.2, Table 5-1, Figure 5-1"
+      pass_criteria: >
+        All mandatory L-states (L0, L1, L2/L3 Ready) reported as supported. ASPM Support
+        field matches device datasheet. L1 PM Substates capability matches hardware design.
+        No unsupported states are advertised. Protocol analyzer confirms each advertised
+        state is reachable.
+      tool: "Protocol analyzer (LeCroy/Keysight) + Linux (lspci -vvv)"
+      test_method: protocol_analyzer
+
+    - id: PM-002
+      title: D-State to L-State Mapping Verification
+      description: >
+        Verify the correct relationship between PCI-PM D-states and Link L-states as
+        defined in Table 5-2. Program the device through each D-state transition
+        (D0 -> D1, D0 -> D2, D0 -> D3hot) via PMCSR writes and confirm the link enters
+        the permissible interconnect state. For example, D1 should result in L1 or L2/L3
+        Ready; D3hot should result in L1 or L2/L3 Ready. Monitor LTSSM transitions via
+        protocol analyzer to confirm compliance.
+      priority: P0
+      priority_rationale: Incorrect D-state to L-state mapping causes power management failures and potential data loss during suspend/resume.
+      spec_ref: "PCIe 5.0 §5.3.2, Table 5-2, §5.3.1"
+      pass_criteria: >
+        D0 maps to L0/L0s/L1/L2/L3 Ready per Table 5-2. D1 maps to L1 or L2/L3 Ready.
+        D2 maps to L1 or L2/L3 Ready. D3hot maps to L1 or L2/L3 Ready. D3cold maps to
+        L2 or L3. No illegal L-state transitions observed. Each D-state transition completes
+        within 100 ms.
+      tool: "Protocol analyzer + Linux (setpci for PMCSR writes)"
+      test_method: protocol_analyzer
+
+    - id: PM-003
+      title: L0 Active State Functional Verification
+      description: >
+        Confirm the link operates correctly in the L0 active state with all PCI Express
+        transactions and operations enabled. Run mixed IO workload (fio: randread/randwrite
+        4K QD=32) while monitoring link state via protocol analyzer. Verify the link
+        remains in L0 during active IO, TLP and DLLP transmission are both enabled, and
+        no unexpected transitions to low-power states occur during sustained traffic.
+      priority: P0
+      priority_rationale: L0 is the baseline operational state; all transactions depend on correct L0 behavior.
+      spec_ref: "PCIe 5.0 §5.2 (L0 definition), Table 5-1"
+      pass_criteria: >
+        Link remains in L0 throughout sustained IO (10 minutes). Zero unexpected L-state
+        transitions during active traffic. TLP throughput matches expected bandwidth for
+        link speed/width. No correctable or uncorrectable errors in AER during test.
+      tool: "Protocol analyzer + fio + Linux (lspci, AER monitoring)"
+      test_method: protocol_analyzer
+
+    - id: PM-004
+      title: L2/L3 Ready Entry via PME_Turn_Off Handshake
+      description: >
+        Initiate the L2/L3 Ready entry transition by triggering system suspend (echo mem >
+        /sys/power/state) or slot power control. Verify the Root Complex broadcasts the
+        PME_Turn_Off message downstream, the device responds with PME_TO_Ack, and the
+        downstream component initiates L2/L3 Ready by sending PM_Enter_L23 DLLP. Capture
+        the complete handshake sequence on protocol analyzer and verify ordering and timing.
+      priority: P0
+      priority_rationale: PME_Turn_Off/PME_TO_Ack handshake is mandatory for safe power removal; failure causes data loss or hang.
+      spec_ref: "PCIe 5.0 §5.3.2.3, §5.3.3.2.1, §5.7, Table 5-12"
+      pass_criteria: >
+        PME_Turn_Off broadcast observed on protocol analyzer. Device responds with
+        PME_TO_Ack within 1-10 ms (recommended timeout per §5.3.3.2.1). PM_Enter_L23
+        DLLP sent by downstream component after PME_TO_Ack. Link enters L2/L3 Ready
+        pseudo-state. Power delivery manager waits minimum 100 ns after L2/L3 Ready
+        before removing clocks/power.
+      tool: "Protocol analyzer + Linux (system suspend or slot power control)"
+      test_method: protocol_analyzer
+
+    - id: PM-005
+      title: L2 and L3 Deep Sleep State Entry
+      description: >
+        After L2/L3 Ready is established via PME_Turn_Off handshake, verify the link
+        transitions to L2 (if Vaux is present) or L3 (if no Vaux). In L2, confirm main
+        power supply inputs and reference clock inputs are shut off while wakeup logic
+        (Beacon or WAKE#) remains powered by auxiliary power. In L3, confirm all power
+        is removed. Measure power consumption in each state.
+      priority: P1
+      priority_rationale: L2/L3 states achieve maximum power savings; correct entry is needed for system sleep and power-off compliance.
+      spec_ref: "PCIe 5.0 §5.2 (L2 and L3 definitions), Table 5-1, §5.6"
+      pass_criteria: >
+        L2 state: main power off, Vaux present, TLP/DLLP disabled. L2 power consumption
+        matches Vaux-only budget (device-specific, typically < 100 mW). L3 state: all
+        power removed, zero device power consumption. Wake-up from L2 via Beacon or WAKE#
+        succeeds within 100 ms. Re-enumeration after L3 exit succeeds.
+      tool: "Power meter + protocol analyzer + Linux (system suspend/resume)"
+      test_method: hardware_lab
+
+  - name: ASPM L0s
+    items:
+    - id: PM-006
+      title: ASPM L0s Capability Advertisement
+      description: >
+        Read the ASPM Support field (bits 11:10) in the Link Capabilities register of
+        both the upstream port (DUT) and the downstream port (Root Complex or Switch).
+        Verify the DUT correctly reports L0s support per Table 5-3. Read the L0s Exit
+        Latency field and verify it reports a value consistent with the device's clocking
+        architecture (common clock vs. separate clock per Table 5-6). Also verify the
+        Endpoint L0s Acceptable Latency field in Device Capabilities per Table 5-8.
+      priority: P0
+      priority_rationale: Incorrect L0s capability reporting causes software to enable L0s on incompatible links or miss power savings opportunities.
+      spec_ref: "PCIe 5.0 §5.4.1.3, Table 5-3, Table 5-6, Table 5-8"
+      pass_criteria: >
+        ASPM Support field matches device datasheet (01b for L0s only, 11b for L0s+L1).
+        L0s Exit Latency value consistent with clocking architecture: < 256 ns for common
+        clock, < 4 us for separate clock. Endpoint L0s Acceptable Latency reported and
+        consistent with internal FIFO depth. Both link partners report compatible values.
+      tool: "Linux (lspci -vvv) + protocol analyzer"
+      test_method: software_driver
+
+    - id: PM-007
+      title: ASPM L0s Entry and Exit — Idle Detection
+      description: >
+        Enable L0s via ASPM Control field (set to 01b) in Link Control register on both
+        link partners. Generate bursty IO traffic (fio: randread 4K QD=1 with think_time=
+        100us) to create idle periods. Capture L0s entry on protocol analyzer and verify
+        the transmitter enters L0s when the port is idle (no pending TLPs, no pending
+        DLLPs) per §5.4.1.1.1. Verify L0s exit is initiated when a TLP or DLLP needs
+        to be transmitted, and the link returns to L0 within the advertised L0s exit latency.
+      priority: P0
+      priority_rationale: L0s is the primary low-latency power saving state; incorrect entry/exit causes link errors or performance degradation.
+      spec_ref: "PCIe 5.0 §5.4.1.1.1, §5.4.1.1.2, Table 5-6"
+      pass_criteria: >
+        L0s entry observed within 7 us of last TLP/DLLP (recommended idle threshold per
+        §5.4.1.1.1). L0s exit latency measured on protocol analyzer matches advertised
+        value (±10%). L0s to L0 transition completes in < 100 Symbol Times for common
+        clock. Zero data errors during L0s entry/exit transitions. Link returns to full
+        L0 operation after each exit.
+      tool: "Protocol analyzer + Linux (setpci for ASPM Control) + fio"
+      test_method: protocol_analyzer
+
+    - id: PM-008
+      title: ASPM L0s Power Measurement
+      description: >
+        Measure device power consumption with ASPM L0s enabled and the link idle (no IO
+        traffic). Compare against L0 active-idle power (ASPM disabled, link in L0 with no
+        IO). Verify measurable power reduction in L0s state. All main power supplies,
+        reference clocks, and PLLs remain active during L0s per Table 5-1; power savings
+        come from disabling TLP/DLLP transmission on idle lanes.
+      priority: P1
+      priority_rationale: L0s power savings validation confirms the feature provides real benefit; insufficient savings may indicate incorrect implementation.
+      spec_ref: "PCIe 5.0 §5.2 (L0s definition), §5.4.1.1, Table 5-1"
+      pass_criteria: >
+        L0s power consumption < L0 active-idle power by measurable margin (typically
+        50-200 mW depending on link width). Power measurement stable within ±5% over
+        60-second sample. Reference clock and PLL remain active (verified via CLKREQ#
+        state). Power returns to L0 level within 1 us of L0s exit.
+      tool: "Power meter (e.g., Monsoon HV) + oscilloscope (current probe) + Linux"
+      test_method: hardware_lab
+
+    - id: PM-009
+      title: ASPM L0s Impact on IO Latency and Throughput
+      description: >
+        Measure IO latency and throughput with ASPM L0s enabled vs. disabled. Run latency-
+        sensitive workload (fio: randread 4K QD=1, 1000 IOPS target) and measure average
+        and tail (P99, P99.9) latency in both configurations. The L0s exit latency adds
+        to the first transaction after each idle period. Verify the latency increase is
+        bounded by the advertised L0s exit latency and Endpoint L0s Acceptable Latency.
+      priority: P1
+      priority_rationale: L0s exit latency directly impacts QoS-sensitive workloads; characterization needed for ASPM policy decisions.
+      spec_ref: "PCIe 5.0 §5.4.1.1.2, Table 5-6, Table 5-8"
+      pass_criteria: >
+        Average latency increase with L0s enabled ≤ advertised L0s Exit Latency. P99.9
+        latency increase ≤ 2x advertised L0s Exit Latency. Throughput degradation at
+        QD=32 ≤ 1% (L0s should not trigger during sustained high-QD traffic). No IO
+        errors or timeouts with L0s enabled. IOPS at QD=1 documented for both configurations.
+      tool: "fio (latency measurement mode) + Linux (setpci for ASPM Control)"
+      test_method: software_driver
+
+  - name: ASPM L1
+    items:
+    - id: PM-010
+      title: ASPM L1 Capability and Exit Latency Advertisement
+      description: >
+        Read the ASPM Support field to verify L1 is supported (10b or 11b per Table 5-3).
+        Read the L1 Exit Latency field per Table 5-7 to determine the device's advertised
+        L1 exit latency. Read the Endpoint L1 Acceptable Latency field per Table 5-9.
+        Verify the Common Clock Configuration bit and Slot Clock Configuration bit (Tables
+        5-4 and 5-5) are set correctly, as these affect the reported L1 exit latency.
+      priority: P0
+      priority_rationale: L1 exit latency advertisement drives ASPM policy decisions; incorrect values cause either wasted power or unacceptable latency.
+      spec_ref: "PCIe 5.0 §5.4.1.2, §5.4.1.3, Table 5-3, Table 5-7, Table 5-9, Table 5-4, Table 5-5"
+      pass_criteria: >
+        ASPM Support field indicates L1 support (10b or 11b). L1 Exit Latency value
+        matches device datasheet and is consistent with PLL re-lock time. Common Clock
+        Configuration bit correctly reflects platform clocking. Endpoint L1 Acceptable
+        Latency is consistent with device FIFO depth and internal timeout values.
+      tool: "Linux (lspci -vvv for capability register dump)"
+      test_method: software_driver
+
+    - id: PM-011
+      title: ASPM L1 Negotiation — PM_Active_State_Request_L1 Handshake
+      description: >
+        Enable ASPM L1 (ASPM Control = 10b or 11b) and create extended idle period (no
+        IO for > 100 ms). Capture the full ASPM L1 negotiation on protocol analyzer:
+        downstream component sends PM_Active_State_Request_L1 DLLPs repeatedly, upstream
+        component responds with PM_Request_Ack DLLPs, both sides transition to Electrical
+        Idle per Figures 5-6 and 5-7. Verify the negotiation rules per §5.4.1.2.1.
+      priority: P0
+      priority_rationale: The ASPM L1 negotiation handshake is the core mechanism for hardware-autonomous L1 entry; failure prevents L1 power savings.
+      spec_ref: "PCIe 5.0 §5.4.1.2.1, Figure 5-7, Table 5-12"
+      pass_criteria: >
+        PM_Active_State_Request_L1 DLLPs observed from downstream component with ≤ 32
+        Symbol Times idle between transmissions (128b/130b encoding). Upstream responds
+        with PM_Request_Ack. Downstream transitions to Electrical Idle after receiving
+        PM_Request_Ack. Upstream transitions to Electrical Idle after observing downstream
+        Electrical Idle. Complete L1 entry within 50 us of first PM_Active_State_Request_L1.
+      tool: "Protocol analyzer (LeCroy/Keysight)"
+      test_method: protocol_analyzer
+
+    - id: PM-012
+      title: ASPM L1 Rejection — PM_Active_State_Nak Handling
+      description: >
+        Enable ASPM L1 and generate traffic patterns that cause the upstream component to
+        reject L1 entry requests. Inject a TLP from the upstream side during L1 negotiation
+        to force a PM_Active_State_Nak rejection. Verify the downstream component correctly
+        handles the rejection per §5.4.1.2.1: it should transition to L0s (if L0s enabled)
+        or remain in L0, and wait at least 10 us before issuing a new ASPM L1 request
+        per the 10 us timer requirement.
+      priority: P1
+      priority_rationale: L1 rejection is a normal occurrence; incorrect handling causes protocol deadlock or undefined link state.
+      spec_ref: "PCIe 5.0 §5.4.1.2.1, Figure 5-6"
+      pass_criteria: >
+        PM_Active_State_Nak message observed from upstream component. Downstream component
+        ceases PM_Active_State_Request_L1 DLLPs after Nak. Downstream enters L0s or remains
+        in L0 after rejection. Minimum 10 us gap (measured in L0/L0s LTSSM time) before
+        next ASPM L1 request. No protocol errors or undefined state during rejection
+        sequence.
+      tool: "Protocol analyzer + traffic generator"
+      test_method: protocol_analyzer
+
+    - id: PM-013
+      title: ASPM L1 Exit Latency Measurement
+      description: >
+        With link in ASPM L1 state, trigger L1 exit by injecting upstream traffic (e.g.,
+        config read from host). Measure the time from first Electrical Idle exit signaling
+        to the first valid TLP transmission on protocol analyzer. Test exit initiated by
+        both upstream and downstream components per §5.4.1.2.2. For switch topologies,
+        verify the cascaded L1 exit latency computation per Figure 5-8.
+      priority: P0
+      priority_rationale: L1 exit latency directly impacts system responsiveness after idle; must match advertised value for correct ASPM policy.
+      spec_ref: "PCIe 5.0 §5.4.1.2.2, Figure 5-8, Table 5-7"
+      pass_criteria: >
+        Measured L1 exit latency ≤ advertised L1 Exit Latency value from Table 5-7.
+        Downstream-initiated exit: Electrical Idle exit to L0 within advertised latency.
+        Upstream-initiated exit: L1 exit triggered within 1 us of upstream activity per
+        §5.4.1.2.2. Flow control update DLLPs sent within 1 us of L1 exit (recommended).
+        10 consecutive exit measurements within ±20% variance.
+      tool: "Protocol analyzer + traffic generator + Linux"
+      test_method: protocol_analyzer
+
+    - id: PM-014
+      title: ASPM L1 Power Measurement
+      description: >
+        Measure device power consumption in ASPM L1 state with the link fully idle.
+        Compare against L0 active-idle and L0s power. In L1, main power supplies remain
+        active but internal PLLs may be shut off per Table 5-1 (component PLL: On/Off),
+        and reference clocks remain on unless L1 PM Substates are enabled. Verify power
+        reduction is greater than L0s.
+      priority: P1
+      priority_rationale: L1 achieves deeper power savings than L0s; verification confirms correct PLL shutdown and power gating behavior.
+      spec_ref: "PCIe 5.0 §5.2 (L1 definition), §5.4.1.2, Table 5-1"
+      pass_criteria: >
+        L1 power < L0s power < L0 active-idle power. L1 power reduction typically 200-
+        500 mW below L0 (device-specific). PLL shutdown verified via CLKREQ# or vendor
+        debug registers. Power measurement stable over 60-second sample. Power returns
+        to L0 level within advertised L1 Exit Latency of traffic arrival.
+      tool: "Power meter + oscilloscope (current probe) + Linux"
+      test_method: hardware_lab
+
+  - name: L1 PM Substates (L1.1/L1.2)
+    items:
+    - id: PM-015
+      title: L1 PM Substates Capability Register Verification
+      description: >
+        Read the L1 PM Substates Capability register from the PCI Express Extended
+        Capability structure. Verify the device reports correct supported substates:
+        PCI-PM L1.1, PCI-PM L1.2, ASPM L1.1, ASPM L1.2. Verify the Port Common Mode
+        Restore Time and Port T_POWER_ON fields are programmed with valid values. Confirm
+        L1.2 support implies LTR support per §5.5 requirement.
+      priority: P0
+      priority_rationale: L1 PM Substates capability drives clock gating policy; incorrect advertisement prevents L1.1/L1.2 power savings.
+      spec_ref: "PCIe 5.0 §5.5, §5.5.4, Figure 5-9"
+      pass_criteria: >
+        L1 PM Substates Capability structure present in Extended Capability list. Supported
+        substates match device datasheet. Port Common Mode Restore Time ≤ 255 us. Port
+        T_POWER_ON programmed in L1 PM Substates Control 2 register. If ASPM L1.2 or
+        PCI-PM L1.2 supported, LTR Mechanism Enabled bit is set. Both upstream and
+        downstream ports report matching capability bits.
+      tool: "Linux (lspci -vvv, setpci for L1 SS registers)"
+      test_method: software_driver
+
+    - id: PM-016
+      title: L1.1 Substate Entry and Exit via CLKREQ#
+      description: >
+        Enable L1.1 (ASPM L1.1 Enable or PCI-PM L1.1 Enable) on both link partners.
+        Create idle conditions to trigger L1 entry, then L1.0 to L1.1 transition. In L1.1,
+        common mode voltages are maintained but CLKREQ# is deasserted (tri-stated) by both
+        ports per §5.5.2. Monitor CLKREQ# signal with oscilloscope to verify deassertion.
+        Trigger L1.1 exit by asserting CLKREQ# and verify link returns to L1.0 then
+        Recovery then L0 per Figure 5-12.
+      priority: P0
+      priority_rationale: L1.1 enables reference clock gating for significant power savings; CLKREQ# protocol correctness is essential.
+      spec_ref: "PCIe 5.0 §5.5.1, §5.5.2, §5.5.2.1, Figure 5-12, Figure 5-13"
+      pass_criteria: >
+        CLKREQ# deasserted (tri-state, pulled high) within L1.0 to L1.1 transition.
+        Common mode voltage maintained during L1.1 (oscilloscope verification). Reference
+        clock may be turned off by clock generator. L1.1 exit: CLKREQ# asserted (driven
+        low), link transitions L1.0 -> Recovery -> L0. Total L1.1 exit latency ≤ Common
+        Mode Restore Time + PLL re-lock time. No link errors during transition.
+      tool: "Oscilloscope (monitoring CLKREQ#, REFCLK) + protocol analyzer"
+      test_method: hardware_lab
+
+    - id: PM-017
+      title: L1.2 Substate Entry — CLKREQ# Deassertion and Power Down
+      description: >
+        Enable L1.2 (ASPM L1.2 Enable or PCI-PM L1.2 Enable) on both link partners.
+        Program T_POWER_ON, Common_Mode_Restore_Time, and LTR_L1.2_THRESHOLD per §5.5.4.
+        Create idle conditions meeting the L1.2 entry requirements of §5.5.1: CLKREQ#
+        deasserted and LTR values exceeding the L1.2 threshold. Verify the link enters
+        L1.2 substates: L1.2.Entry (REFCLK off within T_L1O_REFCLK_OFF), then L1.2.Idle
+        (PHY power removed) per Figure 5-14 and Table 5-11.
+      priority: P0
+      priority_rationale: L1.2 achieves the deepest L1 substate power savings by removing common mode and PHY power; critical for battery-powered and idle-power targets.
+      spec_ref: "PCIe 5.0 §5.5.1, §5.5.3, §5.5.3.1, Figure 5-14, Figure 5-16, Table 5-11"
+      pass_criteria: >
+        CLKREQ# deasserted by both ports. REFCLK shut off within T_L1O_REFCLK_OFF
+        (0-100 ns per Table 5-11). Link enters L1.2.Entry, then L1.2.Idle after
+        T_POWER_OFF (≤ 2 us). Common mode voltage not maintained in L1.2. PHY power
+        may be removed in L1.2.Idle. T_L1.2 minimum stay time of 4 us honored before
+        CLKREQ# reassertion.
+      tool: "Oscilloscope (CLKREQ#, REFCLK, power rails) + protocol analyzer"
+      test_method: hardware_lab
+
+    - id: PM-018
+      title: L1.2 Exit — Power Restoration and Recovery
+      description: >
+        With link in L1.2.Idle state, trigger L1.2 exit by asserting CLKREQ#. Verify the
+        L1.2.Exit substate sequence per §5.5.3.3: PHYs of both ports powered up, REFCLK
+        restored no earlier than T_L1O_REFCLK_ON (≥ T_POWER_ON), common mode re-established
+        via TS1 training sequences, and link transitions through Recovery to L0.
+        Measure total L1.2 exit latency from CLKREQ# assertion to first valid TLP.
+      priority: P0
+      priority_rationale: L1.2 exit involves full PHY power-up and PLL re-lock; incorrect sequencing causes training failures or data corruption.
+      spec_ref: "PCIe 5.0 §5.5.3.3, §5.5.3.3.1, Figure 5-16, Figure 5-17, Table 5-11"
+      pass_criteria: >
+        CLKREQ# assertion initiates L1.2.Exit. REFCLK restored after T_POWER_ON (per
+        L1 PM Substates Control 2 register, range 0-3100 us). Common mode established
+        via T_COMMONMODE timer (0-255 us). Link trains through Recovery to L0. Total
+        L1.2 exit latency ≤ T_POWER_ON + T_COMMONMODE + link training time. First TLP
+        transmitted within measured exit latency. No link training failures.
+      tool: "Oscilloscope (CLKREQ#, REFCLK) + protocol analyzer"
+      test_method: hardware_lab
+
+    - id: PM-019
+      title: L1.2 Timing Parameters Compliance
+      description: >
+        Verify all L1.2 timing parameters from Table 5-11 are correctly implemented.
+        Measure T_POWER_OFF (CLKREQ# deassertion to L1.2.Idle entry, max 2 us),
+        T_L1O_REFCLK_OFF (CLKREQ# deassertion to REFCLK idle, 0-100 ns),
+        T_L1O_REFCLK_ON (CLKREQ# assertion to REFCLK valid, ≥ T_POWER_ON), T_POWER_ON
+        (programmed in L1 PM Substates Control 2), T_COMMONMODE (programmed, 0-255 us),
+        and T_L1.2 (minimum stay 4 us). Use oscilloscope to capture precise timing of
+        CLKREQ# and REFCLK transitions.
+      priority: P0
+      priority_rationale: L1.2 timing parameters are safety-critical; violations cause PHY damage from driving into unpowered components or PLL instability.
+      spec_ref: "PCIe 5.0 §5.5.5, Table 5-11"
+      pass_criteria: >
+        T_POWER_OFF ≤ 2 us. T_L1O_REFCLK_OFF: 0-100 ns. T_L1O_REFCLK_ON ≥ T_POWER_ON.
+        T_POWER_ON matches programmed value in L1 PM Substates Control 2. T_COMMONMODE
+        matches programmed value (0-255 us). T_L1.2 ≥ 4 us (CLKREQ# inactive minimum).
+        All timing measurements across 100 entry/exit cycles within spec bounds.
+      tool: "Oscilloscope (≥200 MHz BW, 4-ch: CLKREQ#, REFCLK, power rail, trigger)"
+      test_method: hardware_lab
+
+    - id: PM-020
+      title: L1 PM Substates Configuration Sequencing
+      description: >
+        Verify correct software sequencing for enabling L1 PM Substates per §5.5.4.
+        Enable bits must be set at the Downstream Port before the Upstream Port. When
+        disabling, clear the Upstream Port before the Downstream Port. Before setting
+        ASPM L1 PM Substates enable bits, ASPM L1 must be disabled. Before setting PCI-PM
+        L1 PM Substates enable bits, the device must be in D0. Verify T_POWER_ON,
+        Common_Mode_Restore_Time, and LTR_L1.2_THRESHOLD are programmed before enabling.
+      priority: P1
+      priority_rationale: Incorrect enable sequencing causes undefined behavior; software must follow the prescribed order.
+      spec_ref: "PCIe 5.0 §5.5.4"
+      pass_criteria: >
+        Enable sequencing verified: Downstream Port enabled before Upstream Port. Disable
+        sequencing verified: Upstream Port cleared before Downstream Port. ASPM L1 disabled
+        during ASPM L1 SS configuration. T_POWER_ON and Common_Mode_Restore_Time programmed
+        before enable bits set. LTR_L1.2_THRESHOLD programmed identically in both ports.
+        No undefined behavior or link errors during configuration sequence.
+      tool: "Linux (setpci for register programming) + protocol analyzer"
+      test_method: software_driver
+
+    - id: PM-021
+      title: L1.2 CLKREQ# Boundary Condition Handling
+      description: >
+        Test the CLKREQ# boundary condition described in §5.5.3.1 where one port asserts
+        CLKREQ# shortly after the other port deasserts it during L1.2 entry. This race
+        condition occurs when the upstream port deasserts CLKREQ# but before the downstream
+        port observes the deassertion, the downstream port asserts CLKREQ# to block L1.2.
+        Verify the implementation correctly handles this by returning to L1.0 without
+        error per Figure 5-15.
+      priority: P1
+      priority_rationale: CLKREQ# race conditions are unavoidable in real systems; incorrect handling causes L1.2 entry/exit glitches.
+      spec_ref: "PCIe 5.0 §5.5.3.1, Figure 5-15"
+      pass_criteria: >
+        When CLKREQ# assertion occurs during L1.2.Entry, link correctly returns to L1.0.
+        No REFCLK glitches during aborted L1.2 entry. No link training failures or errors.
+        CLKREQ# state consistent between both ports after abort. Test repeated 1000 times
+        with randomized timing offsets; zero failures.
+      tool: "Oscilloscope (CLKREQ# probing) + protocol analyzer + FPGA stimulus"
+      test_method: hardware_lab
+
+    - id: PM-022
+      title: L1 PM Substates Power Measurement — L1.1 vs L1.2 vs L1.0
+      description: >
+        Measure device power consumption in each L1 PM substate: L1.0 (conventional L1),
+        L1.1 (common mode maintained, clock off), and L1.2 (common mode not maintained,
+        PHY power off). Compare power levels to verify progressive power reduction from
+        L1.0 to L1.1 to L1.2 as clock and PHY resources are shut down.
+      priority: P1
+      priority_rationale: Power measurement validates L1 PM Substates provide incremental benefit over conventional L1; confirms correct power gating.
+      spec_ref: "PCIe 5.0 §5.5, §5.5.2, §5.5.3, Table 5-1"
+      pass_criteria: >
+        Power hierarchy: L1.2 < L1.1 < L1.0 < L0s < L0. L1.1 power reduction from L1.0
+        ≥ 50 mW (clock gating savings). L1.2 power reduction from L1.1 ≥ 100 mW (PHY
+        power gating savings). L1.2 power within device datasheet specification. All
+        measurements stable over 60-second sample window.
+      tool: "Power meter + oscilloscope (current probes on 12V and 3.3V rails)"
+      test_method: hardware_lab
+
+  - name: PCI-PM D-States
+    items:
+    - id: PM-023
+      title: D0 Active and D0 Uninitialized State Verification
+      description: >
+        Verify correct D0 substate behavior per §5.3.1.1. After power-on reset, device
+        enters D0_uninitialized (all Functions in reset default). After configuration
+        (Memory Space Enable, IO Space Enable, or Bus Master Enable set), device enters
+        D0_active. Verify device responds to config requests in both substates. After FLR,
+        verify device returns to D0_uninitialized and requires re-initialization.
+      priority: P0
+      priority_rationale: D0 substates define the fundamental operational states; incorrect behavior prevents device initialization.
+      spec_ref: "PCIe 5.0 §5.3.1.1"
+      pass_criteria: >
+        D0_uninitialized: config space accessible, BARs at default, Memory/IO Space Enable
+        = 0. D0_active: entered when any enable bit set, full functionality available.
+        FLR returns to D0_uninitialized within 100 ms. Device responds to config reads
+        in both substates. NVMe controller not operational until D0_active.
+      tool: "Linux (lspci, setpci, nvme-cli)"
+      test_method: software_driver
+
+    - id: PM-024
+      title: D3hot Entry and Exit via PMCSR
+      description: >
+        Write PowerState = 11b to PMCSR to transition device from D0 to D3hot. Verify
+        device behavior in D3hot per §5.3.1.4.1: only Configuration and Message requests
+        accepted, all other requests treated as Unsupported Requests. Verify PME context
+        preserved if PME_En is set. Write PowerState = 00b to return to D0. Verify the
+        minimum 10 ms recovery time per Table 5-13 before accessing the device.
+      priority: P0
+      priority_rationale: D3hot is the primary software-controlled low-power state for NVMe devices; correct entry/exit is mandatory for suspend/resume.
+      spec_ref: "PCIe 5.0 §5.3.1.4.1, §5.9, Table 5-13, Figure 5-18"
+      pass_criteria: >
+        D3hot entry: PMCSR PowerState reads back 11b. Config space accessible in D3hot.
+        Memory/IO requests rejected (Unsupported Request). D3hot to D0 transition: system
+        waits ≥ 10 ms before accessing device. No_Soft_Reset bit behavior correct: if set,
+        device in D0_active; if clear, device in D0_uninitialized requiring full re-init.
+        NVMe controller re-initialized after D0 entry. Zero AER errors during transition.
+      tool: "Linux (setpci for PMCSR, nvme-cli for controller init)"
+      test_method: software_driver
+
+    - id: PM-025
+      title: D3cold Entry and Exit — Full Power Removal
+      description: >
+        Transition device to D3cold by removing main power after D3hot entry. Verify the
+        device transitions from D3hot to D3cold when Vcc is removed. Verify the link
+        enters L2 (if Vaux present) or L3 (no Vaux). Apply power-on reset (restore Vcc
+        and assert Fundamental Reset) to return to D0_uninitialized. Verify full device
+        re-initialization is required per §5.3.1.4.2.
+      priority: P0
+      priority_rationale: D3cold is the deepest power state with full power removal; correct entry/exit is critical for system power-off and cold boot.
+      spec_ref: "PCIe 5.0 §5.3.1.4.2, §5.8, Figure 5-18"
+      pass_criteria: >
+        D3cold entered after Vcc removal. Link in L2 or L3. Zero device power from main
+        rails. PME context maintained in D3cold if PME_En set and Vaux present. Power-on
+        reset returns device to D0_uninitialized. Full re-enumeration succeeds. All BARs
+        at default values after D3cold exit. NVMe controller re-initialized successfully.
+      tool: "Slot power control + power meter + Linux (lspci, nvme-cli)"
+      test_method: hardware_lab
+
+    - id: PM-026
+      title: D-State Transition Recovery Time Compliance
+      description: >
+        Verify all D-state transition recovery times per Table 5-13. D0 to D1: 0 delay.
+        D0/D1 to D2: 200 us minimum. D0/D1/D2 to D3hot: 10 ms minimum. D1 to D0: 0
+        delay. D2 to D0: 200 us minimum. D3hot to D0: 10 ms minimum. Attempt to access
+        the device before the minimum recovery time expires and verify undefined behavior
+        does not cause system crash. After the recovery time, verify device is fully
+        accessible.
+      priority: P1
+      priority_rationale: Software must respect recovery times; violating them causes undefined behavior, but devices should not crash the system.
+      spec_ref: "PCIe 5.0 §5.9, Table 5-13"
+      pass_criteria: >
+        D3hot to D0: device fully accessible after 10 ms, config reads succeed. D2 to D0:
+        device accessible after 200 us. Early access (before recovery time) does not cause
+        system crash or kernel panic. Immediate_Readiness_on_Return_to_D0 bit honored if
+        set. All transition times verified with oscilloscope-level precision (±10%).
+      tool: "Linux (setpci for PMCSR writes with timed delays) + oscilloscope"
+      test_method: software_driver
+
+  - name: PME Mechanism
+    items:
+    - id: PM-027
+      title: PME Generation from D3hot
+      description: >
+        Enable PME by setting PME_En bit in PMCSR. Transition device to D3hot. Trigger
+        a PME event (e.g., NVMe asynchronous event or vendor-specific wake trigger). Verify
+        the device sets PME_Status bit in PMCSR and sends a PM_PME message upstream to the
+        Root Complex per §5.3.3. Verify the Root Complex receives the PME indication and
+        wakes the device. Verify PME_Status is sticky through the D3hot to D0 transition.
+      priority: P0
+      priority_rationale: PME from D3hot is the primary in-band wake mechanism for NVMe devices; failure prevents system wake on device events.
+      spec_ref: "PCIe 5.0 §5.3.3, §5.3.3.3, §5.3.3.4, §5.3.3.5, Figure 5-5"
+      pass_criteria: >
+        PME_En = 1 before D3hot entry. PME_Status set by device on wake event. PM_PME
+        message observed on protocol analyzer routed upstream. Root Complex logs PME
+        indication. Device returns to D0 after PME service. PME_Status cleared by software
+        (write 1 to clear). PME Service Timeout: if PME_Status not cleared within 100 ms,
+        PM_PME re-sent per §5.3.3.3.1.
+      tool: "Protocol analyzer + Linux (PME event monitoring via /proc/acpi)"
+      test_method: protocol_analyzer
+
+    - id: PM-028
+      title: PME from D3cold via WAKE# Signal
+      description: >
+        Enable PME and Aux Power PM Enable in Device Control register. Transition device to
+        D3cold (remove main power, Vaux present). Trigger wake event. Verify the device
+        asserts WAKE# signal (open-drain, driven low per §5.3.3.2). Verify WAKE# remains
+        asserted until Fundamental Reset goes inactive. After main power restoration and
+        link training, verify device sends PM_PME message to Root Complex.
+      priority: P1
+      priority_rationale: WAKE# from D3cold enables system wake from deepest sleep; required for enterprise deployments with power-managed NVMe.
+      spec_ref: "PCIe 5.0 §5.3.3.2, §5.11, Figure 5-4"
+      pass_criteria: >
+        WAKE# asserted (driven low) on wake event in D3cold. WAKE# remains asserted until
+        Fundamental Reset de-assertion. Main power restored by platform power controller.
+        Link trains successfully after power restoration. PM_PME message sent upstream
+        after link training. PME_Status bit set. Complete wake sequence ≤ 500 ms from
+        WAKE# assertion to D0_active.
+      tool: "Oscilloscope (WAKE# pin monitoring) + protocol analyzer + slot power control"
+      test_method: hardware_lab
+
+    - id: PM-029
+      title: PME_Turn_Off/PME_TO_Ack Protocol Compliance
+      description: >
+        Verify complete PME_Turn_Off/PME_TO_Ack protocol per §5.3.3.2.1. Trigger the
+        sequence via system suspend. Verify: (1) Root Complex broadcasts PME_Turn_Off
+        downstream, (2) device blocks PM_PME transmission upon receiving PME_Turn_Off,
+        (3) device transmits PME_TO_Ack upstream, (4) device initiates L2/L3 Ready
+        transition. Test in all D-states (D0, D1, D2, D3hot) to verify the device
+        responds correctly regardless of current D-state per §5.3.3.4 rules.
+      priority: P0
+      priority_rationale: PME_Turn_Off handshake ensures all in-flight PME messages are flushed before power removal; failure causes lost wake events.
+      spec_ref: "PCIe 5.0 §5.3.3.2.1, §5.3.3.4"
+      pass_criteria: >
+        PME_Turn_Off received by device in each D-state (D0, D1, D2, D3hot). PME_TO_Ack
+        transmitted within recommended 1-10 ms timeout. PM_PME transmission blocked after
+        PME_Turn_Off receipt. L2/L3 Ready transition initiated after PME_TO_Ack. If
+        PME_Status was pending, device transitions to Link Reactivation state per
+        Figure 5-5 state machine.
+      tool: "Protocol analyzer + Linux (system suspend with D-state control)"
+      test_method: protocol_analyzer
+
+    - id: PM-030
+      title: PM_PME Delivery State Machine Verification
+      description: >
+        Verify the PM_PME delivery control state machine per Figure 5-5 operates correctly
+        across all transitions: Communicating state (initial/post-reset), PME Sent state
+        (PME_Status set, PM_PME issued), Non-communicating state (after PME_Turn_Off),
+        and Link Reactivation state (PME pending during power removal). Verify the 100 ms
+        PME Service Timeout triggers PM_PME re-send if PME_Status is not cleared.
+      priority: P1
+      priority_rationale: The PM_PME state machine governs reliable PME delivery; incorrect transitions cause lost or duplicate PME events.
+      spec_ref: "PCIe 5.0 §5.3.3.5, Figure 5-5, §5.3.3.3.1"
+      pass_criteria: >
+        Communicating -> PME Sent: PM_PME message sent on PME_Status assertion. PME Sent:
+        PME_Status cleared -> returns to Communicating. PME Service Timeout (100 ms +50%/
+        -5%): PM_PME re-sent. Non-communicating: PME_Status assertion triggers Link
+        Reactivation with Beacon/WAKE#. Link Reactivation: after power/clock restore,
+        PM_PME sent, transition to PME Sent. All transitions verified via protocol analyzer.
+      tool: "Protocol analyzer + Linux (PME service control)"
+      test_method: protocol_analyzer
+
+  - name: PME_Turn_Off Handshake
+    items:
+    - id: PM-031
+      title: PME_Turn_Off Timeout and Deadlock Avoidance
+      description: >
+        Verify platform power manager correctly handles the case where one or more devices
+        do not respond with PME_TO_Ack. Per §5.3.3.2.1, the power manager should implement
+        a timeout of 1-10 ms, after which it proceeds as if PME_TO_Ack was received.
+        Test by disabling the DUT's PME_TO_Ack response (via vendor debug mode) and
+        verifying the platform does not deadlock. Also verify the 100 ns minimum wait
+        after all links enter L2/L3 Ready before removing power.
+      priority: P1
+      priority_rationale: PME_TO_Ack timeout prevents system hang during suspend if a device becomes unresponsive.
+      spec_ref: "PCIe 5.0 §5.3.3.2.1"
+      pass_criteria: >
+        Platform timeout fires within 1-10 ms when PME_TO_Ack is not received. System
+        proceeds with power removal after timeout (no deadlock). Platform waits ≥ 100 ns
+        after last L2/L3 Ready before removing reference clock and main power. System
+        suspend completes successfully despite missing PME_TO_Ack. Resume from suspend
+        re-enumerates the unresponsive device.
+      tool: "Protocol analyzer + vendor debug mode + Linux (system suspend)"
+      test_method: firmware_test
+
+    - id: PM-032
+      title: PME_Turn_Off During Active IO
+      description: >
+        Issue PME_Turn_Off broadcast while the device has active IO in progress (fio:
+        sequential write, 128K, QD=32). Verify the device correctly quiesces all
+        outstanding transactions: completes in-flight TLPs, drains retry buffer, then
+        responds with PME_TO_Ack. Verify no data corruption occurs. The device must
+        complete the PME_Turn_Off/PME_TO_Ack handshake even with pending requests.
+      priority: P0
+      priority_rationale: Real-world suspend often occurs during IO; device must safely quiesce without data loss or corruption.
+      spec_ref: "PCIe 5.0 §5.3.3.2.1, §5.3.2.3"
+      pass_criteria: >
+        All in-flight write TLPs completed before PME_TO_Ack. Retry buffer drained. No
+        Completion Timeout errors. PME_TO_Ack sent within 10 ms of PME_Turn_Off. Data
+        integrity verified after resume (fio verify pass on previously written data).
+        No AER uncorrectable errors. NVMe controller shutdown clean (CC.SHN sequence
+        completed before power removal).
+      tool: "Protocol analyzer + fio + Linux (system suspend during IO)"
+      test_method: protocol_analyzer
+
+  - name: WAKE# and Beacon
+    items:
+    - id: PM-033
+      title: WAKE# Signal Electrical Characteristics
+      description: >
+        Measure the WAKE# signal electrical characteristics on the SFF-8639 U.2 connector.
+        WAKE# is an open-drain output per §5.3.3.2 that must be driven low by the device
+        to signal wakeup and must remain low until Fundamental Reset goes inactive. Measure
+        drive-low voltage (VOL), leakage current in high-Z state, rise/fall times, and
+        pull-up behavior.
+      priority: P1
+      priority_rationale: WAKE# electrical characteristics must meet spec for reliable detection by platform power controller.
+      spec_ref: "PCIe 5.0 §5.3.3.2, SFF-8639"
+      pass_criteria: >
+        WAKE# drive-low voltage VOL ≤ 0.4 V with specified sink current. High-Z leakage
+        ≤ 10 uA. Pull-up to 3.3Vaux via platform resistor. WAKE# assertion to platform
+        detection ≤ 1 us. WAKE# held low until Fundamental Reset de-asserts. If WAKE#
+        not supported, pin remains in high-Z at all times.
+      tool: "Oscilloscope + logic analyzer + U.2 breakout board"
+      test_method: hardware_lab
+
+    - id: PM-034
+      title: Beacon Signaling for D3cold Wake (If Supported)
+      description: >
+        If the device supports Beacon-based wake (in-band signaling) per §5.3.3.2, place
+        device in D3cold with Vaux present. Trigger wake event and capture the Beacon
+        signal on oscilloscope at the TX differential pair. Verify Beacon frequency is
+        within 2-20 MHz range per §8.4.5.5. Verify the platform detects the Beacon and
+        initiates power restoration. The Beacon mechanism uses in-band signaling as
+        opposed to the sideband WAKE# signal.
+      priority: P2
+      priority_rationale: Beacon wake is an alternative to WAKE# primarily used in add-in card form factors; lower priority for U.2 NVMe devices.
+      spec_ref: "PCIe 5.0 §5.3.3.2, §8.4.5.5"
+      pass_criteria: >
+        Beacon signal frequency: 2-20 MHz. Single-ended amplitude: 200-600 mV. Beacon
+        transmitted on TX differential pair in D3cold. Platform detects Beacon and
+        restores power. Link trains successfully after power restoration. If Beacon not
+        supported, verify PMC register correctly reports no Beacon capability.
+      tool: "Oscilloscope (≥500 MHz BW) + Vaux power supply + platform with Beacon detection"
+      test_method: hardware_lab
+
+  - name: LTR (Latency Tolerance Reporting)
+    items:
+    - id: PM-035
+      title: LTR Capability and Message Verification
+      description: >
+        Read the LTR Extended Capability structure to verify the device supports LTR.
+        Enable LTR by setting the LTR Mechanism Enable bit in the Device Control 2
+        register. Verify the device sends LTR Messages with valid Max Snoop Latency and
+        Max No-Snoop Latency values. LTR is required for ASPM L1.2 per §5.5 and provides
+        the platform with service latency tolerance information to make power management
+        decisions.
+      priority: P0
+      priority_rationale: LTR is mandatory for L1.2 substate support; incorrect LTR values prevent L1.2 entry or cause service latency violations.
+      spec_ref: "PCIe 5.0 §5.5 (L1.2 requires LTR), §6.18"
+      pass_criteria: >
+        LTR Extended Capability present. LTR Mechanism Enable set successfully. LTR
+        Messages observed on protocol analyzer with valid snoop and no-snoop latency
+        values. LTR values consistent with device datasheet (typically 1-100 ms for NVMe
+        idle). LTR values update when device transitions between active and idle states.
+        LTR_L1.2_THRESHOLD comparison logic correct for L1.2 entry decisions.
+      tool: "Protocol analyzer + Linux (setpci for LTR enable)"
+      test_method: protocol_analyzer
+
+    - id: PM-036
+      title: LTR Value Impact on L1.2 Entry Decision
+      description: >
+        Program different LTR_L1.2_THRESHOLD values in the L1 PM Substates Control 1
+        register and verify the L1.2 entry decision logic per §5.5.1. When the reported
+        LTR value (both snoop and no-snoop) is greater than or equal to LTR_L1.2_THRESHOLD,
+        L1.2 entry is permitted. When LTR values are below the threshold, L1.2 must not
+        be entered (L1.1 may still be entered). Test with multiple threshold settings.
+      priority: P1
+      priority_rationale: LTR threshold comparison gates L1.2 entry; incorrect logic prevents deepest power savings or causes latency violations.
+      spec_ref: "PCIe 5.0 §5.5.1"
+      pass_criteria: >
+        LTR ≥ LTR_L1.2_THRESHOLD: link enters L1.2 when idle (verified via CLKREQ# and
+        REFCLK deassertion). LTR < LTR_L1.2_THRESHOLD: link enters L1.1 but not L1.2
+        (REFCLK remains active). Threshold comparison correct for both snoop and no-snoop
+        latency values. Test with threshold values: 1 us, 10 us, 100 us, 1 ms, 10 ms.
+        All entry/exit transitions clean with zero errors.
+      tool: "Oscilloscope (CLKREQ#, REFCLK) + Linux (setpci for threshold programming)"
+      test_method: hardware_lab
+
+    - id: PM-037
+      title: LTR Dynamic Value Updates During Workload Changes
+      description: >
+        Monitor LTR Messages on protocol analyzer while transitioning the device between
+        different workload levels: heavy IO (fio: randwrite 4K QD=128), light IO (fio:
+        randread 4K QD=1 with think_time=10ms), and fully idle (no IO). Verify the device
+        dynamically updates its LTR values to reflect changing latency tolerance. The LTR
+        value should decrease (tighter tolerance) during active IO and increase (relaxed
+        tolerance) when idle.
+      priority: P1
+      priority_rationale: Dynamic LTR updates enable optimal power management under varying workloads; static values waste power or cause latency spikes.
+      spec_ref: "PCIe 5.0 §5.5 (LTR for L1.2 entry), §6.18"
+      pass_criteria: >
+        LTR values decrease during heavy IO (device needs low-latency service). LTR values
+        increase during idle (device tolerates longer wake latency). LTR update observed
+        within 100 us of workload transition. Values consistent across 10 repeated
+        transitions. No stale LTR values that prevent L1.2 entry during idle.
+      tool: "Protocol analyzer + fio (workload generation)"
+      test_method: protocol_analyzer
+
+  - name: CLKREQ# Protocol
+    items:
+    - id: PM-038
+      title: CLKREQ# Signal Integrity and Electrical Compliance
+      description: >
+        Measure the CLKREQ# signal electrical characteristics at the U.2 connector.
+        CLKREQ# must be supported as a bidirectional open-drain signal by both upstream
+        and downstream ports per §5.5. Verify drive-low voltage, leakage current in
+        tri-state, rise/fall time, and pull-up behavior. The signal must be clean with
+        no ringing or glitches that could cause false assertion/deassertion.
+      priority: P0
+      priority_rationale: CLKREQ# signal quality directly affects L1 PM Substates reliability; glitches cause spurious clock requests or missed deassertion.
+      spec_ref: "PCIe 5.0 §5.5, PCIe CEM 5.0 §5.2"
+      pass_criteria: >
+        Drive-low voltage VOL ≤ 0.4 V with 20 mA sink. Tri-state leakage ≤ 10 uA.
+        Rise/fall time ≤ 10 ns (3.3V CMOS). No ringing > 300 mV on transitions. Pull-up
+        to 3.3V via platform resistor (typ. 10K ohm). Signal clean with < 50 mV noise
+        margin in both states. Both upstream and downstream CLKREQ# signals measured.
+      tool: "Oscilloscope (≥500 MHz BW) + U.2 breakout board"
+      test_method: hardware_lab
+
+    - id: PM-039
+      title: CLKREQ# Assertion/Deassertion During L1 PM Substates
+      description: >
+        Monitor CLKREQ# behavior during L1 PM Substate transitions using oscilloscope.
+        Verify: (1) In L1.0, upstream port must not deassert CLKREQ# until L1.1 or L1.2
+        entry conditions are met per §5.5.1. (2) In L1.1, both ports deassert CLKREQ#
+        (tri-state) but REFCLK may remain on. (3) In L1.2, both ports deassert CLKREQ#
+        and REFCLK is shut off. (4) On exit, the asserting port drives CLKREQ# low
+        before the link can begin Recovery.
+      priority: P0
+      priority_rationale: CLKREQ# is the signaling mechanism for L1 PM Substates; incorrect assertion timing prevents clock gating or causes exit failures.
+      spec_ref: "PCIe 5.0 §5.5.1, §5.5.2.1, §5.5.3.2, Figure 5-12, Figure 5-16"
+      pass_criteria: >
+        L1.0: CLKREQ# driven low by upstream port. L1.1 entry: CLKREQ# tri-stated by both
+        ports, REFCLK valid or gated (implementation-specific). L1.2 entry: CLKREQ#
+        tri-stated, REFCLK off within T_L1O_REFCLK_OFF. Exit: CLKREQ# asserted (driven
+        low) before Recovery entry. All transitions captured across 100 cycles with zero
+        protocol violations.
+      tool: "Oscilloscope (4-ch: CLKREQ# up, CLKREQ# dn, REFCLK, trigger)"
+      test_method: hardware_lab
+
+    - id: PM-040
+      title: CLKREQ# Behavior During Non-L1 PM States
+      description: >
+        Verify CLKREQ# behavior in link states other than L1 PM Substates per §5.5.
+        It is permitted for the upstream port to deassert CLKREQ# when the link is in
+        PCI-PM L1 or ASPM L1 states, or in L2/L3 Ready. CLKREQ# must be asserted by
+        the upstream port when the link is in any other state (L0, L0s, Recovery,
+        Configuration, etc.). Verify correct CLKREQ# state across LTSSM transitions.
+      priority: P1
+      priority_rationale: CLKREQ# protocol extends beyond L1 PM Substates; incorrect behavior in other states causes clock management errors.
+      spec_ref: "PCIe 5.0 §5.5"
+      pass_criteria: >
+        L0 state: CLKREQ# asserted (driven low) by upstream port. L0s state: CLKREQ#
+        asserted. Recovery: CLKREQ# asserted. L1 (PCI-PM or ASPM): CLKREQ# may be
+        deasserted. L2/L3 Ready: CLKREQ# may be deasserted. No state where CLKREQ# is
+        deasserted while REFCLK is required for link operation. Verified across 50 LTSSM
+        transitions.
+      tool: "Oscilloscope + protocol analyzer"
+      test_method: hardware_lab
+
+  - name: Power State Stress and Integration
+    items:
+    - id: PM-041
+      title: ASPM L0s/L1 Rapid Cycling Under IO Load
+      description: >
+        Enable ASPM L0s+L1 (ASPM Control = 11b) and run bursty IO workload designed to
+        cause rapid L0/L0s/L1 state cycling. Use fio with randomized think_time (50 us
+        to 50 ms) to create varying idle periods. Run for 4 hours continuously. Monitor
+        for link errors, data corruption, AER events, and NVMe controller failures.
+        This stress tests the ASPM state machine under realistic workload conditions.
+      priority: P0
+      priority_rationale: Rapid ASPM cycling is the most common source of power management bugs; extended stress reveals intermittent failures.
+      spec_ref: "PCIe 5.0 §5.4.1, §5.4.1.1, §5.4.1.2"
+      pass_criteria: >
+        4-hour test with > 100,000 L0s/L1 transitions: zero link errors. Zero AER
+        correctable or uncorrectable errors. Zero NVMe controller resets. fio data
+        integrity verification (verify=crc32c) passes on all written data. No LTSSM
+        hangs (no state stuck > 100 ms). Link speed/width maintained throughout test.
+      tool: "fio (bursty workload) + Linux (AER monitoring, ASPM stats) + protocol analyzer"
+      test_method: software_driver
+
+    - id: PM-042
+      title: D3hot/D0 Rapid Power State Cycling
+      description: >
+        Perform rapid D3hot to D0 transitions (1000 cycles) by writing PMCSR PowerState
+        field. Between each transition, verify device responsiveness by reading config
+        space and performing a short IO test (fio: seq read 4K, 100 IOs). Respect the
+        10 ms minimum recovery time per Table 5-13 on each D3hot -> D0 transition. Monitor
+        for NVMe controller initialization failures and AER errors.
+      priority: P0
+      priority_rationale: Rapid D-state cycling stress-tests the device's power management state machine and NVMe controller re-initialization path.
+      spec_ref: "PCIe 5.0 §5.3.1.4.1, §5.9, Table 5-13"
+      pass_criteria: >
+        1000 D3hot/D0 cycles completed: zero failures. Config space accessible after each
+        D0 transition. NVMe controller re-initialized successfully each cycle (if
+        No_Soft_Reset = 0). IO verification passes after each cycle. No AER errors. Total
+        test time consistent (no progressive degradation in transition timing).
+      tool: "Linux (setpci for PMCSR, nvme-cli for controller init, fio for IO verify)"
+      test_method: software_driver
+
+    - id: PM-043
+      title: System Suspend/Resume Cycling (S3/S4)
+      description: >
+        Perform 500 system suspend (S3 mem) and resume cycles with NVMe device containing
+        active data. Each cycle: verify PME_Turn_Off/PME_TO_Ack handshake, confirm device
+        enters D3hot/D3cold, verify link enters L2/L3 Ready, restore from suspend, verify
+        device re-enumerates, verify NVMe controller re-initializes, and verify data
+        integrity by reading back previously written patterns.
+      priority: P0
+      priority_rationale: Suspend/resume is the end-to-end power management integration test; failures here indicate real-world deployment issues.
+      spec_ref: "PCIe 5.0 §5.3, §5.3.2, §5.3.3, §5.8, §5.9"
+      pass_criteria: >
+        500 suspend/resume cycles: zero failures. Device re-enumerates at correct speed/
+        width on every resume. NVMe controller operational after each resume. Data integrity
+        verified (fio verify=crc32c). No kernel oops or panic. No AER errors across all
+        cycles. PME_Turn_Off/PME_TO_Ack completes within 10 ms on each suspend.
+      tool: "Linux (rtcwake for automated suspend/resume, fio for data integrity)"
+      test_method: software_driver
+
+    - id: PM-044
+      title: L1 PM Substates Cycling Under Thermal Stress
+      description: >
+        Enable L1.1 and L1.2 substates and run the L1 PM Substates cycling test at three
+        temperature points: 25C (ambient), 55C, and 85C (max operating). At each
+        temperature, perform 10,000 L1.2 entry/exit cycles with IO verification between
+        each cycle. Monitor CLKREQ# and REFCLK timing to detect temperature-dependent
+        timing drift in T_POWER_ON and T_COMMONMODE.
+      priority: P1
+      priority_rationale: L1.2 involves PHY power-down/power-up which is temperature-sensitive; thermal stress reveals marginal timing.
+      spec_ref: "PCIe 5.0 §5.5, §5.5.5, Table 5-11"
+      pass_criteria: >
+        10,000 L1.2 cycles at each temperature: zero failures. T_POWER_ON timing drift
+        ≤ 20% from 25C to 85C. T_COMMONMODE timing consistent across temperature. No
+        link training failures on L1.2 exit. IO verification passes at all temperatures.
+        CLKREQ#/REFCLK signal integrity maintained at 85C.
+      tool: "Thermal chamber + oscilloscope + fio + Linux"
+      test_method: hardware_lab
+
+    - id: PM-045
+      title: ASPM with Hot-Plug Events
+      description: >
+        Enable ASPM L0s+L1 and perform hot-plug events (U.2 hot-insert and controlled
+        removal) while ASPM is active. Verify that: (1) hot-inserted device negotiates
+        ASPM correctly after enumeration, (2) ASPM state machine handles removal cleanly
+        with no host-side hang, (3) re-insertion with ASPM enabled results in correct L0s/L1
+        operation. Monitor for AER errors and DPC triggers during hot-plug with ASPM.
+      priority: P1
+      priority_rationale: Hot-plug interaction with ASPM is a common source of enterprise deployment issues; must verify clean co-existence.
+      spec_ref: "PCIe 5.0 §5.4.1, §6.7"
+      pass_criteria: >
+        Hot-insert: device enumerates with correct ASPM capability within 5 seconds. ASPM
+        L0s/L1 functional after hot-insert (verified via protocol analyzer). Controlled
+        removal during L1: host exits L1 cleanly, no hang. Surprise removal during L0s:
+        DPC triggers within 100 ms. No kernel panic on any hot-plug event with ASPM
+        enabled. 50 hot-plug cycles with zero failures.
+      tool: "Hot-swap U.2 backplane + protocol analyzer + Linux (AER, DPC monitoring)"
+      test_method: hardware_lab
+
+    - id: PM-046
+      title: Power Management Capability Register Consistency
+      description: >
+        Perform comprehensive register consistency check across all power management
+        capability structures: PCI-PM Capability (PMC and PMCSR), PCIe Link Capability
+        (ASPM Support, L0s/L1 Exit Latency), PCIe Device Capability (Endpoint L0s/L1
+        Acceptable Latency), L1 PM Substates Capability, and LTR Capability. Verify all
+        fields are self-consistent and match the device datasheet. Read after each power
+        state transition to verify register values are preserved correctly.
+      priority: P1
+      priority_rationale: Register inconsistency between PM capability structures causes software to make incorrect ASPM/PM decisions.
+      spec_ref: "PCIe 5.0 §5.3, §5.4.1.3, §5.5.4, Table 5-3 through Table 5-10"
+      pass_criteria: >
+        All PM capability registers match device datasheet values. PMC.PME_Support bits
+        consistent with WAKE#/Beacon support. ASPM Support consistent across Link Cap and
+        L1 SS Cap. L0s/L1 Exit Latency values consistent with Common Clock Configuration.
+        Registers preserve values through D0 -> D3hot -> D0 transition. No reserved bits
+        set to non-zero values.
+      tool: "Linux (lspci -vvv, setpci for register dumps)"
+      test_method: inspection
+
+    - id: PM-047
+      title: Link Activation Mechanism (If Supported)
+      description: >
+        If the downstream port supports Link Activation (Link Activation Supported bit
+        set in L1 PM Substates Capabilities register), verify the mechanism per §5.5.6.
+        When Link Activation Control bit is set, the port entering L1 must maintain
+        CLKREQ# asserted, preventing L1.1/L1.2 entry. This mechanism temporarily disables
+        L1 PM Substates for latency-sensitive operations such as D3hot to D0 transitions.
+        Verify the Link Activation Status bit and interrupt generation.
+      priority: P2
+      priority_rationale: Link Activation is an optional optimization for avoiding L1 PM Substate stalls during time-critical operations.
+      spec_ref: "PCIe 5.0 §5.5.6"
+      pass_criteria: >
+        Link Activation Control = 1: CLKREQ# maintained asserted during L1, preventing
+        L1.1/L1.2 entry. Link Activation Control = 0: normal L1 PM Substate behavior.
+        Link Activation Status bit set when PCI-PM L1.1/L1.2 Enable is set, Link
+        Activation Control is set, and link is not in L1 Substate. Link Activation
+        interrupt generated if enabled. D3hot->D0 transition completes faster with
+        Link Activation enabled.
+      tool: "Linux (setpci for Link Activation Control) + oscilloscope (CLKREQ#)"
+      test_method: software_driver
+
+    - id: PM-048
+      title: Auxiliary Power Configuration and Consumption
+      description: >
+        Verify auxiliary power support per §5.6. Read the Aux_Current field in PMC register
+        and Aux Power PM Enable bit in Device Control register. If Aux Power PM Enable = 1,
+        verify auxiliary power is allocated as requested independent of PME_En. Measure
+        actual Vaux current in D3cold state and compare against the requested Aux_Current
+        value. Verify Aux Power PM Enable is sticky through D3cold per §5.6.
+      priority: P1
+      priority_rationale: Correct auxiliary power management is needed for WAKE# and PME functionality from D3cold.
+      spec_ref: "PCIe 5.0 §5.6"
+      pass_criteria: >
+        Aux_Current field in PMC matches device datasheet. Aux Power PM Enable bit settable
+        and readable. Vaux current in D3cold ≤ declared Aux_Current value. Aux Power PM
+        Enable preserved through D3cold -> D0_uninitialized transition. If Aux Power PM
+        Enable = 0, auxiliary power controlled by PME_En bit per §7.5.2.2. WAKE#/PME
+        functional from D3cold when Aux Power PM Enable = 1.
+      tool: "Power meter (Vaux rail) + Linux (setpci for PMC/Device Control)"
+      test_method: hardware_lab
+
+    - id: PM-049
+      title: ASPM Control Field Programming and Behavior
+      description: >
+        Systematically test all four ASPM Control field values per Table 5-10: 00b
+        (disabled), 01b (L0s entry enabled), 10b (L1 entry enabled), 11b (L0s and L1
+        entry enabled). For each setting, verify the link behavior matches the specification:
+        00b - no L0s/L1 entry; 01b - L0s entry only, no PM_Active_State_Request_L1;
+        10b - L1 entry only, no L0s entry; 11b - both L0s and L1 entry. Verify ASPM
+        Control sequencing per §5.4.1.3.1.
+      priority: P0
+      priority_rationale: ASPM Control field is the primary software interface for enabling/disabling ASPM; all four modes must work correctly.
+      spec_ref: "PCIe 5.0 §5.4.1.3, §5.4.1.3.1, Table 5-10"
+      pass_criteria: >
+        00b: no L0s or L1 transitions observed over 60-second idle. 01b: L0s transitions
+        observed, no PM_Active_State_Request_L1 DLLPs. 10b: L1 transitions observed, no
+        L0s entry on transmitter. 11b: both L0s and L1 transitions observed. Common Clock
+        Configuration bit set/clear correctly triggers link retraining per §5.4.1.3.1.
+        All mode transitions clean with no link errors.
+      tool: "Protocol analyzer + Linux (setpci for ASPM Control)"
+      test_method: protocol_analyzer
+
+    - id: PM-050
+      title: End-to-End Power State Transition Stress Test
+      description: >
+        Comprehensive stress test exercising all power management paths in random sequence
+        over 24 hours. Randomly interleave: ASPM L0s/L1 entry/exit, L1.1/L1.2 substate
+        entry/exit, D0/D1/D3hot transitions via PMCSR, PME_Turn_Off/PME_TO_Ack handshakes,
+        system suspend/resume, hot-plug events, and IO workload bursts. Verify data
+        integrity, link health, and register consistency after each transition.
+      priority: P0
+      priority_rationale: Combined power management stress is the ultimate integration test; reveals interaction bugs between ASPM, PCI-PM, L1 SS, and hot-plug.
+      spec_ref: "PCIe 5.0 §5.1 through §5.11"
+      pass_criteria: >
+        24-hour test: zero link errors, zero data corruption, zero NVMe controller resets,
+        zero kernel panics. > 1,000,000 total power state transitions. AER error counters
+        remain zero. Link speed/width correct after every transition. Register values
+        consistent throughout. fio data integrity verification passes on all written data.
+        No progressive degradation in transition timing or latency.
+      tool: "Custom stress framework + fio + protocol analyzer + Linux (AER, ASPM, PM monitoring)"
+      test_method: software_driver

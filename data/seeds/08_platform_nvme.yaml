@@ -1,0 +1,1027 @@
+metadata:
+  version: "5.0"
+  layer: "Platform Integration & NVMe"
+  spec_sources:
+    - "PCIe Base Spec 5.0"
+    - "NVMe 2.0"
+    - "NVMe-MI 1.2"
+
+categories:
+- name: Platform Integration & NVMe
+  subcategories:
+  - name: Function Level Reset (FLR)
+    items:
+    - id: PLAT-001
+      title: FLR Capability Advertisement
+      description: >
+        Read Device Capabilities register (offset 04h in PCIe Capability Structure)
+        and verify bit 28 (Function Level Reset Capability) is set to 1b. This
+        indicates the Function supports the optional FLR mechanism. Confirm the
+        capability is advertised consistently across multiple enumeration cycles
+        and after system resume from D3cold.
+      priority: P0
+      priority_rationale: FLR is mandatory for SR-IOV-capable devices and widely used by hypervisors for VM isolation.
+      spec_ref: "PCIe 5.0 §7.5.3.3, Table 7-19 (bit 28)"
+      pass_criteria: >
+        Device Capabilities register bit 28 reads 1b on every enumeration cycle.
+        Capability remains advertised after D3cold resume. Bit value is consistent
+        across all Physical Functions of a multi-function device.
+      tool: "lspci -vvv / setpci / custom config-space reader"
+      test_method: software_driver
+
+    - id: PLAT-002
+      title: FLR Initiation and Completion Timing
+      description: >
+        Write 1b to bit 15 (Initiate Function Level Reset) of the Device Control
+        register to trigger FLR. Measure the time from FLR initiation until the
+        Function responds to configuration requests with successful completions
+        (not CRS). The spec requires a minimum 100 ms recovery time. Verify no
+        Unsupported Request completions are returned during the FLR quiet period,
+        and that the Function is fully operational after the recovery window.
+      priority: P0
+      priority_rationale: Incorrect FLR timing causes VM boot failures and device assignment errors in virtualized environments.
+      spec_ref: "PCIe 5.0 §7.5.3.4, Table 7-20 (bit 15), §6.6.2"
+      pass_criteria: >
+        Function returns CRS status during the first 100 ms after FLR initiation.
+        Function responds with Successful Completion to config reads within 1 second
+        after FLR. All internal state (BARs, MSI vectors, command register) returns
+        to default values post-FLR.
+      tool: "Protocol analyzer + custom driver issuing FLR via setpci"
+      test_method: protocol_analyzer
+
+    - id: PLAT-003
+      title: FLR State Cleanup Verification
+      description: >
+        Before issuing FLR, program BARs, enable bus mastering, configure MSI-X
+        vectors, and start active I/O (DMA reads/writes). Issue FLR via Device
+        Control register bit 15. After the 100 ms quiet period, read back all
+        programmable registers and verify they have returned to their power-on
+        default values per §6.6.2. Confirm no residual DMA traffic appears on
+        the bus after FLR completion by monitoring with a protocol analyzer.
+      priority: P0
+      priority_rationale: Incomplete state cleanup after FLR is a security vulnerability in multi-tenant environments.
+      spec_ref: "PCIe 5.0 §6.6.2, §7.5.3.4, Table 7-20"
+      pass_criteria: >
+        All BARs read 0 after FLR. Bus Master Enable (Command register bit 2) is
+        cleared. MSI-X enable is cleared. No DMA transactions observed on protocol
+        analyzer after FLR completion. Device Status register (§7.5.3.5) shows no
+        errors post-reset.
+      tool: "Protocol analyzer + setpci + custom FLR test harness"
+      test_method: protocol_analyzer
+
+  - name: SR-IOV and ACS
+    items:
+    - id: PLAT-004
+      title: SR-IOV Capability Structure Enumeration
+      description: >
+        Locate the SR-IOV Extended Capability in configuration space (Capability
+        ID 0010h). Verify the SR-IOV Capabilities, Control, Status, and VF BAR
+        registers are present and well-formed. Read TotalVFs, InitialVFs, and
+        VF Offset/Stride fields. Confirm TotalVFs matches the datasheet value.
+        Enable SR-IOV by writing to SR-IOV Control register and verify NumVFs
+        Virtual Functions appear in configuration space.
+      priority: P1
+      priority_rationale: SR-IOV is essential for NVMe device sharing in virtualized data center deployments.
+      spec_ref: "PCIe 5.0 §9.3.3, §9.3.3.1 through §9.3.3.14"
+      pass_criteria: >
+        SR-IOV Extended Capability is found at expected offset. TotalVFs matches
+        datasheet specification. After enabling SR-IOV and setting NumVFs, all VFs
+        appear with correct BDF addresses calculated from VF Offset and VF Stride.
+        Each VF responds to configuration reads with valid header.
+      tool: "lspci -vvv / sysfs sriov_numvfs / custom VF enumeration script"
+      test_method: software_driver
+
+    - id: PLAT-005
+      title: ACS Capability Verification for SR-IOV Isolation
+      description: >
+        Read the ACS Extended Capability (Capability ID 000Dh) on every downstream
+        port in the path between VFs and the Root Complex. Verify that ACS Source
+        Validation (bit 0), ACS Translation Blocking (bit 1), ACS P2P Request
+        Redirect (bit 2), ACS P2P Completion Redirect (bit 3), and ACS Direct
+        Translated P2P (bit 5) are implemented as required for peer isolation.
+        Enable all available ACS bits and confirm no peer-to-peer traffic bypasses
+        the Root Complex.
+      priority: P1
+      priority_rationale: Without proper ACS enforcement, VFs in different VMs can access each other's memory, violating isolation.
+      spec_ref: "PCIe 5.0 §6.12, §6.12.1.2"
+      pass_criteria: >
+        ACS capability is present on all downstream ports between VFs and RC. ACS
+        Source Validation, Translation Blocking, and P2P Request Redirect are all
+        supported and enabled. Traffic originated from one VF destined for another
+        VF is routed through the RC (verified via protocol analyzer), not directly
+        peer-to-peer.
+      tool: "lspci -vvv / protocol analyzer / custom ACS validation script"
+      test_method: software_driver
+
+    - id: PLAT-006
+      title: VF BAR Assignment and MMIO Access
+      description: >
+        After enabling SR-IOV with NumVFs set to maximum, verify each VF's BAR
+        space is correctly carved from the PF's VF BAR registers. Map each VF BAR
+        into host memory and perform MMIO reads to the NVMe controller registers
+        (CAP, VS, CC, CSTS at offsets 00h–1Ch). Verify each VF reports its own
+        independent controller state and that overlapping BAR ranges are not
+        assigned to different VFs.
+      priority: P1
+      priority_rationale: Incorrect VF BAR assignments cause data corruption and cross-VF security breaches.
+      spec_ref: "PCIe 5.0 §9.3.3.9 through §9.3.3.14, §7.5.1.2"
+      pass_criteria: >
+        Each VF BAR occupies a unique, non-overlapping MMIO region. MMIO reads to
+        NVMe CAP register (offset 00h) return valid capability values for each VF.
+        VF CSTS.RDY reflects independent controller state per VF. Total MMIO
+        consumed equals NumVFs × VF BAR size.
+      tool: "lspci -vvv / sysfs resource files / custom MMIO mapping tool"
+      test_method: software_driver
+
+  - name: ARI (Alternative Routing-ID Interpretation)
+    items:
+    - id: PLAT-007
+      title: ARI Capability Advertisement and Enablement
+      description: >
+        Read the ARI Extended Capability (Capability ID 000Eh) from the device.
+        Verify the Next Function Number field correctly chains all Functions in a
+        multi-function device. On the upstream port (Root Port or Switch Downstream
+        Port), set ARI Forwarding Enable (bit 5 of Device Control 2 register) to
+        enable ARI-aware routing. Confirm the device's Functions above Function 7
+        become visible after ARI is enabled.
+      priority: P2
+      priority_rationale: ARI is required for SR-IOV devices needing more than 8 Functions per device.
+      spec_ref: "PCIe 5.0 §6.13, §7.5.3.16 (Device Control 2), Figure 6-13"
+      pass_criteria: >
+        ARI Extended Capability is present with valid Next Function Number chain.
+        With ARI Forwarding Enable cleared, only Functions 0–7 are visible. With
+        ARI Forwarding Enable set, all Functions (up to 256) are enumerable. The
+        Next Function Number chain terminates with 00h at the last Function.
+      tool: "lspci / setpci / custom ARI enumeration script"
+      test_method: software_driver
+
+    - id: PLAT-008
+      title: ARI-Aware Configuration Routing
+      description: >
+        With ARI enabled on the upstream port, issue Type 0 configuration
+        transactions targeting Function numbers above 7 (e.g., Function 8, 16,
+        255). Verify the switch or Root Port correctly routes these transactions
+        using the full 8-bit Function Number (no Device Number bits). Confirm that
+        with ARI disabled, the same requests targeting Function > 7 are not routed
+        (receive UR completion).
+      priority: P2
+      priority_rationale: Incorrect ARI routing breaks VF enumeration and assignment in hypervisor environments.
+      spec_ref: "PCIe 5.0 §6.13, §7.3.1"
+      pass_criteria: >
+        Configuration reads to Function > 7 succeed when ARI is enabled and return
+        valid capability headers. Same reads return UR or all-ones when ARI is
+        disabled. Protocol analyzer confirms Type 0 configuration TLPs use the
+        full 8-bit Function field for ARI-aware routing.
+      tool: "Protocol analyzer + setpci + custom config-space test"
+      test_method: protocol_analyzer
+
+  - name: Hot-Plug and Surprise Removal
+    items:
+    - id: PLAT-009
+      title: Slot Capabilities Register Validation
+      description: >
+        Read the Slot Capabilities register from the downstream port hosting the
+        NVMe device. Verify the Hot-Plug Capable (bit 6), Attention Button Present
+        (bit 0), Power Controller Present (bit 1), MRL Sensor Present (bit 2),
+        Attention Indicator Present (bit 3), Power Indicator Present (bit 4), and
+        Electromechanical Interlock Present (bit 5) bits match the physical slot
+        hardware. Confirm Slot Power Limit Value and Scale fields are programmed
+        to deliver sufficient power for the installed NVMe SSD.
+      priority: P1
+      priority_rationale: Incorrect slot capability reporting causes OS hot-plug services to mismanage the slot.
+      spec_ref: "PCIe 5.0 §7.5.3.9, Table 7-25, Figure 7-30"
+      pass_criteria: >
+        All Slot Capabilities bits match physical slot features. Slot Power Limit
+        Value × Scale yields at least the SSD's rated maximum power (typically
+        25W for a U.2/U.3 drive). Physical Slot Number field is non-zero and
+        unique across all slots in the system.
+      tool: "lspci -vvv / setpci / physical inspection of slot hardware"
+      test_method: inspection
+
+    - id: PLAT-010
+      title: Standard Hot-Plug Insertion Sequence
+      description: >
+        With an empty hot-plug capable slot, insert an NVMe SSD. Monitor the Slot
+        Status register for Attention Button Pressed, Presence Detect Changed, and
+        Data Link Layer State Changed events. Verify the OS hot-plug service sets
+        Power Indicator to On (via Slot Control bit 9:8), enables slot power (via
+        Slot Control bit 10), and successfully enumerates the new device. Confirm
+        the NVMe controller transitions through CC.EN → CSTS.RDY sequence.
+      priority: P1
+      priority_rationale: Hot-plug is a primary deployment model for NVMe SSDs in storage servers.
+      spec_ref: "PCIe 5.0 §7.5.3.10, Table 7-26, §7.5.3.11, Table 7-27"
+      pass_criteria: >
+        Presence Detect State (Slot Status bit 6) transitions from 0 to 1 within
+        100 ms of physical insertion. Data Link Layer State Changed (bit 13) is
+        set. Power Indicator shows On state. NVMe device enumerates with valid
+        BDF and responds to configuration reads. NVMe CSTS.RDY is set within
+        the CAP.TO timeout.
+      tool: "lspci / dmesg log monitoring / protocol analyzer / NVMe CLI"
+      test_method: hardware_lab
+
+    - id: PLAT-011
+      title: Surprise Removal Handling
+      description: >
+        While the NVMe device is actively performing I/O (random 4K read workload),
+        physically remove the drive without pressing the Attention Button or
+        following the orderly removal sequence. Verify the downstream port detects
+        link-down via Data Link Layer State Changed (Slot Status bit 13). Confirm
+        the OS driver handles the surprise removal gracefully: outstanding I/Os
+        complete with error, no kernel panic or hang occurs, and the device's
+        resources (BARs, IRQ vectors, memory mappings) are fully released.
+      priority: P0
+      priority_rationale: Surprise removal during I/O is common in field failures; ungraceful handling causes system crashes.
+      spec_ref: "PCIe 5.0 §7.5.3.11, Table 7-27, §6.7.3.4"
+      pass_criteria: >
+        Slot Status Presence Detect Changed and DLLS Changed bits are set within
+        10 ms of removal. All outstanding NVMe I/O commands complete with status
+        indicating device removal (or timeout). No kernel oops/panic in dmesg.
+        lspci no longer shows the removed device. Memory-mapped regions are
+        unmapped without leaks.
+      tool: "fio (I/O generator) + dmesg + lspci + kernel tracing"
+      test_method: hardware_lab
+
+    - id: PLAT-012
+      title: Attention Button and Orderly Removal Sequence
+      description: >
+        Press the Attention Button on a hot-plug slot containing an active NVMe
+        device. Verify Slot Status register Attention Button Pressed (bit 0) is
+        set and a hot-plug interrupt (or MSI) is generated. Confirm the OS
+        initiates the orderly removal sequence: Power Indicator blinks (Slot
+        Control bits 9:8 = 10b), user data is flushed, NVMe shutdown notification
+        is sent (CC.SHN = 01b), CSTS.SHST transitions to 01b, slot power is
+        removed (Slot Control bit 10 = 1b), and Power Indicator turns Off.
+      priority: P1
+      priority_rationale: Orderly removal prevents data loss by ensuring NVMe flush/shutdown before power-off.
+      spec_ref: "PCIe 5.0 §7.5.3.10, Table 7-26, §7.5.3.11, Table 7-27"
+      pass_criteria: >
+        Attention Button Pressed event triggers within 1 ms of button press. Power
+        Indicator blinks during the 5-second abort window. NVMe CC.SHN = 01b is
+        written before slot power removal. CSTS.SHST = 01b (normal shutdown) is
+        achieved. Slot power is removed only after shutdown completes. Power
+        Indicator transitions to Off.
+      tool: "Hot-plug test chassis + dmesg + NVMe CLI + protocol analyzer"
+      test_method: hardware_lab
+
+  - name: Slot Power Management
+    items:
+    - id: PLAT-013
+      title: Slot Power Limit Delivery
+      description: >
+        Read the Slot Capabilities register to obtain the Slot Power Limit Value
+        (bits 14:7) and Slot Power Limit Scale (bits 16:15). Calculate the
+        effective power limit. Use a power measurement setup to verify the slot
+        can deliver at least the advertised power. Run a sustained sequential
+        write workload on the NVMe SSD to draw maximum power and confirm no
+        power throttling or unexpected link resets occur.
+      priority: P1
+      priority_rationale: Insufficient slot power delivery causes SSD performance throttling and unexpected resets.
+      spec_ref: "PCIe 5.0 §7.5.3.9, Table 7-25 (bits 14:7, 16:15), §7.5.3.3, Table 7-19"
+      pass_criteria: >
+        Measured slot power delivery meets or exceeds the Slot Power Limit Value.
+        SSD sustains maximum write throughput without thermal or power throttling
+        (verified via NVMe SMART log). No Correctable or Uncorrectable errors in
+        Device Status register during 30-minute sustained workload.
+      tool: "DC power analyzer + fio + NVMe SMART log reader"
+      test_method: hardware_lab
+
+  - name: Device Enumeration and Configuration
+    items:
+    - id: PLAT-014
+      title: BAR Sizing and Assignment
+      description: >
+        Write all-ones to each BAR of the NVMe controller's Type 0 configuration
+        header and read back to determine the requested size and type (32-bit vs
+        64-bit, prefetchable vs non-prefetchable). Verify BAR 0 requests a
+        memory-mapped, non-prefetchable region of at least 16 KiB (minimum for
+        NVMe controller registers). Assign valid base addresses and confirm MMIO
+        access to NVMe registers (CAP, VS, INTMS, INTMC, CC, CSTS, AQA, ASQ, ACQ)
+        at their defined offsets.
+      priority: P0
+      priority_rationale: BAR misconfiguration prevents NVMe controller access and device initialization.
+      spec_ref: "PCIe 5.0 §7.5.1.2, Table 7-7, Table 7-8"
+      pass_criteria: >
+        BAR 0 returns a size of at least 16 KiB. BAR type is 64-bit
+        memory-mapped. After assignment, MMIO read of NVMe CAP register (offset
+        00h) returns a valid value with MQES ≥ 1. MMIO read of VS register
+        (offset 08h) matches expected NVMe spec version (e.g., 0x00020000 for
+        NVMe 2.0).
+      tool: "setpci / lspci -vvv / custom MMIO test tool"
+      test_method: software_driver
+
+    - id: PLAT-015
+      title: Max Payload Size Negotiation
+      description: >
+        Read Device Capabilities register Max_Payload_Size Supported field (bits
+        2:0) to determine the device's maximum TLP payload capability. Verify the
+        system firmware or OS programs Device Control register Max_Payload_Size
+        (bits 7:5) to match or be less than the device capability. Generate large
+        NVMe I/O transfers and confirm on a protocol analyzer that no TLP exceeds
+        the negotiated MPS.
+      priority: P1
+      priority_rationale: MPS mismatch causes malformed TLPs leading to uncorrectable errors and data corruption.
+      spec_ref: "PCIe 5.0 §7.5.3.3, Table 7-19 (bits 2:0), §7.5.3.4, Table 7-20 (bits 7:5)"
+      pass_criteria: >
+        Device Control MPS ≤ Device Capabilities MPS Supported. No TLP on the
+        protocol analyzer exceeds the negotiated MPS value. NVMe sequential read
+        of 1 MiB completes without errors. Device Status register shows no
+        Uncorrectable Error Detected (bit 2).
+      tool: "Protocol analyzer + lspci -vvv + fio"
+      test_method: protocol_analyzer
+
+    - id: PLAT-016
+      title: Max Read Request Size Configuration
+      description: >
+        Read Device Control register Max_Read_Request_Size field (bits 14:12).
+        Verify the OS or firmware sets MRRS appropriately for the platform
+        topology. Issue large NVMe read commands and monitor protocol analyzer
+        to confirm Memory Read Request TLPs do not exceed the configured MRRS
+        value. Sweep MRRS from 128B to 4096B and verify correct TLP sizing at
+        each setting.
+      priority: P2
+      priority_rationale: Oversized read requests can overflow downstream buffers and degrade performance.
+      spec_ref: "PCIe 5.0 §7.5.3.4, Table 7-20 (bits 14:12)"
+      pass_criteria: >
+        All Memory Read Request TLPs have length ≤ configured MRRS at each
+        setting. Completion data matches original request. No Completer Abort
+        or Unsupported Request errors. Throughput scales appropriately when
+        MRRS increases from 128B to 4096B.
+      tool: "Protocol analyzer + setpci + fio"
+      test_method: protocol_analyzer
+
+    - id: PLAT-017
+      title: MSI-X Vector Allocation and Delivery
+      description: >
+        Read the MSI-X Capability Structure to determine the Table Size. Verify
+        the MSI-X Table BAR and offset are valid. Enable MSI-X (Message Control
+        bit 15) and program interrupt vectors for NVMe admin queue and all I/O
+        queues. Generate I/O on each queue and verify the correct MSI-X vector
+        fires for the corresponding queue by checking interrupt counters in
+        /proc/interrupts. Verify no interrupt storms or missed interrupts.
+      priority: P1
+      priority_rationale: MSI-X is the required interrupt mechanism for NVMe; misconfiguration causes I/O timeouts.
+      spec_ref: "PCIe 5.0 §7.7.2, Table 7-48, Table 7-49"
+      pass_criteria: >
+        MSI-X Table Size ≥ number of NVMe I/O queues + 1 (admin queue). Each
+        queue's interrupt vector fires exactly once per completion batch. No
+        spurious interrupts on unassigned vectors. Interrupt affinity matches
+        configured CPU mapping. Zero missed completions over 10 million I/O
+        operations.
+      tool: "lspci -vvv / /proc/interrupts / fio / custom interrupt test tool"
+      test_method: software_driver
+
+  - name: Power Management
+    items:
+    - id: PLAT-018
+      title: D-State Transitions (D0 → D3hot → D0)
+      description: >
+        Read the Power Management Capabilities register to confirm D3hot support
+        (PMC bit 9). Transition the NVMe device from D0 to D3hot by writing 11b
+        to PMCSR PowerState field (bits 1:0). Verify the device stops responding
+        to MMIO access (returns all-ones). Transition back to D0 by writing 00b
+        to PMCSR PowerState. Verify the device is accessible within the D3hot-to-D0
+        recovery time and all controller state is preserved or re-initialized.
+      priority: P1
+      priority_rationale: D-state transitions are exercised on every system sleep/resume cycle; failures cause boot hangs.
+      spec_ref: "PCIe 5.0 §7.5.2, Table 7-13, Table 7-14"
+      pass_criteria: >
+        PMCSR PowerState reads 11b after D3hot transition. MMIO reads return
+        all-ones in D3hot. After D0 restoration, NVMe CAP register is readable
+        within 10 ms. Controller re-initialization (CC.EN → CSTS.RDY) succeeds
+        within CAP.TO timeout. No AER errors logged during transition.
+      tool: "setpci / NVMe CLI / dmesg / power measurement"
+      test_method: software_driver
+
+    - id: PLAT-019
+      title: D3cold Entry and Exit via ACPI
+      description: >
+        Use ACPI _PS3 method (or sysfs power/control) to transition the NVMe
+        device to D3cold (main power removed). Verify the link goes to L2/L3
+        state and slot power is removed (if power controller is present). Restore
+        power via _PS0 and verify full device re-enumeration: link retraining,
+        configuration space restoration, BAR reprogramming, and NVMe controller
+        initialization (CC.EN → CSTS.RDY).
+      priority: P1
+      priority_rationale: D3cold is used for aggressive runtime power management and full platform suspend.
+      spec_ref: "PCIe 5.0 §7.5.2, Table 7-14, §5.3.2"
+      pass_criteria: >
+        Link state transitions to L2 or L3 within 100 ms of D3cold entry. Slot
+        power (if managed) drops to ≤ 0.5W. After power restoration, link
+        retrains to the highest supported speed within 200 ms. NVMe controller
+        CSTS.RDY asserts within CAP.TO. All data written before D3cold is
+        readable after resume.
+      tool: "Power analyzer + sysfs + dmesg + NVMe CLI + fio"
+      test_method: hardware_lab
+
+    - id: PLAT-020
+      title: PME (Power Management Event) Signaling
+      description: >
+        Enable PME generation by setting PMCSR PME_En (bit 8). Place the NVMe
+        device in D3hot. Trigger a wake event (e.g., Wake-on-LAN or management
+        command via NVMe-MI). Verify PME_Status (PMCSR bit 15) is set and the
+        Root Port receives the PME message. Confirm the OS resumes the device
+        to D0 and the NVMe controller becomes operational.
+      priority: P2
+      priority_rationale: PME is needed for remote management wake scenarios in data center deployments.
+      spec_ref: "PCIe 5.0 §7.5.2, Table 7-13 (PME_Support), Table 7-14 (PME_En, PME_Status)"
+      pass_criteria: >
+        PME_Support bits in PMC register indicate D3hot PME capability. PME_Status
+        (PMCSR bit 15) is set after wake event. Root Port PME interrupt fires.
+        Device transitions to D0 and NVMe CSTS.RDY is achieved within 5 seconds
+        of PME. No spurious PME events observed over 100 sleep/wake cycles.
+      tool: "setpci + dmesg + Root Port PME monitoring + NVMe CLI"
+      test_method: software_driver
+
+    - id: PLAT-021
+      title: ASPM L1 Entry and Exit Latency
+      description: >
+        Read Link Capabilities register to determine L1 Acceptable Latency (bits
+        11:9) and L1 Exit Latency (bits 17:15). Enable ASPM L1 via Link Control
+        register (bits 1:0 = 10b). Run an idle workload and verify the link enters
+        L1 within the expected idle timeout. Then issue a burst of NVMe I/O and
+        measure the L1 exit latency on a protocol analyzer. Confirm the measured
+        exit latency does not exceed the advertised L1 Exit Latency value.
+      priority: P2
+      priority_rationale: ASPM L1 provides significant idle power savings but excessive latency impacts QoS.
+      spec_ref: "PCIe 5.0 §7.5.3.6, Table 7-22 (bits 11:9, 17:15), §7.5.3.7, Table 7-23"
+      pass_criteria: >
+        Link enters L1 during idle periods (verified on protocol analyzer). L1
+        exit latency measured on analyzer is ≤ the value in Link Capabilities.
+        No Completion Timeouts during L1 exit transitions. NVMe I/O latency
+        increase due to L1 exit is ≤ 20 µs for 99th percentile.
+      tool: "Protocol analyzer + fio (latency mode) + power analyzer"
+      test_method: protocol_analyzer
+
+  - name: NVMe Controller Initialization
+    items:
+    - id: PLAT-022
+      title: NVMe Controller Enable Sequence
+      description: >
+        Perform the NVMe controller initialization sequence: verify CSTS.RDY is
+        0 (controller not ready), configure AQA (Admin Queue Attributes), write
+        ASQ and ACQ base addresses, set CC.MPS to match system page size, set
+        CC.CSS to NVM Command Set or Admin Command Set, then set CC.EN to 1.
+        Poll CSTS.RDY until it becomes 1 or CAP.TO timeout expires. Verify the
+        admin queue is functional by issuing an Identify Controller command.
+      priority: P0
+      priority_rationale: Controller initialization is the foundation for all NVMe operations; failure blocks all I/O.
+      spec_ref: "NVMe 2.0 §3.5.1"
+      pass_criteria: >
+        CSTS.RDY transitions to 1 within CAP.TO × 500 ms. Identify Controller
+        command returns valid data with correct VID, SSVID, SN, MN, and FR
+        fields. Admin Submission and Completion Queue doorbells function
+        correctly. No controller fatal status (CSTS.CFS) is set.
+      tool: "Custom NVMe driver / NVMe CLI / MMIO register dump tool"
+      test_method: software_driver
+
+    - id: PLAT-023
+      title: NVMe Controller Reset (CC.EN 1→0→1)
+      description: >
+        With the NVMe controller running I/O, clear CC.EN to 0. Poll CSTS.RDY
+        until it clears to 0 (or timeout at CAP.TO). Verify all I/O queues are
+        deleted and all outstanding commands are aborted. Re-enable the
+        controller by setting CC.EN to 1 after reconfiguring AQA/ASQ/ACQ.
+        Issue Identify Controller to verify the controller is operational.
+        Repeat the reset cycle 100 times to test stability.
+      priority: P0
+      priority_rationale: Controller reset is the primary error recovery mechanism used by NVMe drivers.
+      spec_ref: "NVMe 2.0 §3.5.2"
+      pass_criteria: >
+        CSTS.RDY clears within CAP.TO × 500 ms after CC.EN is cleared. All
+        outstanding I/O commands are aborted (completion with status indicating
+        abort). Controller re-enables successfully on every iteration. No CSTS.CFS
+        set during any of 100 reset cycles. Memory-mapped registers are accessible
+        after each reset.
+      tool: "Custom NVMe driver / NVMe CLI + fio for background I/O"
+      test_method: software_driver
+
+    - id: PLAT-024
+      title: NVMe Subsystem Reset
+      description: >
+        Write 4E564D65h ("NVMe") to the NSSR (NVMe Subsystem Reset) register at
+        offset 20h. Verify the entire NVMe subsystem resets, including all
+        controllers and namespaces. Poll CSTS.RDY until it clears. Re-initialize
+        all controllers in the subsystem and verify each controller's state is
+        equivalent to a fresh power-on. Compare Identify Controller data pre-
+        and post-reset to confirm no persistent state corruption.
+      priority: P1
+      priority_rationale: Subsystem reset is the last resort recovery before requiring a full PCIe bus reset.
+      spec_ref: "NVMe 2.0 §3.5.3"
+      pass_criteria: >
+        All controllers in the subsystem show CSTS.RDY = 0 after NSSR write.
+        Re-initialization succeeds on all controllers. Identify Controller data
+        matches pre-reset values. No namespace data corruption (verified by
+        reading previously written LBAs). Reset completes within 30 seconds.
+      tool: "Custom NVMe driver / NVMe CLI / MMIO register tool"
+      test_method: software_driver
+
+  - name: NVMe Queue Management
+    items:
+    - id: PLAT-025
+      title: I/O Queue Creation and Deletion
+      description: >
+        Issue Create I/O Completion Queue and Create I/O Submission Queue admin
+        commands to create the maximum number of queue pairs (up to CAP.MQES
+        entries, number of queues per Identify Controller NCQA/NSQA fields).
+        Verify each queue pair is functional by issuing a single read command.
+        Then delete all queues in reverse order using Delete I/O Submission Queue
+        and Delete I/O Completion Queue commands. Confirm all resources are freed.
+      priority: P1
+      priority_rationale: Queue management is fundamental to NVMe multi-core I/O distribution.
+      spec_ref: "NVMe 2.0 §5.3, §5.4"
+      pass_criteria: >
+        Number of queues created matches the Identify Controller maximum. Each
+        queue pair handles at least one I/O command successfully. All Create and
+        Delete commands complete with status 0 (success). After deletion, re-
+        creating the same number of queues succeeds without errors.
+      tool: "Custom NVMe driver / NVMe CLI"
+      test_method: software_driver
+
+    - id: PLAT-026
+      title: Queue Depth Stress Test
+      description: >
+        Create a single I/O queue pair with depth equal to CAP.MQES (maximum queue
+        entries supported). Fill the Submission Queue to capacity minus one entry
+        (SQ full condition). Verify all commands complete successfully and the
+        Completion Queue returns valid status for every entry. Monitor for SQ
+        head/tail pointer wrap-around correctness and CQ phase bit toggling at
+        queue depth boundaries.
+      priority: P1
+      priority_rationale: Queue depth edge cases expose firmware bugs in doorbell and pointer management.
+      spec_ref: "NVMe 2.0 §3.3.1, §3.3.2"
+      pass_criteria: >
+        All MQES-1 commands complete with success status. CQ phase bit toggles
+        correctly at each queue wrap-around. No Completion Queue overflow (missed
+        completions). Submission Queue head pointer advances correctly after each
+        completion. Zero command timeouts over 3 full queue cycles.
+      tool: "Custom NVMe driver + fio (iodepth=max) + NVMe CLI"
+      test_method: software_driver
+
+    - id: PLAT-027
+      title: Interrupt Coalescing Configuration
+      description: >
+        Configure NVMe interrupt coalescing via Set Features (Feature ID 08h)
+        with various Aggregation Time and Aggregation Threshold combinations.
+        For each setting, run a sustained I/O workload and measure interrupt
+        rate and I/O latency. Verify the controller respects the coalescing
+        parameters: interrupt rate decreases as aggregation increases, and
+        latency increases are bounded by the configured Aggregation Time.
+      priority: P2
+      priority_rationale: Interrupt coalescing balances CPU overhead and I/O latency; mistuning degrades both.
+      spec_ref: "NVMe 2.0 §5.27.1.3"
+      pass_criteria: >
+        Interrupt rate with coalescing enabled is at least 50% lower than without
+        (at high IOPS). I/O latency increase is bounded by the Aggregation Time
+        setting (± 10%). Set Features returns success for all valid parameter
+        combinations. Get Features confirms the active coalescing configuration.
+      tool: "Custom NVMe driver + fio + /proc/interrupts monitoring"
+      test_method: software_driver
+
+  - name: NVMe Namespace Management
+    items:
+    - id: PLAT-028
+      title: Namespace Identification and Enumeration
+      description: >
+        Issue Identify Namespace List (CNS 02h) to retrieve the list of active
+        namespace IDs. For each active NSID, issue Identify Namespace (CNS 00h)
+        and verify NSZE (Namespace Size), NCAP (Namespace Capacity), NUSE
+        (Namespace Utilization), and supported LBA formats (LBAF array). Verify
+        NSID 0 and NSIDs beyond the last active return appropriate error status.
+        Confirm Identify Namespace data is consistent with Identify Controller
+        TNVMCAP/UNVMCAP fields.
+      priority: P1
+      priority_rationale: Correct namespace enumeration is required for OS storage stack to discover available capacity.
+      spec_ref: "NVMe 2.0 §5.17, §5.17.1"
+      pass_criteria: >
+        Namespace List returns all active NSIDs in ascending order. Each
+        Identify Namespace returns NSZE > 0 and NCAP ≤ NSZE. At least one
+        LBAF entry with valid LBADS (≥ 9, i.e., 512B minimum). Sum of all
+        namespace NSZE values is ≤ Identify Controller TNVMCAP. Invalid NSIDs
+        return error status.
+      tool: "NVMe CLI (nvme list-ns, nvme id-ns)"
+      test_method: software_driver
+
+    - id: PLAT-029
+      title: Namespace Create and Delete (Optional)
+      description: >
+        If the controller supports Namespace Management (OACS bit 3), create a
+        new namespace with specified size, capacity, and LBA format using the
+        Namespace Management Create command. Attach the namespace to the
+        controller using Namespace Attachment. Verify the new namespace appears
+        in the Namespace List and is accessible for I/O. Delete the namespace
+        and verify it is removed from the list. Confirm total available capacity
+        is correctly updated after each create/delete operation.
+      priority: P2
+      priority_rationale: Dynamic namespace management enables flexible capacity partitioning in enterprise environments.
+      spec_ref: "NVMe 2.0 §5.18, §5.19"
+      pass_criteria: >
+        Create returns a unique NSID. Attached namespace appears in Identify
+        Namespace List. I/O (write + read + verify) succeeds on the created
+        namespace. After deletion, NSID is no longer in the list. UNVMCAP
+        reflects returned capacity. Creating namespaces up to TNVMCAP succeeds;
+        exceeding it returns Capacity Exceeded status.
+      tool: "NVMe CLI (nvme create-ns, nvme attach-ns, nvme delete-ns)"
+      test_method: software_driver
+
+  - name: NVMe Power State Transitions
+    items:
+    - id: PLAT-030
+      title: NVMe Power State Enumeration
+      description: >
+        Issue Identify Controller and read the Number of Power States Supported
+        (NPSS) field and Power State Descriptor array (bytes 2048–3071). For each
+        power state, record Maximum Power (MP), Entry Latency (ENLAT), Exit
+        Latency (EXLAT), Relative Read/Write Throughput (RRT/RWT), and Non-
+        Operational State (NOPS) flag. Verify power states are ordered by
+        decreasing performance and increasing power savings.
+      priority: P1
+      priority_rationale: Accurate power state descriptors are required for OS APST (Autonomous Power State Transition) configuration.
+      spec_ref: "NVMe 2.0 §5.17.2.1 (Identify Controller), §8.4.1"
+      pass_criteria: >
+        NPSS ≥ 1 (at least 2 power states including PS0). Maximum Power decreases
+        monotonically from PS0 to highest PS. Entry and Exit Latency values are
+        non-zero for non-operational states. NOPS flag is set for states with
+        ENLAT + EXLAT > 5 seconds. All descriptors have valid, non-reserved
+        field values.
+      tool: "NVMe CLI (nvme id-ctrl) + custom power state parser"
+      test_method: software_driver
+
+    - id: PLAT-031
+      title: NVMe Power State Transition via Set Features
+      description: >
+        Use Set Features (Feature ID 02h, Power Management) to transition the
+        NVMe controller through each supported power state from PS0 to the
+        deepest non-operational state and back. At each state, measure actual
+        device power consumption and verify it is ≤ the Maximum Power (MP)
+        value from the Power State Descriptor. Verify transition latencies
+        match ENLAT/EXLAT within a reasonable margin (±20%).
+      priority: P1
+      priority_rationale: Incorrect power state transitions waste power or cause I/O latency spikes.
+      spec_ref: "NVMe 2.0 §5.27.1.2, §8.4.1"
+      pass_criteria: >
+        Get Features confirms the target power state after each Set Features.
+        Measured power ≤ MP × 1.1 for each state. Transition to non-operational
+        states completes within ENLAT × 1.2. Return to PS0 completes within
+        EXLAT × 1.2. I/O resumes without errors after returning to operational
+        state.
+      tool: "NVMe CLI + DC power analyzer + fio"
+      test_method: hardware_lab
+
+    - id: PLAT-032
+      title: Autonomous Power State Transition (APST)
+      description: >
+        Configure APST using Set Features (Feature ID 0Ch) with an Autonomous
+        Power State Transition table specifying idle time thresholds for each
+        power state transition. Leave the device idle and verify it autonomously
+        transitions to progressively deeper power states at the configured
+        intervals. Issue I/O and verify the controller exits to PS0 within the
+        Exit Latency of the current state. Run 1000 idle-active cycles to
+        verify APST reliability.
+      priority: P2
+      priority_rationale: APST reduces NVMe idle power in client platforms without OS intervention.
+      spec_ref: "NVMe 2.0 §5.27.1.12, §8.4.2"
+      pass_criteria: >
+        Device enters each configured power state within ±10% of the idle time
+        threshold. Power measurement confirms reduced power in deeper states.
+        Controller returns to PS0 within EXLAT of the current state when I/O
+        resumes. Zero I/O errors across 1000 idle-active cycles. Get Features
+        returns the configured APST table.
+      tool: "NVMe CLI + DC power analyzer + fio + idle/active scripting"
+      test_method: hardware_lab
+
+  - name: NVMe Thermal Management
+    items:
+    - id: PLAT-033
+      title: Temperature Threshold Configuration
+      description: >
+        Read Identify Controller to determine Critical Composite Temperature
+        Threshold (CCTEMP) and Warning Composite Temperature Threshold (WCTEMP).
+        Configure custom Under/Over Temperature Thresholds using Set Features
+        (Feature ID 04h). Run a sustained write workload to raise device
+        temperature. Verify asynchronous events are generated when the composite
+        temperature crosses the configured thresholds.
+      priority: P1
+      priority_rationale: Thermal monitoring prevents data loss from overheating and is required by data center management.
+      spec_ref: "NVMe 2.0 §5.27.1.4, §5.2.1"
+      pass_criteria: >
+        Asynchronous Event Request completes with Temperature Above Threshold
+        notice when composite temperature ≥ Over Temperature Threshold. Event
+        clears when temperature drops below threshold. SMART log (Log Page 02h)
+        Critical Warning bit 1 is set when temperature exceeds WCTEMP. Controller
+        does not assert CSTS.CFS below CCTEMP.
+      tool: "NVMe CLI + fio (thermal stress) + external temperature monitoring"
+      test_method: hardware_lab
+
+    - id: PLAT-034
+      title: Thermal Management Throttling Behavior
+      description: >
+        Use Set Features (Feature ID 10h, Host Controlled Thermal Management)
+        to set TMT1 (Thermal Management Temperature 1) and TMT2 thresholds.
+        Run a sustained random write workload while monitoring performance and
+        temperature. Verify that when composite temperature reaches TMT1, the
+        controller reduces performance (light throttle), and at TMT2, applies
+        heavy throttling. Confirm performance recovers when temperature drops
+        below the thresholds.
+      priority: P2
+      priority_rationale: Predictable thermal throttling prevents surprise performance drops in production workloads.
+      spec_ref: "NVMe 2.0 §5.27.1.16, §8.3"
+      pass_criteria: >
+        IOPS drops by at least 20% when TMT1 is reached. IOPS drops by at least
+        50% when TMT2 is reached. Temperature stabilizes below CCTEMP during
+        sustained throttling. Performance recovers to within 10% of baseline
+        within 30 seconds after cooling. Get Features confirms configured TMT
+        values.
+      tool: "NVMe CLI + fio + temperature logging + power analyzer"
+      test_method: hardware_lab
+
+  - name: NVMe Firmware Update
+    items:
+    - id: PLAT-035
+      title: Firmware Download and Commit (No Reset)
+      description: >
+        Download a firmware image to the NVMe controller using Firmware Image
+        Download commands (opcode 11h) in 64 KiB chunks. Verify each download
+        command completes with success. Issue Firmware Commit (opcode 10h) with
+        Commit Action 01b (replace image in slot, activate on next reset) or
+        11b (activate without reset, if supported per FRMW bit 4). If activation
+        without reset is supported, verify the new firmware is active immediately
+        by checking Identify Controller FR field.
+      priority: P1
+      priority_rationale: Firmware updates are critical for security patches and bug fixes in deployed SSDs.
+      spec_ref: "NVMe 2.0 §5.11, §5.12"
+      pass_criteria: >
+        Firmware Download of complete image succeeds (all chunks return status 0).
+        Firmware Commit returns success. If no-reset activation is supported, FR
+        field reflects new firmware version immediately. If reset is required,
+        firmware activates after controller reset and FR field matches expected
+        version. SMART log Firmware Slot Information reflects the committed slot.
+      tool: "NVMe CLI (nvme fw-download, nvme fw-commit, nvme fw-log)"
+      test_method: firmware_test
+
+    - id: PLAT-036
+      title: Firmware Commit with Controller Level Reset
+      description: >
+        Download a new firmware image and issue Firmware Commit with Commit Action
+        10b (activate on next controller reset). Verify the Firmware Commit
+        command completes with status indicating reset required (status code 0Bh,
+        Firmware Activation Requires Reset). Issue a controller reset (CC.EN
+        0→1). After re-initialization, verify the new firmware is active via
+        Identify Controller FR field and Firmware Slot Information log. Confirm
+        all namespaces and data are intact post-update.
+      priority: P1
+      priority_rationale: Most firmware updates require reset; the full download-commit-reset flow must be reliable.
+      spec_ref: "NVMe 2.0 §5.11, §5.12, §3.5.2"
+      pass_criteria: >
+        Firmware Commit returns status 0Bh (Requires Reset). After controller
+        reset, CSTS.RDY asserts within CAP.TO. Identify Controller FR matches
+        new firmware version. All namespaces are accessible. Data integrity check
+        (read previously written pattern) passes. Firmware Slot Information shows
+        new image in the active slot.
+      tool: "NVMe CLI + custom data integrity checker"
+      test_method: firmware_test
+
+  - name: NVMe Error Recovery
+    items:
+    - id: PLAT-037
+      title: AER (Advanced Error Reporting) Error Injection and Handling
+      description: >
+        Enable AER on the PCIe NVMe endpoint by setting Device Control register
+        bits for Correctable Error Reporting Enable (bit 0), Non-Fatal Error
+        Reporting Enable (bit 1), and Fatal Error Reporting Enable (bit 2).
+        Inject various error types via AER error injection (e.g., ECRC error,
+        poisoned TLP, Completion Timeout) using platform error injection
+        mechanisms (EINJ ACPI table or custom hardware). Verify the Root Port
+        receives and logs the errors correctly.
+      priority: P1
+      priority_rationale: AER is the primary mechanism for PCIe error reporting; driver must handle all error types.
+      spec_ref: "PCIe 5.0 §7.5.3.4, Table 7-20 (bits 0–2), §7.8.4"
+      pass_criteria: >
+        Each injected error type is captured in the AER Uncorrectable/Correctable
+        Error Status register. Root Port receives ERR_COR/ERR_NONFATAL/ERR_FATAL
+        message as appropriate. OS error handler logs the error with correct
+        source BDF. Device recovers from correctable and non-fatal errors without
+        link reset. Fatal errors trigger FLR or secondary bus reset recovery.
+      tool: "EINJ / aer-inject / custom error injection + dmesg + AER logs"
+      test_method: software_driver
+
+    - id: PLAT-038
+      title: NVMe Asynchronous Event Handling
+      description: >
+        Submit multiple Asynchronous Event Request (AER) commands (up to the
+        maximum indicated by Identify Controller AERL + 1). Trigger events by
+        causing temperature threshold crossing, namespace attribute change, or
+        firmware activation. Verify the controller returns AER completions with
+        correct event type, event information, and associated log page identifier.
+        Confirm the OS driver retrieves the indicated log page and clears the
+        event condition.
+      priority: P1
+      priority_rationale: Asynchronous events are essential for proactive health monitoring and management.
+      spec_ref: "NVMe 2.0 §5.2, §5.2.1"
+      pass_criteria: >
+        Controller accepts AERL + 1 outstanding AER commands. Each triggered
+        event returns a completion with correct Event Type and Log Page Identifier.
+        Retrieving the indicated log page succeeds and contains relevant data.
+        After event handling, resubmitted AER command is accepted. No events are
+        lost across 100 event trigger cycles.
+      tool: "NVMe CLI (nvme async-event) + thermal/namespace triggers"
+      test_method: software_driver
+
+    - id: PLAT-039
+      title: NVMe Command Timeout and Abort
+      description: >
+        Issue an NVMe I/O command with an artificially induced controller delay
+        (e.g., via error injection or firmware debug mode) to trigger the host
+        driver's command timeout. Verify the driver issues an Abort command
+        (opcode 08h) for the timed-out command. Confirm the Abort command
+        completes successfully and the aborted command returns with status
+        indicating abort. Verify the controller remains operational and subsequent
+        I/O commands succeed without errors.
+      priority: P1
+      priority_rationale: Command timeout is the primary I/O error recovery path; failure to abort causes queue hangs.
+      spec_ref: "NVMe 2.0 §5.1, §3.3.3"
+      pass_criteria: >
+        Abort command completes with success status. The timed-out command
+        returns with Aborted - By Request status (status code 07h). Controller
+        does not enter fatal state (CSTS.CFS = 0). Subsequent I/O commands on
+        the same queue complete successfully. No data corruption on the target
+        namespace.
+      tool: "Custom NVMe driver with timeout injection + fio + NVMe CLI"
+      test_method: software_driver
+
+    - id: PLAT-040
+      title: NVMe Controller Fatal Status Recovery
+      description: >
+        Induce a controller fatal status condition (CSTS.CFS = 1) via error
+        injection or firmware debug hook. Verify the host driver detects CSTS.CFS
+        and initiates the recovery sequence: disable controller (CC.EN = 0), wait
+        for CSTS.RDY to clear, re-initialize the controller (CC.EN = 1). Verify
+        CSTS.CFS clears after re-initialization. Confirm all namespaces are
+        accessible and data integrity is maintained by reading back previously
+        written data.
+      priority: P0
+      priority_rationale: CFS recovery is the last line of defense before device replacement; failure means data unavailability.
+      spec_ref: "NVMe 2.0 §3.5.2, §3.1.5"
+      pass_criteria: >
+        CSTS.CFS is detected by the driver within 1 second. Controller disable
+        (CC.EN = 0) causes CSTS.RDY to clear within CAP.TO. Re-enable sets
+        CSTS.RDY = 1 and CSTS.CFS = 0. All namespaces enumerable post-recovery.
+        Data written before fatal status reads back correctly. Recovery succeeds
+        on 10 consecutive CFS injection cycles.
+      tool: "Custom NVMe driver + error injection + fio + data integrity tool"
+      test_method: firmware_test
+
+  - name: NVMe Data Integrity
+    items:
+    - id: PLAT-041
+      title: End-to-End Data Protection (DIF/DIX) Verification
+      description: >
+        If the NVMe controller supports end-to-end data protection (Identify
+        Namespace DPC field), enable Protection Information (PI) Type 1, 2, or 3
+        on a namespace. Write data blocks with valid CRC-16 guard tags, logical
+        block application tags, and reference tags. Read back and verify the
+        controller validates PI on reads. Inject a corrupted guard tag and verify
+        the controller returns a data integrity error.
+      priority: P2
+      priority_rationale: End-to-end data protection catches silent data corruption in the I/O path.
+      spec_ref: "NVMe 2.0 §8.1, §5.17.1 (DPC, DPS fields)"
+      pass_criteria: >
+        Writes with valid PI succeed. Reads return data with correct guard tag
+        CRC. Writes with intentionally corrupted guard tag return End-to-End
+        Guard Check Error (status 82h). Reference tag mismatches return End-to-End
+        Reference Tag Check Error (status 84h). All PI types supported by the
+        controller are tested successfully.
+      tool: "Custom NVMe driver with PI support + data pattern generator"
+      test_method: software_driver
+
+    - id: PLAT-042
+      title: Compare Command Verification
+      description: >
+        Write a known data pattern to a range of LBAs. Issue the NVMe Compare
+        command (opcode 05h) with the same data pattern and verify it returns
+        success. Modify one byte in the compare buffer and reissue; verify the
+        controller returns Compare Failure status (status 85h). Test with various
+        transfer sizes from 1 LBA to the maximum transfer size (MDTS). Verify
+        Compare works correctly across namespace boundaries (returns error for
+        out-of-range LBAs).
+      priority: P2
+      priority_rationale: Compare command is used for atomic check-and-swap operations in distributed storage systems.
+      spec_ref: "NVMe 2.0 §7.1"
+      pass_criteria: >
+        Compare with matching data returns success. Compare with mismatched data
+        returns Compare Failure (85h). Compare at MDTS transfer size succeeds
+        for matching data. Compare beyond namespace NSZE returns LBA Out of Range
+        error. Performance of Compare is within 20% of equivalent Read latency.
+      tool: "NVMe CLI (nvme compare) + custom compare test tool"
+      test_method: software_driver
+
+  - name: Link Error Handling
+    items:
+    - id: PLAT-043
+      title: ECRC Generation and Checking
+      description: >
+        Verify the NVMe endpoint advertises ECRC Generation and Checking capable
+        bits in the AER Capability register. Enable ECRC Generation Capable and
+        ECRC Check Capable via the AER Control register. Run sustained I/O and
+        verify no ECRC errors occur under normal operation. Inject an ECRC error
+        via error injection and verify the receiving port detects and reports it
+        as a correctable or uncorrectable error (depending on advisory non-fatal
+        configuration).
+      priority: P2
+      priority_rationale: ECRC provides end-to-end TLP integrity checking beyond the link-level CRC.
+      spec_ref: "PCIe 5.0 §7.8.4, §3.2.6"
+      pass_criteria: >
+        AER Capability register indicates ECRC Generation and Check capable.
+        After enabling, no ECRC errors during 1-hour sustained I/O. Injected ECRC
+        error is captured in AER Uncorrectable Error Status register. Error source
+        BDF is correctly identified in Root Error Status. Normal I/O resumes after
+        error clearing.
+      tool: "Protocol analyzer + EINJ + setpci + fio"
+      test_method: protocol_analyzer
+
+    - id: PLAT-044
+      title: Completion Timeout Mechanism
+      description: >
+        Read Device Capabilities 2 register to check Completion Timeout Ranges
+        Supported and Completion Timeout Disable Supported. Configure Completion
+        Timeout Value in Device Control 2 register to each supported range (50 µs
+        to 50 ms, 50 ms to 500 ms, etc.). For each range, induce a missing
+        completion (e.g., by disabling completer's memory decoding) and verify
+        the requester reports Completion Timeout within the configured range.
+        Test Completion Timeout Disable by setting the disable bit.
+      priority: P1
+      priority_rationale: Completion Timeout prevents infinite hangs on lost transactions; misconfigured values delay error recovery.
+      spec_ref: "PCIe 5.0 §7.5.3.16, Table 7-37, Table 7-38"
+      pass_criteria: >
+        Completion Timeout fires within ±50% of the configured range. AER
+        Uncorrectable Error Status shows Completion Timeout (bit 14). With
+        Completion Timeout Disable set, no timeout fires within 60 seconds (or
+        the maximum supported range). Device Control 2 readback confirms
+        programmed timeout value.
+      tool: "Protocol analyzer + EINJ + setpci + custom timeout test"
+      test_method: protocol_analyzer
+
+  - name: NVMe Shutdown and Data Persistence
+    items:
+    - id: PLAT-045
+      title: NVMe Normal Shutdown (CC.SHN)
+      description: >
+        Write a known data pattern across multiple namespaces. Issue NVMe shutdown
+        notification by writing CC.SHN = 01b (Normal Shutdown). Poll CSTS.SHST
+        until it reads 01b (Normal Shutdown Complete) or timeout at 30 seconds.
+        Power off the device (via D3cold or slot power removal). Re-power and
+        re-initialize the controller. Read back all data and verify integrity.
+        Repeat the shutdown cycle 100 times.
+      priority: P0
+      priority_rationale: Graceful shutdown ensures all cached data is flushed to NVM; failure means data loss.
+      spec_ref: "NVMe 2.0 §3.5.4, §3.1.5"
+      pass_criteria: >
+        CSTS.SHST transitions to 01b within 30 seconds of CC.SHN = 01b. Data
+        written before shutdown reads back identically after power cycle. No
+        SMART media errors (Log Page 02h) reported after any shutdown cycle.
+        All 100 shutdown cycles complete without CSTS.CFS or timeout.
+      tool: "NVMe CLI + fio + custom data integrity checker + power control"
+      test_method: firmware_test
+
+    - id: PLAT-046
+      title: NVMe Abrupt Shutdown (Power Loss) Data Persistence
+      description: >
+        Write a known data pattern and issue a Flush command (opcode 00h) to
+        ensure data is committed to NVM. Then immediately remove power without
+        issuing CC.SHN (simulating unexpected power loss). Re-power the device
+        and re-initialize the controller. Verify all data written before the
+        Flush command is intact. Optionally, write additional data without Flush
+        before power loss and verify that the controller handles partial writes
+        without namespace corruption (metadata consistency).
+      priority: P0
+      priority_rationale: Unexpected power loss is common in field; data committed before Flush must survive.
+      spec_ref: "NVMe 2.0 §3.5.4, §7.3"
+      pass_criteria: >
+        All data written and flushed before power loss reads back correctly. No
+        namespace metadata corruption (Identify Namespace fields are valid after
+        power-on). SMART log does not indicate media errors from unflushed writes.
+        Controller initializes normally (CSTS.RDY within CAP.TO) after power loss.
+        100 abrupt power cycles without cumulative degradation.
+      tool: "Power interrupter + fio + custom data integrity checker"
+      test_method: hardware_lab
+
+    - id: PLAT-047
+      title: Write Atomicity Across Power Loss
+      description: >
+        Identify the NVMe controller's Atomic Write Unit Normal (AWUN) and Atomic
+        Write Unit Power Fail (AWUPF) from Identify Controller. Write data in
+        units of AWUPF LBAs to specific LBA ranges. Interrupt power during an
+        active write that spans multiple AWUPF units. After power restoration,
+        verify that each AWUPF-aligned range contains either the old data or the
+        new data completely — no torn writes within an atomic unit. Test across
+        1000 power interruption cycles.
+      priority: P1
+      priority_rationale: Write atomicity guarantees are relied upon by databases and filesystems for crash consistency.
+      spec_ref: "NVMe 2.0 §8.2, §5.17.2.1 (AWUN, AWUPF)"
+      pass_criteria: >
+        No AWUPF-aligned LBA range contains mixed old/new data after power loss.
+        Each atomic write unit is either fully committed or fully rolled back.
+        AWUPF value matches datasheet specification. 1000 power cycles complete
+        with zero torn writes detected. Controller initializes successfully after
+        each power cycle.
+      tool: "Power interrupter + custom atomic write verifier + fio"
+      test_method: hardware_lab

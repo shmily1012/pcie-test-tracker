@@ -1,0 +1,1183 @@
+metadata:
+  version: "5.0"
+  layer: "Error Handling"
+  spec_sources:
+    - "PCIe Base Spec 5.0"
+
+categories:
+- name: Error Handling
+  subcategories:
+  - name: Error Classification
+    items:
+    - id: ERR-001
+      title: Error Classification — Correctable vs. Uncorrectable Detection
+      description: >
+        Verify the DUT correctly classifies PCIe errors into correctable and uncorrectable
+        categories per the error classification hierarchy in Figure 6-1. Inject known
+        correctable errors (e.g., Bad TLP via CRC corruption, Replay Timer Timeout via
+        delayed ACK) and known uncorrectable errors (e.g., Poisoned TLP, Malformed TLP)
+        using a protocol analyzer or error injection tool. Read the Correctable Error Status
+        register and Uncorrectable Error Status register in the AER capability structure
+        after each injection to confirm the correct classification bit is set.
+      priority: P0
+      priority_rationale: Correct error classification is the foundation of all PCIe error handling; misclassification leads to incorrect severity response.
+      spec_ref: "PCIe 5.0 §6.2.2, Figure 6-1, Table 6-2, Table 6-3, Table 6-4, Table 6-5"
+      pass_criteria: >
+        Correctable errors (Bad TLP, Bad DLLP, Replay Timer Timeout, REPLAY_NUM Rollover,
+        Receiver Error) set only bits in the Correctable Error Status register. Uncorrectable
+        errors (Poisoned TLP, Malformed TLP, Completion Timeout, Unexpected Completion,
+        Unsupported Request) set only bits in the Uncorrectable Error Status register.
+        No cross-contamination between correctable and uncorrectable status registers.
+      tool: "Protocol analyzer with error injection (LeCroy/Keysight) + Linux AER tools (lspci, setpci)"
+      test_method: protocol_analyzer
+
+    - id: ERR-002
+      title: Uncorrectable Error Severity Register — Fatal vs. Non-Fatal Default Values
+      description: >
+        Read the Uncorrectable Error Severity register from the DUT AER capability structure
+        without any software reprogramming. Verify that the default severity assignments
+        match the PCIe 5.0 specification defaults: Data Link Protocol Error and Surprise
+        Down are Fatal by default; Poisoned TLP Received, Completion Timeout, Completer
+        Abort, Unexpected Completion, Unsupported Request, ECRC Check Failed, ACS Violation,
+        and TLP Prefix Blocked are Non-Fatal by default. Confirm Receiver Overflow, Flow
+        Control Protocol Error, and Malformed TLP are Fatal by default.
+      priority: P0
+      priority_rationale: Incorrect default severity assignments cause improper system response to errors, potentially masking fatal conditions.
+      spec_ref: "PCIe 5.0 §6.2.3.2.1, §6.2.7, Table 6-4, Table 6-5"
+      pass_criteria: >
+        Uncorrectable Error Severity register default value matches spec: bits for DLPE
+        (bit 4), Surprise Down (bit 5), Receiver Overflow (bit 17), Flow Control Protocol
+        Error (bit 13), Malformed TLP (bit 18) are set to 1 (Fatal). Bits for Poisoned
+        TLP (bit 12), Completion Timeout (bit 14), Completer Abort (bit 15), Unexpected
+        Completion (bit 16), UR (bit 20), ECRC (bit 19) are set to 0 (Non-Fatal).
+      tool: "Linux lspci -vvv + setpci (read AER capability offset)"
+      test_method: software_driver
+
+    - id: ERR-003
+      title: Uncorrectable Error Severity Reprogramming
+      description: >
+        For devices implementing AER, reprogram the Uncorrectable Error Severity register
+        to escalate a normally Non-Fatal error (e.g., Completion Timeout) to Fatal severity.
+        Inject the error condition and verify the device signals ERR_FATAL instead of
+        ERR_NONFATAL. Then restore the default severity and re-inject to confirm the device
+        reverts to ERR_NONFATAL signaling. This validates the programmability of error
+        severity as defined in the specification.
+      priority: P1
+      priority_rationale: Severity reprogramming is used by platforms to customize error handling policy; must work correctly when used.
+      spec_ref: "PCIe 5.0 §6.2.3.2.1, §6.2.7"
+      pass_criteria: >
+        After setting Completion Timeout severity bit to 1 (Fatal), injecting a CTO
+        results in ERR_FATAL message (Root Error Status register shows Fatal error received).
+        After restoring severity bit to 0 (Non-Fatal), injecting CTO results in
+        ERR_NONFATAL message. Device Status register reflects correct Fatal/Non-Fatal
+        Error Detected bit in each case.
+      tool: "Protocol analyzer with error injection + Linux setpci + AER driver"
+      test_method: software_driver
+
+  - name: Correctable Errors
+    items:
+    - id: ERR-004
+      title: Receiver Error Detection and Reporting
+      description: >
+        Inject Physical Layer receiver errors by degrading the signal quality at the DUT
+        RX input using a BERT or by introducing controlled bit errors in the data stream.
+        The Physical Layer Receiver Error is a correctable error detected when the receiver
+        observes 8b/10b decode errors (Gen1/Gen2) or 128b/130b sync header errors
+        (Gen3/Gen4/Gen5). Verify the Receiver Error bit is set in the Correctable Error
+        Status register and an ERR_COR message is sent to the Root Complex.
+      priority: P0
+      priority_rationale: Receiver Error is the primary Physical Layer correctable error; its correct detection validates PHY-level error reporting.
+      spec_ref: "PCIe 5.0 §6.2.7, Table 6-3, §4.2.1.1.3, §4.2.1.2, §4.2.4.8, §4.2.6"
+      pass_criteria: >
+        Receiver Error status bit (bit 0) set in Correctable Error Status register after
+        injection. ERR_COR message received at Root Complex (Root Error Status register
+        Correctable Error Messages Received bit set). Correctable Error Detected bit set
+        in Device Status register. Error count increments correctly for repeated injections.
+        No uncorrectable error status bits set.
+      tool: "BERT with error injection + protocol analyzer + Linux AER tools"
+      test_method: protocol_analyzer
+
+    - id: ERR-005
+      title: Bad TLP Detection (LCRC Error)
+      description: >
+        Inject TLPs with corrupted LCRC (Link CRC) at the Data Link Layer to trigger a
+        Bad TLP correctable error. The receiving Data Link Layer detects the CRC mismatch
+        and initiates a Data Link Level Retry (DLLR) via NAK DLLP. Verify the Bad TLP
+        bit is set in the Correctable Error Status register and an ERR_COR message is
+        generated. Monitor that the TLP is successfully retransmitted after the NAK.
+      priority: P0
+      priority_rationale: Bad TLP detection and DLLR are fundamental Data Link Layer error recovery mechanisms; failure causes data corruption.
+      spec_ref: "PCIe 5.0 §6.2.7, Table 6-4, §3.6.3.1"
+      pass_criteria: >
+        Bad TLP status bit (bit 6) set in Correctable Error Status register. NAK DLLP
+        transmitted by receiver within 2 us of corrupted TLP receipt. Original TLP
+        retransmitted by sender and received correctly. ERR_COR message at Root Complex.
+        No data loss or corruption observed at application layer. Link remains in L0
+        throughout recovery.
+      tool: "Protocol analyzer with LCRC corruption injection + Linux AER tools"
+      test_method: protocol_analyzer
+
+    - id: ERR-006
+      title: Bad DLLP Detection
+      description: >
+        Inject DLLPs with corrupted CRC at the Data Link Layer to trigger a Bad DLLP
+        correctable error. DLLPs include ACK, NAK, Flow Control Update, and Power Management
+        types. Corrupt the 16-bit CRC in an ACK DLLP and verify the receiver detects the
+        error, sets the Bad DLLP bit in the Correctable Error Status register, and sends
+        an ERR_COR message. The link should recover without any TLP loss since the sender
+        will retransmit based on replay timer.
+      priority: P1
+      priority_rationale: Bad DLLP is a correctable error with automatic recovery via replay; less critical than Bad TLP but still validates DLL integrity.
+      spec_ref: "PCIe 5.0 §6.2.7, Table 6-4, §3.6.2.2"
+      pass_criteria: >
+        Bad DLLP status bit (bit 7) set in Correctable Error Status register. ERR_COR
+        message received at Root Complex. Link recovers without entering Recovery LTSSM
+        state. No TLP data loss. Replay timer handles retransmission of any affected TLPs.
+      tool: "Protocol analyzer with DLLP corruption injection + Linux AER tools"
+      test_method: protocol_analyzer
+
+    - id: ERR-007
+      title: Replay Timer Timeout
+      description: >
+        Force a Replay Timer Timeout by suppressing ACK DLLPs from the receiver using a
+        protocol analyzer in manipulation mode. The transmitter's replay timer expires when
+        no ACK is received within the timeout period, triggering retransmission of all
+        unacknowledged TLPs from the replay buffer. Verify the Replay Timer Timeout bit
+        is set in the Correctable Error Status register and ERR_COR is generated.
+      priority: P1
+      priority_rationale: Replay Timer Timeout validates the Data Link Layer retry mechanism under ACK loss conditions.
+      spec_ref: "PCIe 5.0 §6.2.7, Table 6-4, §3.6.2.1"
+      pass_criteria: >
+        Replay Timer Timeout status bit (bit 12) set in Correctable Error Status register.
+        ERR_COR message sent to Root Complex. Replay buffer contents retransmitted
+        successfully. Link remains in L0 unless REPLAY_NUM threshold is exceeded.
+        No TLP data loss at application layer.
+      tool: "Protocol analyzer with ACK suppression + Linux AER tools"
+      test_method: protocol_analyzer
+
+    - id: ERR-008
+      title: REPLAY_NUM Rollover
+      description: >
+        Force multiple consecutive Replay Timer Timeouts to cause the REPLAY_NUM counter
+        to roll over its threshold. This correctable error indicates that the retry
+        mechanism has been exhausted for a set of TLPs, and the link will enter the
+        Recovery LTSSM state to re-establish reliable communication. Verify the
+        REPLAY_NUM Rollover bit is set in the Correctable Error Status register and the
+        link transitions to Recovery before returning to L0.
+      priority: P1
+      priority_rationale: REPLAY_NUM Rollover triggers link Recovery; validates the escalation path from correctable to link retraining.
+      spec_ref: "PCIe 5.0 §6.2.7, Table 6-4, §3.6.2.1"
+      pass_criteria: >
+        REPLAY_NUM Rollover status bit (bit 8) set in Correctable Error Status register.
+        ERR_COR message generated. LTSSM enters Recovery state (observable via protocol
+        analyzer). Link successfully retrains and returns to L0. No data corruption after
+        link recovery. Total recovery time from first timeout to L0 re-entry < 500 ms.
+      tool: "Protocol analyzer with sustained ACK suppression + Linux AER tools"
+      test_method: protocol_analyzer
+
+    - id: ERR-009
+      title: Correctable Error Masking via Correctable Error Mask Register
+      description: >
+        For devices implementing AER, program the Correctable Error Mask register to mask
+        individual correctable errors (e.g., mask Receiver Error bit). Inject the masked
+        error and verify that: (1) the error status bit is still set in the Correctable
+        Error Status register, (2) no ERR_COR message is sent to the Root Complex, and
+        (3) the error is not recorded in the Header Log or First Error Pointer. Then
+        unmask and verify normal reporting resumes.
+      priority: P1
+      priority_rationale: Error masking is essential for filtering noise in production systems; incorrect masking can hide real errors or flood logs.
+      spec_ref: "PCIe 5.0 §6.2.3.2.2, §6.2.5, Figure 6-2"
+      pass_criteria: >
+        With Receiver Error masked: status bit still sets, but no ERR_COR at Root Complex
+        (Root Error Status unchanged). With Receiver Error unmasked: ERR_COR message
+        received at Root Complex. Masking/unmasking of all correctable error types
+        (bits 0, 6, 7, 8, 12, 13) functions correctly. No side effects on other error bits.
+      tool: "Protocol analyzer with error injection + Linux setpci (AER registers)"
+      test_method: software_driver
+
+  - name: Uncorrectable Non-Fatal Errors
+    items:
+    - id: ERR-010
+      title: Poisoned TLP Received — Non-Fatal Error Detection
+      description: >
+        Send a TLP with the EP (Error Poisoning) bit set to the DUT to trigger a Poisoned
+        TLP Received error. This is an uncorrectable Non-Fatal error by default. Verify
+        the DUT sets the Poisoned TLP Received bit in the Uncorrectable Error Status
+        register, logs the TLP header in the Header Log register, and signals the error
+        appropriately (ERR_NONFATAL or ERR_COR for Advisory Non-Fatal cases per
+        Section 6.2.3.2.4).
+      priority: P0
+      priority_rationale: Data poisoning is a critical error forwarding mechanism; correct handling prevents silent data corruption.
+      spec_ref: "PCIe 5.0 §6.2.7, Table 6-5, §2.7.2.2, §6.2.3.2.4.3"
+      pass_criteria: >
+        Poisoned TLP Received bit (bit 12) set in Uncorrectable Error Status register.
+        Header Log register contains the 4 DW header of the poisoned TLP. First Error
+        Pointer points to bit 12 (if this is the first error). For Advisory Non-Fatal
+        case: Advisory Non-Fatal Error Status bit set in Correctable Error Status register,
+        ERR_COR sent. For non-advisory case: ERR_NONFATAL sent. Link remains in L0.
+      tool: "Protocol analyzer with EP bit injection + Linux AER tools (lspci -vvv)"
+      test_method: protocol_analyzer
+
+    - id: ERR-011
+      title: Completion Timeout Detection and Reporting
+      description: >
+        Issue a Non-Posted Request (e.g., Memory Read) from the DUT and prevent the
+        Completer from returning a Completion by blocking or dropping the Completion TLP
+        at a protocol analyzer. Wait for the DUT's Completion Timeout mechanism to expire.
+        Verify the Completion Timeout bit is set in the Uncorrectable Error Status register
+        and the DUT signals the error as Non-Fatal (default severity). Check that the
+        Completion Timeout value programmed in the Device Control 2 register is honored.
+      priority: P0
+      priority_rationale: Completion Timeout is the primary mechanism for detecting lost Completions; failure to detect causes system hangs.
+      spec_ref: "PCIe 5.0 §6.2.7, Table 6-5, §2.8, §6.2.3.2.4.4"
+      pass_criteria: >
+        Completion Timeout bit (bit 14) set in Uncorrectable Error Status register.
+        ERR_NONFATAL message sent to Root Complex (or ERR_COR for Advisory Non-Fatal case).
+        Timeout occurs within the range programmed in Device Control 2 register (e.g.,
+        50 us to 50 ms for Range A, 65 ms to 210 ms for Range B). Header Log contains
+        the original request TLP header if Completion Timeout Prefix/Header Log Capable
+        bit is set. Device Status register shows Non-Fatal Error Detected.
+      tool: "Protocol analyzer with Completion blocking + Linux setpci + AER tools"
+      test_method: protocol_analyzer
+
+    - id: ERR-012
+      title: Completion Timeout Range Programming
+      description: >
+        Read the Device Capabilities 2 register to determine supported Completion Timeout
+        ranges (A through D). Program each supported range via Device Control 2 register
+        and measure the actual timeout duration by blocking Completions. Verify timeouts
+        fall within the specified range boundaries. Also test the Completion Timeout
+        Disable bit to confirm it disables the timeout mechanism entirely.
+      priority: P1
+      priority_rationale: Correct timeout range programming ensures predictable error detection latency across different system configurations.
+      spec_ref: "PCIe 5.0 §2.8, §7.5.3.15, §7.5.3.16"
+      pass_criteria: >
+        Range A: timeout between 50 us and 50 ms. Range B: timeout between 65 ms and
+        210 ms. Range C: timeout between 260 ms and 900 ms. Range D: timeout between
+        1 s and 3.5 s. Each measured timeout falls within ±10% of range boundaries.
+        With Completion Timeout Disable = 1: no timeout occurs within 10 s observation
+        window. Unsupported ranges are rejected (write has no effect).
+      tool: "Protocol analyzer with Completion blocking + Linux setpci + timing measurement"
+      test_method: protocol_analyzer
+
+    - id: ERR-013
+      title: Unexpected Completion Detection
+      description: >
+        Send a Completion TLP to the DUT that does not match any outstanding Non-Posted
+        Request (i.e., mismatched Tag, Requester ID, or no outstanding request). This
+        triggers an Unexpected Completion error, which is an Advisory Non-Fatal Error
+        case. Verify the DUT sets the Unexpected Completion bit in the Uncorrectable
+        Error Status register, logs the Completion header, and signals ERR_COR (for
+        AER-capable devices, since this is an Advisory Non-Fatal Error).
+      priority: P1
+      priority_rationale: Unexpected Completions can result from misrouting; correct detection prevents consumption of spurious data.
+      spec_ref: "PCIe 5.0 §6.2.7, Table 6-5, §2.3.2, §6.2.3.2.4.5"
+      pass_criteria: >
+        Unexpected Completion bit (bit 16) set in Uncorrectable Error Status register.
+        Header Log contains the unexpected Completion TLP header. Advisory Non-Fatal
+        Error Status bit set in Correctable Error Status register. ERR_COR message sent
+        (not ERR_NONFATAL, since this is Advisory Non-Fatal). First Error Pointer points
+        to bit 16 if first error. Link remains in L0.
+      tool: "Protocol analyzer with Completion injection + Linux AER tools"
+      test_method: protocol_analyzer
+
+    - id: ERR-014
+      title: Unsupported Request (UR) Detection and Reporting
+      description: >
+        Issue requests to the DUT targeting non-existent address ranges or unsupported
+        request types to trigger an Unsupported Request error. This includes memory reads
+        to unmapped BAR regions and configuration accesses to non-existent functions.
+        Verify the UR bit is set in the Uncorrectable Error Status register and the
+        Device Status register. For Non-Posted Requests, verify the DUT returns a
+        Completion with UR status. Check Advisory Non-Fatal handling per the agent's
+        role (Completer sending UR/CA status).
+      priority: P0
+      priority_rationale: UR is the most common uncorrectable error during enumeration and operation; correct handling is essential for system stability.
+      spec_ref: "PCIe 5.0 §6.2.7, Table 6-5, §6.2.3.2.4.1, Table F-1, §2.3.1"
+      pass_criteria: >
+        Unsupported Request bit (bit 20) set in Uncorrectable Error Status register.
+        Unsupported Request Detected bit set in Device Status register. Completion with
+        UR status (Cpl Status = 001b) returned for Non-Posted Requests. For Advisory
+        Non-Fatal case: ERR_COR sent. Header Log contains the offending request TLP
+        header. No system crash or hang from UR during normal enumeration.
+      tool: "Linux setpci (config space access to invalid functions) + protocol analyzer + AER tools"
+      test_method: software_driver
+
+    - id: ERR-015
+      title: Completer Abort (CA) Detection and Reporting
+      description: >
+        Trigger a Completer Abort condition at the DUT by sending a request that the
+        device can identify but cannot service (implementation-specific). Verify the
+        DUT returns a Completion with CA status for Non-Posted Requests and sets the
+        Completer Abort bit in the Uncorrectable Error Status register. Verify
+        ERR_NONFATAL or ERR_COR signaling per Advisory Non-Fatal rules.
+      priority: P1
+      priority_rationale: CA is less common than UR but still requires correct handling to prevent silent request drops.
+      spec_ref: "PCIe 5.0 §6.2.7, Table 6-5, §2.3.1, §6.2.3.2.4.1"
+      pass_criteria: >
+        Completer Abort bit (bit 15) set in Uncorrectable Error Status register.
+        Completion with CA status (Cpl Status = 100b) returned for Non-Posted Requests.
+        Header Log contains the request TLP header. ERR_NONFATAL or ERR_COR signaling
+        matches Advisory Non-Fatal rules. Device continues normal operation after CA.
+      tool: "Protocol analyzer with targeted request injection + Linux AER tools"
+      test_method: protocol_analyzer
+
+    - id: ERR-016
+      title: ECRC Check Failed — Non-Fatal Error
+      description: >
+        Enable ECRC generation at the sender and ECRC checking at the DUT receiver via
+        the AER capability (ECRC Generation Enable, ECRC Check Enable bits). Send a TLP
+        with a valid LCRC but corrupted ECRC (End-to-End CRC). Verify the DUT detects
+        the ECRC mismatch, sets the ECRC Check Failed bit in the Uncorrectable Error
+        Status register, and logs the TLP header. ECRC errors are Non-Fatal by default
+        and are Advisory Non-Fatal Error cases.
+      priority: P0
+      priority_rationale: ECRC provides end-to-end data integrity across switches; checking validation is critical for multi-hop topologies.
+      spec_ref: "PCIe 5.0 §6.2.7, Table 6-5, §2.7.1, §6.2.3.2.4.2"
+      pass_criteria: >
+        ECRC Check Failed bit (bit 19) set in Uncorrectable Error Status register.
+        Header Log contains the TLP header with corrupted ECRC. Advisory Non-Fatal Error
+        Status bit set in Correctable Error Status register. ERR_COR message sent (Advisory
+        Non-Fatal case). ECRC Check Capable bit = 1 in AER capability. Link remains in L0.
+        TLPs with valid ECRC pass without error after the test.
+      tool: "Protocol analyzer with ECRC corruption + Linux setpci (AER ECRC enable bits)"
+      test_method: protocol_analyzer
+
+    - id: ERR-017
+      title: ACS Violation Detection
+      description: >
+        Enable ACS (Access Control Services) on the DUT or an upstream switch port.
+        Attempt to route a TLP that violates ACS policy (e.g., peer-to-peer request
+        blocked by ACS Source Validation or ACS P2P Request Redirect). Verify the ACS
+        Violation bit is set in the Uncorrectable Error Status register and the
+        offending TLP header is logged. This is a Non-Fatal error by default.
+      priority: P2
+      priority_rationale: ACS Violation is relevant for virtualization (SR-IOV) environments; lower priority for single-function NVMe devices.
+      spec_ref: "PCIe 5.0 §6.2.7, Table 6-5, §6.12"
+      pass_criteria: >
+        ACS Violation bit (bit 21) set in Uncorrectable Error Status register. Header
+        Log contains the TLP that violated ACS policy. ERR_NONFATAL or ERR_COR sent
+        per Advisory Non-Fatal rules. ACS-blocked TLP is not forwarded to the
+        destination. Normal (non-violating) traffic unaffected.
+      tool: "Protocol analyzer + Linux (ACS configuration via sysfs/setpci)"
+      test_method: software_driver
+
+  - name: Uncorrectable Fatal Errors
+    items:
+    - id: ERR-018
+      title: Data Link Protocol Error — Fatal Error Detection
+      description: >
+        Inject a sequence number mismatch at the Data Link Layer by manipulating the
+        TLP sequence number to trigger a Data Link Protocol Error. This is a Fatal
+        uncorrectable error by default. Verify the DUT sets the Data Link Protocol Error
+        bit in the Uncorrectable Error Status register, signals ERR_FATAL to the Root
+        Complex, and the link enters Recovery. Monitor the LTSSM state transitions and
+        verify the link retrains successfully.
+      priority: P0
+      priority_rationale: DLPE is the most severe Data Link Layer error; incorrect handling can cause silent data corruption or link hang.
+      spec_ref: "PCIe 5.0 §6.2.7, Table 6-4, §3.6.2.2"
+      pass_criteria: >
+        Data Link Protocol Error bit (bit 4) set in Uncorrectable Error Status register.
+        ERR_FATAL message received at Root Complex (Root Error Status Fatal Error Messages
+        Received bit set). Device Status register shows Fatal Error Detected. LTSSM
+        transitions to Recovery. Link retrains to L0 within 200 ms. If DPC is enabled,
+        DPC triggers and link enters Disabled state.
+      tool: "Protocol analyzer with sequence number manipulation + Linux AER tools"
+      test_method: protocol_analyzer
+
+    - id: ERR-019
+      title: Surprise Down Error Detection
+      description: >
+        Simulate a Surprise Down error by abruptly removing the link partner signal (e.g.,
+        via RF switch or hot-removal without OS notification). A Downstream Port detecting
+        an unexpected link-down condition must report a Surprise Down error, which is Fatal
+        by default. Verify the Surprise Down bit is set in the Uncorrectable Error Status
+        register and ERR_FATAL is signaled.
+      priority: P0
+      priority_rationale: Surprise Down detection is critical for enterprise hot-plug environments; failure to detect can leave the port in an undefined state.
+      spec_ref: "PCIe 5.0 §6.2.7, Table 6-4, §3.2.1"
+      pass_criteria: >
+        Surprise Down bit (bit 5) set in Uncorrectable Error Status register at the
+        Downstream Port (Root Port). ERR_FATAL message generated. Device Status register
+        shows Fatal Error Detected. If DPC is enabled, DPC triggers with Trigger Reason
+        indicating the Surprise Down. Link re-establishes after device re-insertion.
+        No kernel panic on host system.
+      tool: "RF switch for signal removal (or physical hot-removal) + Linux AER/DPC tools"
+      test_method: hardware_lab
+
+    - id: ERR-020
+      title: Malformed TLP Detection — Fatal Error
+      description: >
+        Inject TLPs with malformed headers to the DUT, including: TLPs with invalid Fmt/Type
+        encoding, TLPs where the data payload length does not match the Length field, TLPs
+        with reserved field violations, and TLPs exceeding Max_Payload_Size. Malformed TLP
+        is a Fatal uncorrectable error by default. Verify the Malformed TLP bit is set in
+        the Uncorrectable Error Status register, the TLP header is logged, and ERR_FATAL
+        is signaled.
+      priority: P0
+      priority_rationale: Malformed TLP detection prevents processing of structurally invalid packets that could cause unpredictable behavior.
+      spec_ref: "PCIe 5.0 §6.2.7, Table 6-5, §2.2.2, §2.2.3, §2.2.5, §2.2.7"
+      pass_criteria: >
+        Malformed TLP bit (bit 18) set in Uncorrectable Error Status register for each
+        malformed variant. Header Log contains the first 4 DW of the malformed TLP.
+        ERR_FATAL message sent to Root Complex. Device Status register shows Fatal Error
+        Detected. At least 5 distinct malformation types tested (invalid Fmt/Type,
+        length mismatch, oversized payload, reserved field set, invalid TC/VC mapping).
+      tool: "Protocol analyzer with TLP header manipulation + Linux AER tools"
+      test_method: protocol_analyzer
+
+    - id: ERR-021
+      title: Receiver Overflow — Fatal Error
+      description: >
+        Overwhelm the DUT receiver by sending traffic that exceeds its buffer capacity
+        or by sending TLPs in violation of flow control credits. Receiver Overflow is a
+        Fatal uncorrectable error by default, detected when the Transaction Layer receives
+        more data than the advertised flow control credits allow. Verify the Receiver
+        Overflow bit is set in the Uncorrectable Error Status register and ERR_FATAL is
+        signaled.
+      priority: P0
+      priority_rationale: Receiver Overflow indicates a fundamental flow control violation that compromises data integrity.
+      spec_ref: "PCIe 5.0 §6.2.7, Table 6-5, §2.6.1.2"
+      pass_criteria: >
+        Receiver Overflow bit (bit 17) set in Uncorrectable Error Status register.
+        ERR_FATAL message sent to Root Complex. Device Status register shows Fatal Error
+        Detected. Link may enter Recovery or be disabled by DPC. No data corruption
+        at the application layer. System recovers after link retraining or device reset.
+      tool: "Protocol analyzer with flow control credit violation injection + Linux AER tools"
+      test_method: protocol_analyzer
+
+    - id: ERR-022
+      title: Flow Control Protocol Error — Fatal Error
+      description: >
+        Inject flow control violations such as sending a Flow Control Update DLLP with
+        an invalid VC or sending flow control initialization packets after the link is
+        already in L0. Flow Control Protocol Error is a Fatal uncorrectable error by
+        default. Verify the error is detected, the Flow Control Protocol Error bit is
+        set in the Uncorrectable Error Status register, and ERR_FATAL is signaled.
+      priority: P1
+      priority_rationale: Flow control protocol errors are rare in practice but indicate severe protocol violations requiring link reset.
+      spec_ref: "PCIe 5.0 §6.2.7, Table 6-5, §2.6.1"
+      pass_criteria: >
+        Flow Control Protocol Error bit (bit 13) set in Uncorrectable Error Status
+        register. ERR_FATAL message sent to Root Complex. Device Status register shows
+        Fatal Error Detected. Link enters Recovery or is disabled by DPC. System
+        recovers after link retraining or device reset.
+      tool: "Protocol analyzer with flow control DLLP manipulation + Linux AER tools"
+      test_method: protocol_analyzer
+
+  - name: Error Signaling (Error Messages)
+    items:
+    - id: ERR-023
+      title: ERR_COR Message Generation and Delivery
+      description: >
+        Trigger a correctable error at the DUT (e.g., Bad TLP via LCRC corruption) and
+        capture the resulting ERR_COR error message on a protocol analyzer. Verify the
+        message format includes the correct Requester ID (Bus/Device/Function of the
+        reporting device), the message routing is set to Root Complex, and the Root
+        Complex correctly receives and logs the message in the Root Error Status register.
+        Verify the Correctable Error Reporting Enable bit in the Device Control register
+        controls message generation.
+      priority: P0
+      priority_rationale: ERR_COR is the primary mechanism for reporting correctable errors to the system; must work for error monitoring.
+      spec_ref: "PCIe 5.0 §6.2.3.2, §6.2.5, Table 6-1, Figure 6-2"
+      pass_criteria: >
+        ERR_COR message captured on protocol analyzer with correct Requester ID matching
+        DUT BDF. Root Error Status register shows ERR_COR received. Error Source
+        Identification register contains the DUT's Requester ID. With Correctable Error
+        Reporting Enable = 0 in Device Control register: no ERR_COR message generated.
+        With enable = 1: ERR_COR message generated within 1 us of error detection.
+      tool: "Protocol analyzer (LeCroy/Keysight) + Linux AER tools"
+      test_method: protocol_analyzer
+
+    - id: ERR-024
+      title: ERR_NONFATAL Message Generation and Delivery
+      description: >
+        Trigger a Non-Fatal uncorrectable error at the DUT (e.g., Completion Timeout by
+        dropping a Completion) and capture the ERR_NONFATAL error message. Verify the
+        message format, Requester ID, and that the Root Complex logs it in the Root Error
+        Status register. Verify the Non-Fatal Error Reporting Enable bit in the Device
+        Control register controls message generation. Verify SERR# Enable in the Command
+        register also gates the message when applicable.
+      priority: P0
+      priority_rationale: ERR_NONFATAL signals recoverable errors that may require software intervention; correct delivery is essential.
+      spec_ref: "PCIe 5.0 §6.2.3.2, §6.2.5, §6.2.6, Table 6-1, Figure 6-2, Figure 6-3"
+      pass_criteria: >
+        ERR_NONFATAL message captured with correct Requester ID. Root Error Status register
+        shows Non-Fatal error received. Error Source Identification register updated.
+        With Non-Fatal Error Reporting Enable = 0: no ERR_NONFATAL generated. With
+        SERR# Enable = 0: ERR_NONFATAL not transmitted (for devices without AER). System
+        Error generated at Root Complex when Root Error Command register enables it.
+      tool: "Protocol analyzer with Completion blocking + Linux AER tools"
+      test_method: protocol_analyzer
+
+    - id: ERR-025
+      title: ERR_FATAL Message Generation and Delivery
+      description: >
+        Trigger a Fatal uncorrectable error at the DUT (e.g., by injecting a Malformed
+        TLP or Data Link Protocol Error) and capture the ERR_FATAL error message. Verify
+        message delivery to the Root Complex, correct Requester ID, and that the Root
+        Error Status register logs a Fatal error. Verify the Fatal Error Reporting Enable
+        bit in the Device Control register and SERR# Enable control message generation.
+      priority: P0
+      priority_rationale: ERR_FATAL indicates the link is unreliable and requires reset; delivery failure leaves the system in a corrupted state.
+      spec_ref: "PCIe 5.0 §6.2.3.2, §6.2.5, §6.2.6, Table 6-1, Figure 6-2, Figure 6-3"
+      pass_criteria: >
+        ERR_FATAL message captured with correct Requester ID. Root Error Status register
+        shows Fatal error received. Error Source Identification register updated with
+        DUT Requester ID. With Fatal Error Reporting Enable = 0: no ERR_FATAL generated.
+        System Error generated when Root Error Command register enables it. DPC triggers
+        if enabled at Downstream Port.
+      tool: "Protocol analyzer with error injection + Linux AER tools"
+      test_method: protocol_analyzer
+
+    - id: ERR-026
+      title: Error Message Control via Device Control Register
+      description: >
+        Systematically test all three error reporting enable bits in the Device Control
+        register (Correctable Error Reporting Enable, Non-Fatal Error Reporting Enable,
+        Fatal Error Reporting Enable). For each combination, inject the corresponding
+        error type and verify that error messages are generated only when the corresponding
+        enable bit is set. Verify that error status bits are still set regardless of the
+        enable bit state (status bits are independent of reporting enables).
+      priority: P1
+      priority_rationale: Correct gating of error messages prevents unwanted error storms while ensuring status bits remain available for polling.
+      spec_ref: "PCIe 5.0 §6.2.5, §6.2.6, Figure 6-2, Figure 6-3, §7.5.3.4"
+      pass_criteria: >
+        For each of 8 combinations of the 3 enable bits: error messages generated only
+        when corresponding enable is set. Error status bits set in AER registers regardless
+        of enable state. No ERR_COR when Correctable Reporting Enable = 0 even with error
+        detected. No ERR_NONFATAL when Non-Fatal Reporting Enable = 0. No ERR_FATAL when
+        Fatal Reporting Enable = 0. SERR# Enable interaction verified for ERR_NONFATAL
+        and ERR_FATAL.
+      tool: "Protocol analyzer with error injection + Linux setpci (Device Control register)"
+      test_method: software_driver
+
+  - name: Error Forwarding (Data Poisoning)
+    items:
+    - id: ERR-027
+      title: Data Poisoning — EP Bit Setting on Error Forwarding
+      description: >
+        Verify the DUT correctly sets the Error Poisoning (EP) bit in the TLP header when
+        forwarding data that is known to be corrupted. For an NVMe SSD performing DMA
+        writes to host memory, simulate an internal data path error and verify the DUT
+        sets EP = 1 in the Memory Write TLP header. This allows the receiver (Root Complex)
+        to detect poisoned data without relying solely on end-to-end CRC.
+      priority: P0
+      priority_rationale: Data poisoning is the primary mechanism for flagging corrupted data in transit; failure causes silent data corruption.
+      spec_ref: "PCIe 5.0 §6.2.3.3, §2.7.2, §2.7.2.2"
+      pass_criteria: >
+        EP bit (bit 14 of byte 1 in TLP header) set to 1 in forwarded TLP containing
+        corrupted data. Root Complex detects poisoned TLP and sets Detected Parity Error
+        bit in PCI Status register. Poisoned TLP Received status bit set at receiver's
+        AER. Non-poisoned TLPs from same device have EP = 0. Protocol analyzer confirms
+        EP bit in captured TLP headers.
+      tool: "Protocol analyzer + vendor-specific error injection mechanism"
+      test_method: protocol_analyzer
+
+    - id: ERR-028
+      title: Poisoned Completion Handling
+      description: >
+        Send a Memory Read request to the DUT and have the DUT return a Completion with
+        the EP bit set (simulating data corruption in the read path). Alternatively, use
+        a protocol analyzer to inject a poisoned Completion to the DUT as a Requester.
+        Verify the receiving agent detects the poison indication and handles it per the
+        specification: the Requester may propagate the poisoned data or handle the error
+        internally, signaling the error via ERR_COR or ERR_NONFATAL depending on the
+        handling approach.
+      priority: P1
+      priority_rationale: Poisoned Completions require correct Requester-side handling to prevent corrupted data from reaching the application layer.
+      spec_ref: "PCIe 5.0 §6.2.3.3, §2.7.2.2, §6.2.3.2.4.3"
+      pass_criteria: >
+        Requester detects EP bit in received Completion. Poisoned TLP Received bit set
+        in Uncorrectable Error Status register at the Requester. Error signaled as
+        ERR_COR (if propagated, Advisory Non-Fatal) or ERR_NONFATAL (if not propagated).
+        Header Log contains the poisoned Completion header. No silent data corruption
+        at the application layer.
+      tool: "Protocol analyzer with EP bit injection + Linux AER tools"
+      test_method: protocol_analyzer
+
+    - id: ERR-029
+      title: Completion Status Error Forwarding (UR and CA)
+      description: >
+        Trigger Completion Status error forwarding by sending requests that result in
+        Unsupported Request (UR) or Completer Abort (CA) Completion Status. For Non-Posted
+        Requests, verify the Completer returns a Completion with the appropriate status
+        code (UR = 001b, CA = 100b). Verify the Requester handles the error status
+        correctly by checking the Unsupported Request Detected bit in the Device Status
+        register and AER logging at both the Completer and Requester.
+      priority: P1
+      priority_rationale: Completion Status is the primary mechanism for signaling request-level errors back to the Requester.
+      spec_ref: "PCIe 5.0 §6.2.3.1, §6.2.3.2.4.1, §6.2.3.2.4.5, §2.3.1"
+      pass_criteria: >
+        UR Completion: Cpl Status = 001b in Completion header. CA Completion: Cpl Status =
+        100b. Requester sets Unsupported Request Detected in Device Status for UR.
+        Completer logs the offending request in AER Header Log. Both Completer and
+        Requester handle Advisory Non-Fatal cases correctly per their AER capabilities.
+        Byte Count and Lower Address fields valid in error Completions.
+      tool: "Protocol analyzer + Linux setpci (invalid config space accesses for UR generation)"
+      test_method: protocol_analyzer
+
+  - name: Error Logging (AER)
+    items:
+    - id: ERR-030
+      title: AER Capability Structure Presence and Format
+      description: >
+        Enumerate the DUT's PCI Express Extended Capability space and locate the Advanced
+        Error Reporting (AER) Extended Capability structure (Capability ID = 0001h). Verify
+        all required registers are present: Uncorrectable Error Status, Uncorrectable Error
+        Mask, Uncorrectable Error Severity, Correctable Error Status, Correctable Error Mask,
+        Advanced Error Capabilities and Control, Header Log (4 DW), and optionally TLP
+        Prefix Log. Verify default values match the specification.
+      priority: P0
+      priority_rationale: AER capability is the foundation of advanced error reporting; its presence and correct format are prerequisites for all AER tests.
+      spec_ref: "PCIe 5.0 §6.2.4, §7.8.4, §6.2.1"
+      pass_criteria: >
+        AER capability found at valid Extended Capability offset with ID = 0001h and
+        version >= 2. All required registers readable at correct offsets. Default values:
+        Uncorrectable Error Mask = 0 (all unmasked), Correctable Error Mask = 0,
+        Uncorrectable Error Severity matches Table 6-5 defaults. Header Log = 0 (no
+        errors logged). First Error Pointer valid or points to reserved bit. ECRC
+        Generation/Check Capable bits reflect hardware capability.
+      tool: "Linux lspci -vvv + setpci (AER capability walk)"
+      test_method: software_driver
+
+    - id: ERR-031
+      title: Header Log Register — TLP Header Capture
+      description: >
+        Inject an uncorrectable error (e.g., Poisoned TLP or Malformed TLP) that requires
+        header logging. Read the 4-DW Header Log register in the AER capability structure
+        and verify it contains the exact TLP header of the packet that caused the error.
+        Compare the logged header against the protocol analyzer capture of the injected
+        TLP to confirm byte-for-byte accuracy.
+      priority: P0
+      priority_rationale: Header Log is essential for root-cause analysis of errors; incorrect logging makes error diagnosis impossible.
+      spec_ref: "PCIe 5.0 §6.2.4.2, §6.2.4, §7.8.4.7"
+      pass_criteria: >
+        Header Log DW0-DW3 match the injected TLP header byte-for-byte (verified against
+        protocol analyzer capture). For 3-DW header TLPs: DW3 contains first DW of data
+        or is undefined. For 4-DW header TLPs: all 4 DWs contain header fields. Header
+        Log cleared (zeros) after software writes 1 to the corresponding error status bit.
+        Multiple sequential errors: Header Log reflects the error indicated by the First
+        Error Pointer.
+      tool: "Protocol analyzer with known TLP injection + Linux setpci (Header Log read)"
+      test_method: protocol_analyzer
+
+    - id: ERR-032
+      title: First Error Pointer Accuracy
+      description: >
+        Inject multiple uncorrectable errors in sequence (e.g., first a Poisoned TLP, then
+        a Completion Timeout) without clearing the error status between injections. Verify
+        the First Error Pointer in the Advanced Error Capabilities and Control register
+        points to the bit position of the first error detected (bit 12 for Poisoned TLP).
+        Clear the first error by writing 1 to its status bit and verify the First Error
+        Pointer updates to the next recorded error (bit 14 for Completion Timeout).
+      priority: P0
+      priority_rationale: First Error Pointer enables software to identify the root cause when multiple errors occur; critical for error triage.
+      spec_ref: "PCIe 5.0 §6.2.4.2, §7.8.4.6"
+      pass_criteria: >
+        First Error Pointer = 12 (Poisoned TLP) after first injection. First Error Pointer
+        remains 12 after second error injection (Completion Timeout). Header Log reflects
+        the Poisoned TLP (first error). After clearing bit 12 in Uncorrectable Error Status:
+        First Error Pointer updates to 14 (Completion Timeout). Header Log updates to
+        Completion Timeout request header. First Error Pointer invalid when no errors
+        are logged.
+      tool: "Protocol analyzer with sequential error injection + Linux setpci (AER registers)"
+      test_method: protocol_analyzer
+
+    - id: ERR-033
+      title: TLP Prefix Log Register
+      description: >
+        For devices supporting TLP Prefixes and AER, inject an error on a TLP that contains
+        End-to-End TLP Prefixes. Verify the TLP Prefix Log register in the AER capability
+        records the prefix(es) associated with the errored TLP. Check the TLP Prefix Log
+        Present bit in the AER Capabilities and Control register to confirm prefix logging
+        support. Verify prefixes are logged in the order they appear in the TLP.
+      priority: P2
+      priority_rationale: TLP Prefix logging is needed for diagnosing errors in PASID/TPH-tagged transactions; lower priority for basic NVMe testing.
+      spec_ref: "PCIe 5.0 §6.2.4.4, §7.8.4.7, §2.2.10.2"
+      pass_criteria: >
+        TLP Prefix Log Present bit correctly reflects device capability. If supported:
+        TLP Prefix Log contains the End-to-End prefix(es) from the errored TLP. Prefix
+        order matches the TLP as received. TLP Prefix Log cleared when the associated
+        error status bit is cleared. If not supported: TLP Prefix Log reads as 0.
+      tool: "Protocol analyzer with TLP Prefix injection + Linux setpci"
+      test_method: protocol_analyzer
+
+    - id: ERR-034
+      title: Uncorrectable Error Mask Register Functionality
+      description: >
+        Program the Uncorrectable Error Mask register to mask specific uncorrectable errors
+        (e.g., mask Completion Timeout). Inject the masked error and verify: (1) the error
+        status bit is still set in the Uncorrectable Error Status register, (2) no error
+        message (ERR_NONFATAL/ERR_FATAL) is sent, (3) the error is not recorded in the
+        Header Log or First Error Pointer. Unmask and verify full reporting resumes.
+      priority: P1
+      priority_rationale: Masking allows platforms to suppress known benign errors; incorrect implementation causes error storms or missed critical errors.
+      spec_ref: "PCIe 5.0 §6.2.3.2.2, §6.2.5, Figure 6-2"
+      pass_criteria: >
+        With Completion Timeout masked: status bit 14 still sets, but no ERR_NONFATAL
+        at Root Complex. Header Log not updated. First Error Pointer does not point to
+        masked error. With mask cleared: ERR_NONFATAL generated and Header Log updated.
+        All individually maskable uncorrectable errors tested. No interaction between
+        mask and severity registers.
+      tool: "Protocol analyzer with error injection + Linux setpci (AER mask registers)"
+      test_method: software_driver
+
+    - id: ERR-035
+      title: Error Status Register Write-1-to-Clear Behavior
+      description: >
+        Verify the write-1-to-clear (W1C) behavior of both the Correctable Error Status
+        and Uncorrectable Error Status registers. Inject errors to set status bits, then
+        write 1 to specific bits and verify only the written bits are cleared while other
+        set bits remain. Write 0 to set bits and verify they are not cleared. Verify that
+        clearing a status bit also frees the associated Header Log and TLP Prefix Log
+        resources for the next error.
+      priority: P1
+      priority_rationale: Correct W1C behavior is essential for software error handling loops that process and dismiss errors individually.
+      spec_ref: "PCIe 5.0 §6.2.4.2, §7.8.4.2, §7.8.4.4"
+      pass_criteria: >
+        Writing 1 to a set bit clears only that bit. Writing 0 to a set bit has no effect.
+        Writing 1 to an already-clear bit has no effect. After clearing a bit: Header Log
+        updates to reflect the next error (per First Error Pointer). Multiple bits can be
+        cleared simultaneously by writing 1 to multiple positions. Register reads back
+        0 after all set bits are cleared.
+      tool: "Linux setpci (AER register read/write) + protocol analyzer for error injection"
+      test_method: software_driver
+
+  - name: ECRC
+    items:
+    - id: ERR-036
+      title: ECRC Generation Capability and Enable
+      description: >
+        Read the AER Advanced Error Capabilities and Control register to determine if the
+        DUT supports ECRC generation (ECRC Generation Capable bit). If capable, enable
+        ECRC generation via the ECRC Generation Enable bit. Capture TLPs transmitted by
+        the DUT on a protocol analyzer and verify ECRC (32-bit CRC) is appended to each
+        TLP that supports ECRC. Verify the CRC value is correct by recalculating with
+        the same polynomial (CRC-32C). Disable ECRC generation and verify TLPs are sent
+        without the ECRC field.
+      priority: P0
+      priority_rationale: ECRC generation is required for end-to-end integrity in multi-hop topologies; validation ensures correct CRC computation.
+      spec_ref: "PCIe 5.0 §2.7.1, §7.8.4.6"
+      pass_criteria: >
+        ECRC Generation Capable = 1 (if hardware supports it). With ECRC Generation
+        Enable = 1: all applicable TLPs contain valid ECRC (CRC-32C verified). TD bit
+        (TLP Digest) = 1 in TLP header for ECRC-protected TLPs. With ECRC Generation
+        Enable = 0: no ECRC appended (TD = 0). ECRC value matches independent CRC-32C
+        computation for >= 100 captured TLPs. Both Memory and Completion TLPs verified.
+      tool: "Protocol analyzer (LeCroy/Keysight) + CRC-32C verification tool + Linux setpci"
+      test_method: protocol_analyzer
+
+    - id: ERR-037
+      title: ECRC Checking Capability and Enable
+      description: >
+        Read the AER register to determine if the DUT supports ECRC checking (ECRC Check
+        Capable bit). Enable ECRC checking via the ECRC Check Enable bit. Send TLPs with
+        valid ECRC to verify they pass without error. Then send TLPs with corrupted ECRC
+        and verify the DUT detects the mismatch, sets the ECRC Check Failed bit in the
+        Uncorrectable Error Status register, and reports the error. Disable ECRC checking
+        and verify corrupted-ECRC TLPs are accepted without error.
+      priority: P0
+      priority_rationale: ECRC checking at the receiver completes the end-to-end integrity chain; must correctly detect corrupted TLPs.
+      spec_ref: "PCIe 5.0 §2.7.1, §6.2.7, Table 6-5, §7.8.4.6"
+      pass_criteria: >
+        ECRC Check Capable = 1 (if supported). With Check Enable = 1: valid ECRC TLPs
+        accepted without error. Corrupted ECRC TLPs: ECRC Check Failed bit (bit 19) set
+        in Uncorrectable Error Status. Error reported as Advisory Non-Fatal (ERR_COR).
+        With Check Enable = 0: corrupted ECRC TLPs accepted without error. Zero false
+        positives in >= 1000 valid-ECRC TLPs.
+      tool: "Protocol analyzer with ECRC corruption + Linux setpci (AER ECRC bits)"
+      test_method: protocol_analyzer
+
+  - name: Completion Timeout
+    items:
+    - id: ERR-038
+      title: Completion Timeout Value Ranges and Device Capabilities 2
+      description: >
+        Read the Device Capabilities 2 register to determine which Completion Timeout
+        ranges the DUT supports (Ranges A, B, C, D). Verify the Completion Timeout Ranges
+        Supported field correctly reflects the hardware capability. For each supported
+        range, program the Completion Timeout Value field in Device Control 2 and verify
+        the programmed value reads back correctly. Attempt to program unsupported ranges
+        and verify the write is ignored or the value defaults to a supported range.
+      priority: P1
+      priority_rationale: Correct reporting of supported timeout ranges allows software to configure appropriate timeout values for the platform.
+      spec_ref: "PCIe 5.0 §2.8, §7.5.3.15, §7.5.3.16"
+      pass_criteria: >
+        Completion Timeout Ranges Supported field matches device datasheet. Each supported
+        range programmable and reads back correctly in Device Control 2. Unsupported range
+        programming has no effect (value unchanged) or defaults to nearest supported range.
+        Completion Timeout Disable bit supported if device advertises it. At least Range B
+        (65 ms-210 ms) supported per spec requirement.
+      tool: "Linux lspci -vvv + setpci (Device Capabilities 2 / Device Control 2)"
+      test_method: software_driver
+
+    - id: ERR-039
+      title: Completion Timeout Under IO Stress
+      description: >
+        Run heavy IO workload (fio: randread 4K, QD=256, numjobs=4) while simultaneously
+        blocking a small number of Completions using a protocol analyzer to trigger
+        sporadic Completion Timeouts. Verify the DUT correctly detects and reports each
+        timeout without disrupting the remaining IO traffic. Verify no data corruption
+        occurs on the non-timed-out IO operations. Check that the DUT's Completion Timeout
+        recovery mechanism allows continued operation.
+      priority: P0
+      priority_rationale: CTO under IO stress validates real-world error recovery without disrupting ongoing traffic; critical for enterprise reliability.
+      spec_ref: "PCIe 5.0 §2.8, §6.2.3.2.4.4, §6.2.7, Table 6-5"
+      pass_criteria: >
+        Each blocked Completion triggers a CTO within the programmed timeout range.
+        Non-blocked IO operations complete without error (fio verify = pass). No data
+        corruption (fio data integrity check passes). AER logs show Completion Timeout
+        for each blocked request. Device continues to process IO after CTO recovery.
+        Total CTO recovery time does not exceed 2x the programmed timeout value.
+      tool: "Protocol analyzer with selective Completion blocking + fio + Linux AER tools"
+      test_method: protocol_analyzer
+
+  - name: DPC (Downstream Port Containment)
+    items:
+    - id: ERR-040
+      title: DPC Capability Structure Presence and Configuration
+      description: >
+        Enumerate the Root Port or Switch Downstream Port connected to the DUT and locate
+        the DPC Extended Capability structure (Capability ID = 0029h). Verify all required
+        fields are present: DPC Capability register (DPC Trigger Enable, RP Extensions
+        for DPC, Poisoned TLP Egress Blocking Supported, DPC Software Triggering Supported),
+        DPC Control register, and DPC Status register. Verify default values (DPC disabled
+        by default, Trigger Enable = 00b).
+      priority: P0
+      priority_rationale: DPC is the primary containment mechanism for uncorrectable errors; verifying capability structure is prerequisite for all DPC tests.
+      spec_ref: "PCIe 5.0 §6.2.10, §7.9.15"
+      pass_criteria: >
+        DPC capability found at valid Extended Capability offset with ID = 0029h. DPC
+        Trigger Enable defaults to 00b (disabled). All capability bits (RP Extensions,
+        Poisoned TLP Egress Blocking, Software Triggering) correctly reflect hardware.
+        DPC Trigger Status = 0 (not triggered). DPC Control register writable when DPC
+        is not triggered. RP Busy bit = 0 when not in DPC.
+      tool: "Linux lspci -vvv + setpci (DPC capability walk)"
+      test_method: software_driver
+
+    - id: ERR-041
+      title: DPC Trigger on ERR_FATAL
+      description: >
+        Enable DPC at the Downstream Port with DPC Trigger Enable = 01b (trigger on
+        ERR_FATAL only). Inject a Fatal uncorrectable error at the DUT (e.g., Malformed
+        TLP) to cause an ERR_FATAL message. Verify the Downstream Port triggers DPC:
+        DPC Trigger Status bit is set, DPC Trigger Reason indicates the trigger condition,
+        the link transitions to Disabled state, and all downstream traffic is halted.
+        Verify the Requester ID is recorded in the DPC Error Source ID register.
+      priority: P0
+      priority_rationale: DPC on ERR_FATAL is the core containment mechanism preventing fatal errors from propagating upstream.
+      spec_ref: "PCIe 5.0 §6.2.10, §7.9.15"
+      pass_criteria: >
+        DPC Trigger Status = 1 after ERR_FATAL. DPC Trigger Reason = 00b (unmasked
+        uncorrectable error) or appropriate reason code. LTSSM enters Disabled state
+        (Data Link Layer Link Active = 0 in Link Status register). ERR_FATAL message
+        not forwarded upstream (contained by DPC). Error Source ID matches DUT Requester
+        ID. Link remains disabled until software clears DPC Trigger Status.
+      tool: "Protocol analyzer with Fatal error injection + Linux DPC/AER tools"
+      test_method: protocol_analyzer
+
+    - id: ERR-042
+      title: DPC Trigger on ERR_NONFATAL
+      description: >
+        Enable DPC with DPC Trigger Enable = 10b (trigger on ERR_NONFATAL or ERR_FATAL).
+        Inject a Non-Fatal uncorrectable error (e.g., Completion Timeout) to cause an
+        ERR_NONFATAL message. Verify DPC triggers on the Non-Fatal error with the same
+        containment behavior as Fatal: link disabled, traffic halted, status registers
+        updated. Then verify that ERR_FATAL also still triggers DPC in this mode.
+      priority: P1
+      priority_rationale: DPC on ERR_NONFATAL provides stricter containment; validates the broader trigger mode for high-reliability platforms.
+      spec_ref: "PCIe 5.0 §6.2.10, §7.9.15"
+      pass_criteria: >
+        DPC Trigger Status = 1 after ERR_NONFATAL. DPC Trigger Reason indicates the
+        trigger source. Link enters Disabled state. DPC also triggers on ERR_FATAL in
+        this mode. With DPC Trigger Enable = 01b: ERR_NONFATAL does NOT trigger DPC
+        (only ERR_FATAL does). Correct discrimination between trigger modes verified.
+      tool: "Protocol analyzer with Non-Fatal error injection + Linux DPC/AER tools"
+      test_method: protocol_analyzer
+
+    - id: ERR-043
+      title: DPC Recovery — Clearing DPC and Link Retraining
+      description: >
+        After DPC is triggered (via ERR_FATAL), verify the software recovery procedure:
+        wait for DPC RP Busy bit to clear (if RP Extensions supported), clear the DPC
+        Trigger Status bit, and verify the link transitions from Disabled to Detect state
+        and retrains to L0. Verify the DUT re-enumerates correctly after DPC recovery
+        and IO can resume. Measure the total recovery time from DPC trigger to L0.
+      priority: P0
+      priority_rationale: DPC recovery is essential for system availability; failure to recover from DPC requires a full system reset.
+      spec_ref: "PCIe 5.0 §6.2.10, §6.2.10.5, §7.9.15"
+      pass_criteria: >
+        DPC RP Busy = 0 within 10 ms of DPC trigger (implementation dependent). After
+        clearing DPC Trigger Status: LTSSM transitions Disabled -> Detect -> L0. Link
+        retrains within 200 ms of DPC Trigger Status clear. DUT re-enumerates in lspci.
+        IO resumes (fio verify pass) after device driver rebind. Total DPC recovery
+        time < 5 seconds including driver rebind.
+      tool: "Linux DPC driver + lspci + fio + protocol analyzer"
+      test_method: software_driver
+
+    - id: ERR-044
+      title: DPC ERR_COR Signaling
+      description: >
+        Enable DPC ERR_COR signaling via the DPC ERR_COR Enable bit in the DPC Control
+        register. Trigger DPC and verify that the Downstream Port sends an ERR_COR message
+        each time the DPC Trigger Status bit transitions from clear to set. Verify the
+        ERR_COR Subclass field in the ERR_COR message indicates ECS SIG_SFW if the
+        Downstream Port supports the ERR_COR Subclass capability. Verify the DPC SIG_SFW
+        Status bit is set in the DPC Status register.
+      priority: P1
+      priority_rationale: DPC ERR_COR signaling notifies firmware of DPC events; important for firmware-first error handling models.
+      spec_ref: "PCIe 5.0 §6.2.10.2, §7.9.15"
+      pass_criteria: >
+        With DPC ERR_COR Enable = 1: ERR_COR message sent when DPC triggers. ERR_COR
+        message captured on protocol analyzer. DPC SIG_SFW Status bit set in DPC Status.
+        With DPC ERR_COR Enable = 0: no ERR_COR message on DPC trigger. ERR_COR for DPC
+        does not set the Correctable Error Detected bit in Device Status register. ERR_COR
+        message ordering correct relative to DPC interrupt if both enabled.
+      tool: "Protocol analyzer + Linux setpci (DPC Control register)"
+      test_method: protocol_analyzer
+
+    - id: ERR-045
+      title: DPC Software Triggering
+      description: >
+        Verify the DPC Software Triggering mechanism if the Downstream Port advertises
+        DPC Software Triggering Supported = 1 in the DPC Capability register. With DPC
+        enabled, write 1 to the DPC Software Trigger bit in the DPC Control register.
+        Verify DPC triggers as if a hardware error occurred: DPC Trigger Status = 1,
+        DPC Trigger Reason and Trigger Reason Extension indicate software trigger, and
+        the link enters Disabled state.
+      priority: P2
+      priority_rationale: Software triggering is used for testing and firmware-directed containment; lower priority than hardware-triggered DPC.
+      spec_ref: "PCIe 5.0 §6.2.10.4, §7.9.15"
+      pass_criteria: >
+        DPC Software Triggering Supported = 1 in DPC Capability. Writing 1 to DPC
+        Software Trigger: DPC triggers (Trigger Status = 1). Trigger Reason = 10b
+        (software trigger). Link enters Disabled state. Recovery procedure identical
+        to hardware-triggered DPC. Writing software trigger while already in DPC: no
+        change to Trigger Reason or Trigger Reason Extension fields.
+      tool: "Linux setpci (DPC Control register) + protocol analyzer"
+      test_method: software_driver
+
+    - id: ERR-046
+      title: DPC with Downstream Port Containment — RP PIO Error Controls
+      description: >
+        For Root Ports supporting RP Extensions for DPC, verify the RP PIO error control
+        registers. Enable RP PIO error tracking for Configuration, IO, and Memory request
+        spaces. Trigger a UR Completion for a PIO Memory Read and verify: the RP PIO
+        Status register is updated, the RP PIO Header Log contains the request information,
+        and DPC triggers if the error is configured as uncorrectable in the RP PIO Severity
+        register. Verify advisory error handling when severity is non-fatal.
+      priority: P1
+      priority_rationale: RP PIO controls provide fine-grained DPC triggering for Root Port programmed IO errors; important for enumeration robustness.
+      spec_ref: "PCIe 5.0 §6.2.10.3, §7.9.15.2"
+      pass_criteria: >
+        RP PIO Status register updated with UR/CA/CTO error bits for the appropriate
+        request space (Config/IO/Memory). RP PIO Header Log contains the PIO request
+        information. With RP PIO Severity = uncorrectable: DPC triggers. With RP PIO
+        Severity = advisory: DPC does not trigger, ERR_COR sent. RP PIO Mask register
+        correctly suppresses logging and DPC for masked errors.
+      tool: "Linux setpci (RP PIO registers) + protocol analyzer"
+      test_method: software_driver
+
+  - name: Advisory Non-Fatal Errors
+    items:
+    - id: ERR-047
+      title: Advisory Non-Fatal Error — UR/CA Completion from Completer
+      description: >
+        Trigger an Advisory Non-Fatal Error by having the DUT (as Completer) send a
+        Completion with UR or CA status for a Non-Posted Request where the error severity
+        is Non-Fatal. Per Section 6.2.3.2.4.1, the Completer with AER must handle this
+        as an Advisory Non-Fatal Error: set the Advisory Non-Fatal Error Status bit in
+        the Correctable Error Status register, log the error in both Correctable and
+        Uncorrectable status registers, and signal ERR_COR instead of ERR_NONFATAL.
+      priority: P1
+      priority_rationale: Advisory Non-Fatal handling prevents unnecessary system errors from routine UR/CA events during normal enumeration.
+      spec_ref: "PCIe 5.0 §6.2.3.2.4, §6.2.3.2.4.1, §6.2.4.3"
+      pass_criteria: >
+        Advisory Non-Fatal Error Status bit (bit 13) set in Correctable Error Status
+        register. Corresponding uncorrectable error bit also set in Uncorrectable Error
+        Status register. ERR_COR message sent (not ERR_NONFATAL). Header Log updated
+        with the offending TLP if the uncorrectable error mask bit is clear. Devices
+        without AER send no error message for Advisory Non-Fatal cases.
+      tool: "Protocol analyzer + Linux setpci (AER registers)"
+      test_method: protocol_analyzer
+
+    - id: ERR-048
+      title: Advisory Non-Fatal Error Logging Sequence
+      description: >
+        Verify the complete logging sequence for Advisory Non-Fatal Errors per the
+        flowchart in Figure 6-2. Specifically: (1) the uncorrectable error severity must
+        be Non-Fatal, (2) the error case must be one of the defined Advisory Non-Fatal
+        cases, (3) the Advisory Non-Fatal Error Status bit is set in the Correctable Error
+        Status register, (4) if the Advisory Non-Fatal Error Mask bit is clear, the
+        corresponding Uncorrectable Error Status bit is set and header is recorded,
+        (5) ERR_COR is sent if Correctable Error Reporting Enable is set.
+      priority: P2
+      priority_rationale: Detailed logging sequence validation ensures correct behavior under complex multi-error scenarios.
+      spec_ref: "PCIe 5.0 §6.2.4.3, §6.2.5, Figure 6-2"
+      pass_criteria: >
+        All 5 steps of the logging sequence verified for at least 3 Advisory Non-Fatal
+        cases (UR at Completer, Unexpected Completion, Poisoned TLP at intermediate
+        Receiver). Advisory Non-Fatal Error Mask bit controls whether Uncorrectable
+        Error Status and Header Log are updated. ERR_COR gated by Correctable Error
+        Reporting Enable. Escalation to Fatal (via severity reprogramming) correctly
+        overrides Advisory Non-Fatal handling.
+      tool: "Protocol analyzer with targeted error injection + Linux setpci"
+      test_method: protocol_analyzer
+
+  - name: Error Pollution Prevention
+    items:
+    - id: ERR-049
+      title: Error Pollution Prevention — Layer-Based Error Filtering
+      description: >
+        Verify the DUT implements error pollution prevention as specified in Section
+        6.2.3.2.3. When a Physical Layer error is detected (e.g., Receiver Error),
+        subsequent errors on the same packet at the Data Link Layer (e.g., Bad TLP due
+        to corrupted CRC from the PHY error) and Transaction Layer should not be reported.
+        Inject a Physical Layer error and verify only the Receiver Error bit is set, not
+        the Bad TLP or any Transaction Layer error bits.
+      priority: P1
+      priority_rationale: Error pollution causes multiple spurious error reports for a single root cause, making diagnosis difficult and potentially overwhelming error handling.
+      spec_ref: "PCIe 5.0 §6.2.3.2.3"
+      pass_criteria: >
+        Single PHY error injection: only Receiver Error bit set, no Bad TLP or Transaction
+        Layer error bits. Single DLL error injection: DLL error bit set, no Transaction
+        Layer error bits for the same packet. Transaction Layer errors reported only when
+        lower layers did not detect the error first. Error precedence order per spec:
+        Uncorrectable Internal Error > Receiver Overflow > Malformed TLP > ECRC > others.
+      tool: "Protocol analyzer with layer-specific error injection + Linux AER tools"
+      test_method: protocol_analyzer
+
+  - name: System Error Mapping
+    items:
+    - id: ERR-050
+      title: Conventional PCI Status Register Error Mapping
+      description: >
+        Verify that PCIe errors are correctly mapped to the conventional PCI Status register
+        bits as required for backward compatibility. Specifically: Detected Parity Error
+        bit should be set when a Poisoned TLP is received, Signaled System Error bit should
+        reflect SERR# signaling status, and Received Master Abort and Received Target Abort
+        bits should map from UR and CA Completion Status respectively. Verify that clearing
+        PCI Status register bits does not clear AER status register bits and vice versa.
+      priority: P1
+      priority_rationale: PCI Status mapping ensures legacy error handling software works correctly with PCIe devices.
+      spec_ref: "PCIe 5.0 §6.2.7.1, §7.5.1"
+      pass_criteria: >
+        Detected Parity Error (bit 15) set when Poisoned TLP received. Signaled System
+        Error (bit 14) set when SERR# would be asserted. Received Master Abort set for
+        UR Completions. Received Target Abort set for CA Completions. Clearing PCI Status
+        bits independent of AER Uncorrectable/Correctable Error Status register bits.
+        All mappings verified for both Posted and Non-Posted request errors.
+      tool: "Linux setpci (PCI Status register + AER registers) + protocol analyzer"
+      test_method: software_driver
+
+    - id: ERR-051
+      title: Root Error Command and Status Registers — System Error Generation
+      description: >
+        At the Root Port, configure the Root Error Command register to enable/disable
+        system error generation for each error class (Correctable, Non-Fatal, Fatal).
+        Inject errors of each class and verify the Root Error Status register is updated
+        correctly and system errors (NMI/SMI/SCI depending on platform) are generated
+        only when the corresponding enable bit is set. Verify the error message received
+        bits (ERR_COR, ERR_NONFATAL, ERR_FATAL received) are set independently.
+      priority: P1
+      priority_rationale: Root Error Command controls system-level error response; incorrect configuration can mask critical errors or cause unnecessary system errors.
+      spec_ref: "PCIe 5.0 §6.2.4.1.2, §6.2.6, Figure 6-3, §7.8.4.8, §7.8.4.9"
+      pass_criteria: >
+        Root Error Status correctly reflects received error messages. System error
+        generated only when corresponding Root Error Command enable bit is set. ERR_COR
+        Received bit (bit 0) set independently of ERR_NONFATAL/ERR_FATAL bits. Multiple
+        Error Received bit set when multiple errors of same class received. Error Source
+        Identification register updated with first error source Requester ID. Clearing
+        Root Error Status bits does not affect device-level AER registers.
+      tool: "Linux setpci (Root Port AER registers) + protocol analyzer"
+      test_method: software_driver
+
+    - id: ERR-052
+      title: AER Interrupt Generation via MSI/MSI-X
+      description: >
+        Configure the Root Port to generate MSI or MSI-X interrupts for AER events by
+        setting the appropriate enable bits in the Root Error Command register. Trigger
+        errors of each class and verify interrupts are delivered to the CPU with the
+        correct vector (Advanced Error Reporting Interrupt Message Number from Root Error
+        Status register). Verify edge-triggered interrupt semantics: interrupt generated
+        on transition from no-error to error-detected state.
+      priority: P1
+      priority_rationale: AER interrupt delivery is the primary software notification mechanism for error events; must work for timely error handling.
+      spec_ref: "PCIe 5.0 §6.2.4.1.2, §7.8.4.8, §7.8.4.9"
+      pass_criteria: >
+        MSI/MSI-X interrupt delivered for each error class when enabled. Interrupt vector
+        matches Advanced Error Reporting Interrupt Message Number. Edge-triggered: interrupt
+        fires on 0->1 transition of Root Error Status bits. No spurious interrupts. Interrupt
+        coalescing (Multiple Error Received) functions correctly. Linux kernel AER driver
+        receives and processes the interrupt (dmesg shows AER error report).
+      tool: "Linux AER driver + /proc/interrupts monitoring + protocol analyzer for error injection"
+      test_method: software_driver
+
+  - name: Corrected Internal Errors
+    items:
+    - id: ERR-053
+      title: Corrected Internal Error Reporting
+      description: >
+        Verify the DUT reports Corrected Internal Errors via the AER capability when
+        internal error conditions are detected and corrected by hardware (e.g., ECC-corrected
+        memory errors in internal packet buffers). The Corrected Internal Error is a
+        correctable error that is masked by default per Table 6-2. Enable reporting by
+        clearing the Corrected Internal Error mask bit. Trigger an internal correctable
+        condition (vendor-specific mechanism) and verify the error is reported.
+      priority: P2
+      priority_rationale: Corrected Internal Errors indicate hardware degradation; monitoring them enables proactive maintenance but is not critical for basic function.
+      spec_ref: "PCIe 5.0 §6.2.9, §6.2.7, Table 6-2"
+      pass_criteria: >
+        Corrected Internal Error bit (bit 14) in Correctable Error Status register set
+        when internal correctable condition occurs. With mask bit set (default): status
+        bit still sets but no ERR_COR message. With mask cleared: ERR_COR message sent.
+        No confusion with other correctable error types. Error count increments for
+        repeated internal corrections. If device does not implement: bit remains 0.
+      tool: "Vendor-specific internal error injection + Linux setpci (AER registers)"
+      test_method: firmware_test
+
+    - id: ERR-054
+      title: Uncorrectable Internal Error Reporting
+      description: >
+        Verify the DUT reports Uncorrectable Internal Errors when internal error conditions
+        are detected that cannot be corrected by hardware (e.g., uncorrectable ECC errors
+        in internal memory, firmware-detected fatal conditions). The Uncorrectable Internal
+        Error is Fatal and masked by default per Table 6-2. Enable reporting by clearing
+        the mask bit. Trigger an uncorrectable internal condition and verify ERR_FATAL
+        is sent and the error is logged in the AER registers. Verify optional header
+        logging for the TLP associated with the internal error.
+      priority: P1
+      priority_rationale: Uncorrectable Internal Errors indicate severe hardware failure; correct reporting enables system to take containment action.
+      spec_ref: "PCIe 5.0 §6.2.9, §6.2.7, Table 6-2"
+      pass_criteria: >
+        Uncorrectable Internal Error bit (bit 22) set in Uncorrectable Error Status
+        register. Default severity = Fatal (bit 22 set in Severity register). With mask
+        cleared: ERR_FATAL message sent. Header Log optionally contains the associated
+        TLP header (or all-ones if no TLP association). DPC triggers if enabled. Device
+        requires reset to recover from uncorrectable internal error.
+      tool: "Vendor-specific internal error injection + Linux AER tools"
+      test_method: firmware_test
+
+    - id: ERR-055
+      title: Header Log Overflow Handling
+      description: >
+        Inject uncorrectable errors rapidly to exhaust the Header Log recording resources.
+        Verify the DUT handles Header Log Overflow correctly: the Header Log Overflow
+        error bit (if supported) is set in the Correctable Error Status register, and
+        an ERR_COR message is generated for the overflow condition. Verify that the First
+        Error Pointer and Header Log still reflect the first (oldest) uncleared error.
+        For devices supporting Multiple Header Recording, verify multiple headers are
+        recorded in order until resources are exhausted.
+      priority: P2
+      priority_rationale: Header Log Overflow is an edge case for rapid multi-error scenarios; correct handling prevents loss of diagnostic information.
+      spec_ref: "PCIe 5.0 §6.2.4.2, §6.2.7, Table 6-2"
+      pass_criteria: >
+        Header Log Overflow bit (bit 15) set in Correctable Error Status register when
+        recording resources exhausted. ERR_COR generated for the overflow. First Error
+        Pointer still valid, pointing to the oldest uncleared error. Header Log contains
+        the first error's TLP header (not overwritten). For Multiple Header Recording:
+        headers recorded in detection order. Software can clear and reclaim resources
+        by writing 1 to status bits.
+      tool: "Protocol analyzer with rapid error injection + Linux setpci (AER registers)"
+      test_method: protocol_analyzer

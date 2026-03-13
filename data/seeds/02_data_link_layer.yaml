@@ -1,0 +1,1039 @@
+metadata:
+  version: "5.0"
+  layer: "Data Link Layer"
+  spec_sources:
+    - "PCIe Base Spec 5.0"
+
+categories:
+- name: Data Link Layer
+  subcategories:
+  - name: DLLP Types and Format
+    items:
+    - id: DLL-001
+      title: Ack DLLP Format and 16-bit CRC Verification
+      description: >
+        Capture Ack DLLPs on an active link using a protocol analyzer. Verify the DLLP
+        Type field encoding is 0000 0000b, the AckNak_Seq_Num field carries the correct
+        12-bit sequence number of the most recently acknowledged TLP, and the Reserved
+        field is zero-filled. Validate the 16-bit CRC using polynomial 100Bh with seed
+        FFFFh. Confirm CRC calculation starts at bit 0 of byte 0 and that the complemented
+        result is mapped into the CRC field per Table 3-5.
+      priority: P0
+      priority_rationale: Ack DLLPs are fundamental to reliable TLP delivery; incorrect format causes data link protocol errors.
+      spec_ref: "PCIe 5.0 §3.5.1, Table 3-3, Figure 3-5, Figure 3-13, Table 3-5"
+      pass_criteria: >
+        All captured Ack DLLPs have DLLP Type = 0000 0000b. AckNak_Seq_Num matches the
+        sequence number of the most recently received good TLP. Reserved bits are all 0.
+        16-bit CRC validates correctly for 100% of captured Ack DLLPs (minimum 10,000
+        DLLPs sampled). Zero Bad DLLP errors in AER.
+      tool: "Protocol analyzer (LeCroy Summit T516 or Keysight U4305B)"
+      test_method: protocol_analyzer
+
+    - id: DLL-002
+      title: Nak DLLP Format and 16-bit CRC Verification
+      description: >
+        Inject bit errors on the link using a BERT or error injection tool to trigger Nak
+        DLLP generation from the receiver. Capture Nak DLLPs with protocol analyzer and
+        verify the DLLP Type field encoding is 0001 0000b. Validate the AckNak_Seq_Num
+        field references the correct sequence number and the 16-bit CRC is computed
+        correctly using polynomial 100Bh with seed FFFFh per the CRC calculation diagram
+        in Figure 3-13.
+      priority: P0
+      priority_rationale: Nak DLLPs trigger TLP replay; incorrect format prevents error recovery and causes link failure.
+      spec_ref: "PCIe 5.0 §3.5.1, Table 3-3, Figure 3-5, Figure 3-13"
+      pass_criteria: >
+        All captured Nak DLLPs have DLLP Type = 0001 0000b. AckNak_Seq_Num corresponds
+        to the sequence number of the TLP that triggered the Nak. Reserved bits are all 0.
+        16-bit CRC validates correctly for 100% of captured Nak DLLPs. Receipt of Nak is
+        not reported as an error per spec.
+      tool: "Protocol analyzer + BERT with error injection"
+      test_method: protocol_analyzer
+
+    - id: DLL-003
+      title: InitFC1 DLLP Format — P, NP, and Cpl Types
+      description: >
+        Capture the Flow Control initialization sequence during link training. Verify
+        InitFC1-P (encoding 0100), InitFC1-NP (encoding 0101), and InitFC1-Cpl (encoding
+        0110) DLLPs are transmitted in the correct relative order per §3.4.1. For each
+        DLLP, verify the VC ID field (v[2:0]), HdrScale, HdrFC, DataScale, and DataFC
+        fields are present and correctly formatted per Figure 3-7. Validate 16-bit CRC.
+      priority: P0
+      priority_rationale: InitFC1 DLLPs establish initial flow control credits; incorrect format prevents FC initialization and blocks all TLP traffic.
+      spec_ref: "PCIe 5.0 §3.4.1, §3.5.1, Table 3-3, Figure 3-7, Table 3-4"
+      pass_criteria: >
+        InitFC1-P transmitted first, InitFC1-NP second, InitFC1-Cpl third for VC0.
+        VC ID = 000b for VC0. HdrFC and DataFC fields contain non-zero credit values.
+        HdrScale and DataScale fields are 00b when Scaled FC is not active, or 01b/10b/11b
+        when active. All three InitFC1 DLLPs transmitted at least once every 34 us. 16-bit
+        CRC valid on all captured DLLPs.
+      tool: "Protocol analyzer (LeCroy Summit T516 or equivalent)"
+      test_method: protocol_analyzer
+
+    - id: DLL-004
+      title: InitFC2 DLLP Format — P, NP, and Cpl Types
+      description: >
+        Capture InitFC2 DLLPs during the FC_INIT2 phase of flow control initialization.
+        Verify InitFC2-P (encoding 1100), InitFC2-NP (encoding 1101), and InitFC2-Cpl
+        (encoding 1110) DLLPs are transmitted in the correct relative order per §3.4.1.
+        Validate the VC ID, HdrScale, HdrFC, DataScale, and DataFC fields per Figure 3-8.
+        Confirm that InitFC2 DLLPs are transmitted at least once every 34 us.
+      priority: P0
+      priority_rationale: InitFC2 DLLPs complete the FC initialization handshake; missing or malformed InitFC2 prevents transition to DL_Active.
+      spec_ref: "PCIe 5.0 §3.4.1, §3.5.1, Table 3-3, Figure 3-8, Table 3-4"
+      pass_criteria: >
+        InitFC2-P transmitted first, InitFC2-NP second, InitFC2-Cpl third for VC0.
+        VC ID = 000b for VC0. HdrFC and DataFC fields match values advertised in InitFC1.
+        HdrScale and DataScale fields consistent with InitFC1 values. All three InitFC2
+        DLLPs transmitted at least once every 34 us. 16-bit CRC valid on all captured
+        DLLPs. FC initialization completes and DLCMSM transitions to DL_Active.
+      tool: "Protocol analyzer (LeCroy Summit T516 or equivalent)"
+      test_method: protocol_analyzer
+
+    - id: DLL-005
+      title: UpdateFC DLLP Format — P, NP, and Cpl Types
+      description: >
+        Capture UpdateFC DLLPs during normal link operation (DL_Active state) while running
+        sustained IO traffic. Verify UpdateFC-P (encoding 1000), UpdateFC-NP (encoding
+        1001), and UpdateFC-Cpl (encoding 1010) DLLPs carry correct HdrFC, DataFC,
+        HdrScale, and DataScale fields per Figure 3-9. Confirm credit values are
+        monotonically non-decreasing (modulo wrap) and reflect actual buffer consumption.
+      priority: P0
+      priority_rationale: UpdateFC DLLPs replenish flow control credits during operation; incorrect updates cause credit starvation and link stalls.
+      spec_ref: "PCIe 5.0 §3.5.1, Table 3-3, Figure 3-9, §2.6, Table 3-4"
+      pass_criteria: >
+        UpdateFC DLLPs for all three types (P, NP, Cpl) observed during traffic. HdrFC
+        and DataFC fields reflect valid credit values. HdrScale and DataScale consistent
+        with values negotiated during initialization. Credit values never advertise fewer
+        credits than previously (modulo counter wrap). 16-bit CRC valid on all UpdateFC
+        DLLPs. No FC timeout errors reported in AER.
+      tool: "Protocol analyzer + fio (for traffic generation)"
+      test_method: protocol_analyzer
+
+    - id: DLL-006
+      title: Power Management DLLP Types
+      description: >
+        Trigger PM state transitions (L1 entry/exit, L2/L3 Ready) via ASPM configuration
+        or explicit PM commands. Capture PM DLLPs with protocol analyzer and verify correct
+        DLLP Type encodings: PM_Enter_L1 (0010 0000b), PM_Enter_L23 (0010 0001b),
+        PM_Active_State_Request_L1 (0010 0011b), and PM_Request_Ack (0010 0100b) per
+        Table 3-3 and Figure 3-10. Validate 16-bit CRC and Reserved field contents.
+      priority: P1
+      priority_rationale: PM DLLPs coordinate power state transitions; incorrect encoding prevents ASPM and causes PM protocol violations.
+      spec_ref: "PCIe 5.0 §3.5.1, Table 3-3, Figure 3-10, Chapter 5"
+      pass_criteria: >
+        PM_Enter_L1 DLLP observed during L1 entry. PM_Request_Ack observed in response.
+        DLLP Type encodings match Table 3-3. Reserved fields are zero-filled. 16-bit CRC
+        valid on all PM DLLPs. PM state transitions complete successfully as confirmed by
+        Link Status register.
+      tool: "Protocol analyzer + Linux (ASPM configuration via sysfs)"
+      test_method: protocol_analyzer
+
+    - id: DLL-007
+      title: Data Link Feature DLLP Format
+      description: >
+        Capture Data Link Feature DLLPs during the DL_Feature state of the DLCMSM. Verify
+        DLLP Type encoding is 0000 0010b per Table 3-3. Validate the Feature Ack bit
+        indicates whether the transmitting port has received a Data Link Feature DLLP, and
+        the Feature Supported bits match the Local Data Link Feature Supported field in the
+        Data Link Feature Capabilities Register (§7.7.4.2). Verify 16-bit CRC per
+        Figure 3-12.
+      priority: P1
+      priority_rationale: Data Link Feature DLLPs negotiate optional DL features like Scaled Flow Control; incorrect format prevents feature activation.
+      spec_ref: "PCIe 5.0 §3.3, §3.5.1, Table 3-3, Figure 3-12, §7.7.4.2, Table 7-60"
+      pass_criteria: >
+        Data Link Feature DLLP Type = 0000 0010b. Feature Supported bits match the Local
+        Data Link Feature Supported register value. Feature Ack bit transitions from 0 to
+        1 after receiving remote Feature DLLP. DLLPs transmitted at least once every 34 us
+        while in DL_Feature state. 16-bit CRC valid on all captured DLLPs.
+      tool: "Protocol analyzer (LeCroy Summit T516 or equivalent)"
+      test_method: protocol_analyzer
+
+    - id: DLL-008
+      title: NOP DLLP Handling
+      description: >
+        Inject NOP DLLPs (encoding 0011 0001b per Table 3-3) toward the DUT using a
+        protocol exerciser or BERT with custom pattern. Verify the DUT receiver discards
+        NOP DLLPs after checking them for data integrity (16-bit CRC). Confirm NOP DLLPs
+        do not affect link state, flow control credits, or TLP acknowledgement. Monitor
+        for any error indications caused by NOP reception. Verify format per Figure 3-6
+        with arbitrary value in payload.
+      priority: P2
+      priority_rationale: NOP DLLPs are informational and must be silently discarded; incorrect handling is unlikely but could indicate DLLP parsing bugs.
+      spec_ref: "PCIe 5.0 §3.5.1, Table 3-3, Figure 3-6"
+      pass_criteria: >
+        DUT does not report any errors upon receiving valid NOP DLLPs. NOP DLLPs with
+        valid CRC are silently discarded (no effect on FC credits, sequence numbers, or
+        link state). NOP DLLPs with invalid CRC are reported as Bad DLLP errors. Link
+        remains in DL_Active throughout test.
+      tool: "Protocol exerciser (Synopsys HAPS or equivalent) + protocol analyzer"
+      test_method: protocol_analyzer
+
+    - id: DLL-009
+      title: Vendor-Specific DLLP Handling
+      description: >
+        Inject Vendor-specific DLLPs (encoding 0011 0000b per Table 3-3) toward the DUT
+        using a protocol exerciser. Per spec, receivers should silently ignore Vendor
+        Specific DLLPs unless enabled by implementation-specific mechanisms. Verify the
+        DUT does not generate errors or alter link state upon receiving vendor-specific
+        DLLPs with valid CRC. Validate format per Figure 3-11 with vendor-defined payload.
+      priority: P2
+      priority_rationale: Vendor-specific DLLPs are optional and implementation-defined; testing ensures they do not disrupt normal link operation.
+      spec_ref: "PCIe 5.0 §3.5.1, Table 3-3, Figure 3-11"
+      pass_criteria: >
+        DUT silently ignores received Vendor-specific DLLPs with valid CRC. No errors
+        reported in AER. Link remains in DL_Active. Flow control credits and TLP sequence
+        numbers unaffected. Vendor-specific DLLPs with invalid CRC reported as Bad DLLP.
+      tool: "Protocol exerciser + protocol analyzer"
+      test_method: protocol_analyzer
+
+    - id: DLL-010
+      title: 16-bit CRC Calculation for All DLLP Types
+      description: >
+        Capture a comprehensive set of DLLPs across all types (Ack, Nak, InitFC1, InitFC2,
+        UpdateFC, PM, Data Link Feature, NOP) during various link activities. For each
+        captured DLLP, independently compute the 16-bit CRC using polynomial 100Bh with
+        seed FFFFh, starting at bit 0 of byte 0 through bit 7 of each byte. Verify the
+        complemented result matches the CRC field in the DLLP per Table 3-5 bit mapping.
+        Confirm CRC covers all bits including Reserved fields.
+      priority: P0
+      priority_rationale: CRC integrity is the sole mechanism for detecting DLLP corruption; any CRC error causes DLLP discard and potential link degradation.
+      spec_ref: "PCIe 5.0 §3.5.1, Figure 3-13, Table 3-5"
+      pass_criteria: >
+        100% of captured DLLPs (minimum 50,000 across all types) have valid 16-bit CRC.
+        CRC polynomial confirmed as 100Bh. Seed value confirmed as FFFFh. CRC calculation
+        order confirmed as bit 0 of byte 0 first. Result complemented before placement
+        in CRC field. Bit mapping matches Table 3-5.
+      tool: "Protocol analyzer + offline CRC verification script"
+      test_method: protocol_analyzer
+
+  - name: Flow Control Initialization
+    items:
+    - id: DLL-011
+      title: FC_INIT1 to FC_INIT2 State Transition
+      description: >
+        Monitor the flow control initialization state machine during link bring-up using
+        a protocol analyzer. Verify the DUT enters FC_INIT1 state upon DL_Init entry and
+        transmits three InitFC1 DLLPs (P, NP, Cpl) for VC0 in the correct relative order.
+        Verify flag FI1 is set once FC unit values have been recorded for each of P, NP,
+        and Cpl for VC0. Confirm transition to FC_INIT2 only after FI1 is set, indicating
+        a complete set of InitFC1 DLLPs has been received from the remote port.
+      priority: P0
+      priority_rationale: FC_INIT1 to FC_INIT2 transition is mandatory for FC initialization; failure prevents any TLP traffic on the link.
+      spec_ref: "PCIe 5.0 §3.4.1"
+      pass_criteria: >
+        DUT transmits InitFC1-P, InitFC1-NP, InitFC1-Cpl in correct order for VC0. All
+        three types transmitted at least once every 34 us. DUT transitions to FC_INIT2
+        only after receiving a complete set of InitFC1 DLLPs from remote. No TLPs
+        transmitted during FC_INIT1 on VCx being initialized. FC initialization completes
+        within 200 ms of Physical Layer LinkUp.
+      tool: "Protocol analyzer (LeCroy Summit T516 or equivalent)"
+      test_method: protocol_analyzer
+
+    - id: DLL-012
+      title: FC_INIT2 Completion and DL_Active Transition
+      description: >
+        Monitor the FC_INIT2 phase of flow control initialization. Verify the DUT
+        transmits three InitFC2 DLLPs (P, NP, Cpl) for VC0 at least once every 34 us.
+        Verify flag FI2 is set upon receipt of any InitFC2 DLLP on VCx, or upon receipt
+        of any TLP on VCx, or any UpdateFC DLLP on VCx. Confirm DLCMSM transitions from
+        DL_Init to DL_Active upon FC initialization completion. Verify DL_Up status is
+        reported during FC_INIT2 state.
+      priority: P0
+      priority_rationale: FC_INIT2 completion gates the transition to DL_Active; failure keeps the link in a non-operational state.
+      spec_ref: "PCIe 5.0 §3.4.1, §3.2.1"
+      pass_criteria: >
+        DUT transmits InitFC2-P, InitFC2-NP, InitFC2-Cpl in correct order for VC0. All
+        three types transmitted at least once every 34 us. DLCMSM transitions to DL_Active
+        after both sides complete FC_INIT2. DL_Up status reported to Transaction Layer.
+        Link Status register confirms Data Link Layer Link Active = 1. TLP traffic begins
+        flowing after DL_Active entry.
+      tool: "Protocol analyzer + lspci (Link Status register check)"
+      test_method: protocol_analyzer
+
+    - id: DLL-013
+      title: Flow Control Credit Advertisement Values
+      description: >
+        During FC initialization, capture all InitFC1 DLLPs and record the HdrFC and
+        DataFC credit values advertised by the DUT for each flow control type (Posted,
+        Non-Posted, Completion). Verify the advertised header credits are within the valid
+        range (1-127 without Scaled FC, or up to 2032 with scale factor 11b per
+        Table 3-2). Verify data credits are within valid range (1-2047 without Scaled FC,
+        or up to 32752 with scale factor 11b). Confirm credit values are sufficient for
+        the Max_Payload_Size supported by the device.
+      priority: P0
+      priority_rationale: Insufficient credit advertisement limits throughput; zero credits for mandatory types is a protocol violation.
+      spec_ref: "PCIe 5.0 §3.4.1, §3.4.2, Table 3-2, Table 3-4"
+      pass_criteria: >
+        Posted header credits >= 1. Non-Posted header credits >= 1. Completion header
+        credits >= 1 (or infinite = 00h). Posted data credits >= 1. Non-Posted data
+        credits >= 1 (or infinite = 00h). Completion data credits match device buffer
+        capacity. Credit values consistent across multiple link bring-ups (5 cycles).
+        Credits sufficient for Max_Payload_Size as reported in Device Capabilities.
+      tool: "Protocol analyzer + lspci (Device Capabilities register)"
+      test_method: protocol_analyzer
+
+    - id: DLL-014
+      title: Scaled Flow Control Negotiation (16 GT/s and Higher)
+      description: >
+        On links operating at 16.0 GT/s or higher, verify the DUT correctly negotiates
+        Scaled Flow Control. Confirm the Local Scaled Flow Control Supported bit (bit 0)
+        is set in the Data Link Feature Capabilities Register (§7.7.4.2). During
+        FC initialization, verify InitFC1 and InitFC2 DLLPs carry non-zero HdrScale and
+        DataScale fields (01b, 10b, or 11b) per Table 3-4. Verify the scaling factor
+        correctly expands the effective credit range.
+      priority: P0
+      priority_rationale: Scaled Flow Control is mandatory for Ports supporting 16 GT/s or higher; without it, the 127/2047 credit limit severely constrains throughput.
+      spec_ref: "PCIe 5.0 §3.4.2, Table 3-1, Table 3-2, Table 3-4, §7.7.4.2"
+      pass_criteria: >
+        Local Scaled Flow Control Supported = 1 in Data Link Feature Capabilities Register.
+        InitFC1/InitFC2 HdrScale and DataScale are non-zero (01b, 10b, or 11b) at 16 GT/s
+        and higher. Effective header credits = HdrFC * scaling factor per Table 3-2.
+        Effective data credits = DataFC * scaling factor per Table 3-2. UpdateFC DLLPs
+        use the same scale factors as InitFC1/InitFC2. Remote Scaled Flow Control Supported
+        = 1 in Data Link Feature Status Register (§7.7.4.3).
+      tool: "Protocol analyzer + lspci (Data Link Feature Capability registers)"
+      test_method: protocol_analyzer
+
+    - id: DLL-015
+      title: Scaled Flow Control Disabled Behavior
+      description: >
+        Test flow control initialization when Scaled Flow Control is not activated on the
+        link (either because remote port does not support it, or operating below 16 GT/s).
+        Verify HdrScale and DataScale fields in InitFC1, InitFC2, and UpdateFC DLLPs are
+        all 00b. Confirm HdrFC counter uses full 8-bit width and DataFC counter uses full
+        12-bit width per Table 3-2 (scale factor 00b).
+      priority: P1
+      priority_rationale: Correct fallback when Scaled FC is not active ensures backward compatibility with legacy components.
+      spec_ref: "PCIe 5.0 §3.4.2, Table 3-2, Table 3-4"
+      pass_criteria: >
+        HdrScale = 00b and DataScale = 00b in all InitFC1, InitFC2, and UpdateFC DLLPs.
+        HdrFC field is 8 bits wide containing full counter value. DataFC field is 12 bits
+        wide containing full counter value. Maximum header credits = 127 (7Fh). Maximum
+        data credits = 2047 (7FFh). FC initialization completes normally without Scaled FC.
+      tool: "Protocol analyzer (at Gen3 or with legacy endpoint)"
+      test_method: protocol_analyzer
+
+    - id: DLL-016
+      title: FC Initialization Timeout and Recovery
+      description: >
+        Simulate a scenario where the remote port fails to complete FC initialization
+        (e.g., by suppressing InitFC1 DLLPs from the remote side). Verify the DUT handles
+        the timeout gracefully by either retrying or signaling link failure. Verify the
+        DLCMSM terminates the FC initialization attempt and exits to DL_Inactive if
+        Physical Layer reports LinkUp = 0b. Confirm no hang or crash during the timeout
+        period.
+      priority: P1
+      priority_rationale: FC initialization failure must be handled gracefully to prevent link hangs in degraded or misconfigured systems.
+      spec_ref: "PCIe 5.0 §3.4.1, §3.2.1"
+      pass_criteria: >
+        DUT does not hang if FC initialization does not complete. DLCMSM returns to
+        DL_Inactive if Physical Layer LinkUp transitions to 0. DL_Down status reported
+        to Transaction Layer. No kernel panic or system instability. Device can re-attempt
+        link training after recovery. AER logs appropriate error indication.
+      tool: "Protocol exerciser (to suppress DLLPs) + protocol analyzer + Linux (dmesg)"
+      test_method: protocol_analyzer
+
+  - name: ACK/NAK Protocol
+    items:
+    - id: DLL-017
+      title: Ack DLLP Transmission Timing (Ack Latency Limit)
+      description: >
+        Measure the time from the last Symbol of a received TLP to the first Symbol of
+        the corresponding Ack DLLP being transmitted. Test at multiple link speeds (2.5,
+        5.0, 8.0, 16.0, 32.0 GT/s) and widths (x1, x4). Verify the Ack latency does not
+        exceed the limits specified in Table 3-7 (2.5 GT/s), Table 3-8 (5.0 GT/s), and
+        Table 3-9 (8.0 GT/s and higher). Account for Max_Payload_Size and link width in
+        selecting the correct limit value.
+      priority: P0
+      priority_rationale: Exceeding the Ack Latency Limit causes REPLAY_TIMER expiration on the transmitter, triggering unnecessary retransmissions and degrading throughput.
+      spec_ref: "PCIe 5.0 §3.6.3.1, Table 3-7, Table 3-8, Table 3-9"
+      pass_criteria: >
+        Ack latency <= Table 3-9 limit for 8.0 GT/s and higher (e.g., 378 Symbol Times
+        for x4 at MPS=1024). Ack latency <= Table 3-7 limit for 2.5 GT/s. Ack latency
+        <= Table 3-8 limit for 5.0 GT/s. Measured across >= 10,000 TLP/Ack pairs at each
+        speed. No REPLAY_TIMER expirations observed during test.
+      tool: "Protocol analyzer with latency measurement capability"
+      test_method: protocol_analyzer
+
+    - id: DLL-018
+      title: Ack DLLP Sequence Number Correctness
+      description: >
+        During sustained IO traffic, capture Ack DLLPs and verify the AckNak_Seq_Num
+        field carries the value (NEXT_RCV_SEQ - 1) as specified in §3.6.3.1. Verify
+        multiple TLPs can be acknowledged by a single Ack DLLP when the Ack carries the
+        sequence number of the most recently received good TLP. Confirm the Ack correctly
+        acknowledges all TLPs with sequence numbers from the oldest unacknowledged up to
+        the specified AckNak_Seq_Num.
+      priority: P0
+      priority_rationale: Incorrect Ack sequence numbers cause Data Link Protocol Errors and unnecessary replay, degrading link reliability.
+      spec_ref: "PCIe 5.0 §3.6.3.1, §3.6.2.2, Figure 3-18"
+      pass_criteria: >
+        AckNak_Seq_Num in every Ack DLLP equals (NEXT_RCV_SEQ - 1) at the time of
+        scheduling. Ack DLLPs with sequence numbers not corresponding to an unacknowledged
+        TLP or ACKD_SEQ are not observed (would be a Data Link Protocol Error per
+        §3.6.2.2). Zero Data Link Protocol Errors in AER during 10-minute sustained
+        traffic test.
+      tool: "Protocol analyzer + fio (sequential read/write, QD=32)"
+      test_method: protocol_analyzer
+
+    - id: DLL-019
+      title: Nak DLLP Generation on LCRC Failure
+      description: >
+        Inject TLPs with corrupted LCRC toward the DUT using a BERT or protocol exerciser.
+        Verify the DUT receiver detects the LCRC mismatch, discards the corrupted TLP, and
+        schedules a Nak DLLP for immediate transmission if the NAK_SCHEDULED flag is clear.
+        Verify the Nak DLLP is transmitted per the priority rules (priority 2 per §3.6.2.1
+        implementation note). Confirm a Bad TLP error is reported per §6.2.
+      priority: P0
+      priority_rationale: Nak generation on CRC failure is the primary error recovery trigger; failure to Nak prevents replay and causes data loss.
+      spec_ref: "PCIe 5.0 §3.6.3.1, Figure 3-19, §6.2"
+      pass_criteria: >
+        DUT generates Nak DLLP within Ack Latency Limit of receiving corrupted TLP. Nak
+        AckNak_Seq_Num matches expected sequence number. NAK_SCHEDULED flag prevents
+        duplicate Naks. Bad TLP error logged in AER Uncorrectable Error Status. Corrupted
+        TLP is discarded (not forwarded to Transaction Layer).
+      tool: "Protocol exerciser (error injection) + protocol analyzer"
+      test_method: protocol_analyzer
+
+    - id: DLL-020
+      title: Nak DLLP Generation on Sequence Number Error
+      description: >
+        Inject TLPs with out-of-sequence numbers toward the DUT using a protocol
+        exerciser. Verify the DUT detects the sequence number does not match
+        NEXT_RCV_SEQ, discards the TLP, and schedules a Nak DLLP if the NAK_SCHEDULED
+        flag is clear. For duplicate TLPs (sequence number satisfies
+        (NEXT_RCV_SEQ - TLP Sequence Number) mod 4096 <= 2048), verify an Ack DLLP is
+        scheduled instead. Confirm error is reported per Figure 3-19.
+      priority: P0
+      priority_rationale: Sequence number errors indicate lost TLPs; correct Nak/Ack response is essential for reliable data delivery.
+      spec_ref: "PCIe 5.0 §3.6.3.1, Figure 3-19"
+      pass_criteria: >
+        Out-of-sequence TLP (forward gap) triggers Nak if NAK_SCHEDULED is clear. Duplicate
+        TLP triggers Ack DLLP (not Nak). TLP with out-of-range sequence number triggers
+        Bad TLP error. All error cases handled per Figure 3-19 flowchart. NAK_SCHEDULED
+        flag correctly prevents multiple Naks for consecutive errors.
+      tool: "Protocol exerciser (sequence injection) + protocol analyzer"
+      test_method: protocol_analyzer
+
+    - id: DLL-021
+      title: NAK_SCHEDULED Flag Behavior
+      description: >
+        Inject multiple consecutive corrupted TLPs toward the DUT to exercise the
+        NAK_SCHEDULED flag logic. Verify only one Nak DLLP is generated for consecutive
+        errors (flag set after first Nak, preventing duplicates). Verify the flag is
+        cleared when a good TLP with matching NEXT_RCV_SEQ is received and forwarded to
+        the Transaction Layer. Confirm the flag is cleared in DL_Inactive state per
+        §3.6.3.1.
+      priority: P1
+      priority_rationale: Proper NAK_SCHEDULED flag management prevents Nak storms that waste link bandwidth during burst errors.
+      spec_ref: "PCIe 5.0 §3.6.3.1, Figure 3-19"
+      pass_criteria: >
+        Only one Nak DLLP generated for a burst of 10 consecutive corrupted TLPs. Flag
+        cleared after receiving a valid TLP with correct sequence number. Subsequent
+        corruption after flag clear generates a new Nak. No more than 1 Nak outstanding
+        at any time. Flag initialized to clear on DL_Inactive entry.
+      tool: "Protocol exerciser (burst error injection) + protocol analyzer"
+      test_method: protocol_analyzer
+
+    - id: DLL-022
+      title: Ack/Nak DLLP Processing by Transmitter
+      description: >
+        Monitor the transmitter side of the DUT as it processes received Ack and Nak DLLPs
+        from the link partner. Verify the processing follows Figure 3-18: Ack DLLPs purge
+        acknowledged TLPs from the retry buffer and update ACKD_SEQ; Nak DLLPs initiate
+        replay of unacknowledged TLPs. Verify that Ack/Nak DLLPs with AckNak_Seq_Num not
+        corresponding to an unacknowledged TLP or ACKD_SEQ value are discarded as Data
+        Link Protocol Errors.
+      priority: P0
+      priority_rationale: Correct Ack/Nak processing is fundamental to the DLL retry mechanism; errors cause buffer overflow or unnecessary retransmissions.
+      spec_ref: "PCIe 5.0 §3.6.2.2, Figure 3-18"
+      pass_criteria: >
+        Ack DLLP reception purges TLPs from retry buffer up to AckNak_Seq_Num. ACKD_SEQ
+        updated to AckNak_Seq_Num value. REPLAY_NUM and REPLAY_TIMER reset on valid Ack.
+        Nak DLLP reception initiates replay from oldest unacknowledged TLP. Invalid
+        AckNak_Seq_Num values cause DLLP discard and Data Link Protocol Error. Zero
+        unexpected DL Protocol Errors during normal traffic.
+      tool: "Protocol analyzer + fio (traffic generation)"
+      test_method: protocol_analyzer
+
+  - name: Retry Mechanism
+    items:
+    - id: DLL-023
+      title: TLP Replay on Nak Reception
+      description: >
+        Inject single-bit errors on the link to trigger Nak DLLPs from the receiver back
+        to the DUT transmitter. Capture the DUT transmitter response and verify it replays
+        all unacknowledged TLPs from the retry buffer, starting with the oldest
+        unacknowledged TLP and continuing in original transmission order per §3.6.2.1.
+        Verify new TLP acceptance from the Transaction Layer is blocked during replay, and
+        that any TLP currently being transmitted is completed before replay begins.
+      priority: P0
+      priority_rationale: TLP replay on Nak is the primary error recovery mechanism; failure to replay causes data loss.
+      spec_ref: "PCIe 5.0 §3.6.2.1, Figure 3-18"
+      pass_criteria: >
+        Replay starts with oldest unacknowledged TLP. TLPs retransmitted in original
+        order. New TLPs blocked from Transaction Layer during replay. Current TLP
+        transmission completed before replay starts. All retransmitted TLPs received
+        correctly by link partner (verified by Ack). Normal operation resumes after replay
+        completes. Zero data corruption in IO during replay.
+      tool: "BERT (error injection) + protocol analyzer + fio (traffic verification)"
+      test_method: protocol_analyzer
+
+    - id: DLL-024
+      title: REPLAY_TIMER Expiration and Automatic Replay
+      description: >
+        Create conditions where the link partner delays or fails to send Ack DLLPs,
+        causing the DUT's REPLAY_TIMER to expire. Verify the DUT initiates automatic
+        replay upon timer expiration per §3.6.2.1. Verify the Simplified REPLAY_TIMER
+        Limits are used: 24,000-31,000 Symbol Times with Extended Synch Clear, or
+        80,000-100,000 Symbol Times with Extended Synch Set. Confirm implementations
+        supporting 16 GT/s or higher use the Simplified limits at all data rates.
+      priority: P0
+      priority_rationale: REPLAY_TIMER is the backup mechanism when Ack/Nak DLLPs are lost; timeout failure causes permanent TLP loss.
+      spec_ref: "PCIe 5.0 §3.6.2.1"
+      pass_criteria: >
+        REPLAY_TIMER expiration triggers replay within the specified limit range. Timer
+        started at last Symbol of TLP transmission. Timer reset on valid Ack reception
+        that acknowledges some TLPs. Timer held during Recovery/Configuration LTSSM
+        states. Simplified limits used for 16 GT/s+ implementations. Replay Timer Timeout
+        error reported per §6.2.
+      tool: "Protocol exerciser (Ack suppression) + protocol analyzer"
+      test_method: protocol_analyzer
+
+    - id: DLL-025
+      title: REPLAY_NUM Counter and Link Retraining
+      description: >
+        Trigger multiple consecutive replay sequences to exercise the REPLAY_NUM 2-bit
+        counter. Verify REPLAY_NUM increments on each replay initiation. When REPLAY_NUM
+        rolls over from 11b to 00b, verify the DUT signals the Physical Layer to retrain
+        the link via LTSSM Recovery state per §3.6.2.1. Confirm the Data Link Layer state
+        is not reset by this retraining action unless Physical Layer reports LinkUp = 0b.
+      priority: P0
+      priority_rationale: REPLAY_NUM rollover triggers link retraining as a last-resort recovery; failure causes permanent link failure without recovery attempt.
+      spec_ref: "PCIe 5.0 §3.6.2.1, §6.2"
+      pass_criteria: >
+        REPLAY_NUM increments from 00b through 11b over 4 replay sequences. Rollover from
+        11b to 00b triggers Physical Layer link retraining. Link enters LTSSM Recovery
+        state. Error reported per §6.2. Data Link Layer state preserved during retraining
+        (retry buffer intact). Link recovers to L0 after retraining if channel is viable.
+      tool: "Protocol exerciser (repeated Nak injection) + protocol analyzer"
+      test_method: protocol_analyzer
+
+    - id: DLL-026
+      title: Retry Buffer Storage and Purging
+      description: >
+        During sustained high-throughput IO (fio sequential write, 128K, QD=128), monitor
+        the DUT retry buffer behavior via protocol analyzer. Verify all transmitted TLPs
+        are stored in the retry buffer per §3.6.2.1. Verify TLPs are purged from the
+        buffer upon Ack DLLP reception with AckNak_Seq_Num acknowledging those TLPs.
+        Verify the Tx SEQ Stall condition per Equation 3-1 is enforced when
+        (NEXT_TRANSMIT_SEQ - ACKD_SEQ) mod 4096 >= 2048.
+      priority: P0
+      priority_rationale: Retry buffer management directly affects throughput and error recovery capability; buffer overflow stalls the link.
+      spec_ref: "PCIe 5.0 §3.6.2.1, Equation 3-1, Equation 3-2"
+      pass_criteria: >
+        No TLP lost during sustained traffic (verified by fio data verification). Retry
+        buffer holds all unacknowledged TLPs. TLPs purged promptly upon Ack reception.
+        Tx SEQ Stall does not occur under normal traffic (NEXT_TRANSMIT_SEQ - ACKD_SEQ
+        < 2048). If stall is triggered artificially, transmitter stops accepting new TLPs
+        until condition clears. NEXT_TRANSMIT_SEQ increments per Equation 3-2.
+      tool: "Protocol analyzer + fio (sustained write traffic)"
+      test_method: protocol_analyzer
+
+    - id: DLL-027
+      title: Replay During Active Traffic
+      description: >
+        Run sustained bidirectional IO traffic (fio randrw 4K, QD=64) while periodically
+        injecting bit errors to trigger replay events. Verify the DUT correctly interleaves
+        replay with ongoing traffic. Confirm Ack and Nak DLLPs received during replay are
+        processed per §3.6.2.1 (Acks may be collapsed, Naks may be superseded by later
+        Acks). Verify once a TLP retransmission has started, it must complete before any
+        other transmission.
+      priority: P1
+      priority_rationale: Replay during active traffic is the real-world scenario; correct interleaving ensures data integrity under load.
+      spec_ref: "PCIe 5.0 §3.6.2.1"
+      pass_criteria: >
+        Zero data corruption during 30-minute randrw test with periodic error injection.
+        Replay events complete within REPLAY_TIMER limit. Ack/Nak DLLPs during replay
+        processed correctly (Acks collapsed). No TLP retransmission interrupted mid-TLP.
+        Normal operation resumes after each replay. AER logs correctable errors only (no
+        uncorrectable).
+      tool: "BERT (periodic error injection) + protocol analyzer + fio"
+      test_method: protocol_analyzer
+
+    - id: DLL-028
+      title: TLP Nullification and Receiver Handling
+      description: >
+        Capture nullified TLPs on the link using a protocol analyzer. A nullified TLP uses
+        the logical inverse of the normal LCRC (uninverted remainder) and is indicated to
+        the Physical Layer as nullified per §3.6.2.1. Verify the DUT receiver correctly
+        identifies nullified TLPs: if the LCRC equals the logical NOT of the calculated
+        value, discard the TLP without error. If a nullified TLP has a corrupt LCRC (not
+        matching logical NOT either), verify it is treated as a Bad TLP error.
+      priority: P1
+      priority_rationale: Nullified TLPs support cut-through routing in switches; incorrect handling causes false errors or missed corruption.
+      spec_ref: "PCIe 5.0 §3.6.2.1, §3.6.3.1, Figure 3-19"
+      pass_criteria: >
+        Nullified TLPs with correct inverted LCRC are silently discarded (no error
+        reported). NEXT_TRANSMIT_SEQ not incremented for nullified TLPs. Nullified TLPs
+        not stored in retry buffer. Nullified TLPs with incorrect LCRC reported as Bad TLP
+        error. No Nak generated for correctly nullified TLPs.
+      tool: "Protocol exerciser (nullified TLP generation) + protocol analyzer"
+      test_method: protocol_analyzer
+
+  - name: LCRC
+    items:
+    - id: DLL-029
+      title: 32-bit LCRC Generation (TLP Transmitter)
+      description: >
+        Capture TLPs transmitted by the DUT and independently compute the 32-bit LCRC
+        for each TLP. Verify the LCRC polynomial is 04C1 1DB7h with seed FFFF FFFFh per
+        §3.6.2.1. Confirm LCRC calculation uses the TLP following sequence number
+        application (Figure 3-15), starting at bit 0 of byte 0 (bit 8 of the TLP sequence
+        number). Verify the complemented result is mapped into the 32-bit LCRC field per
+        Table 3-6 bit mapping.
+      priority: P0
+      priority_rationale: LCRC is the sole mechanism for detecting TLP corruption during transmission; incorrect generation makes the link unable to detect errors.
+      spec_ref: "PCIe 5.0 §3.6.2.1, Figure 3-14, Figure 3-16, Table 3-6"
+      pass_criteria: >
+        100% of captured TLPs (minimum 100,000) have valid 32-bit LCRC. LCRC polynomial
+        confirmed as 04C1 1DB7h. Seed value confirmed as FFFF FFFFh. Calculation starts
+        at bit 0 of byte 0 (sequence number byte). Result complemented before placement.
+        Bit mapping matches Table 3-6. LCRC covers all TLP bytes including Reserved fields.
+      tool: "Protocol analyzer + offline LCRC verification script"
+      test_method: protocol_analyzer
+
+    - id: DLL-030
+      title: 32-bit LCRC Checking (TLP Receiver)
+      description: >
+        Inject TLPs with both valid and corrupted LCRC toward the DUT receiver. Verify
+        TLPs with valid LCRC are accepted and forwarded to the Transaction Layer after
+        stripping the sequence number and LCRC per §3.6.3.1. Verify TLPs with corrupted
+        LCRC are discarded, a Nak DLLP is scheduled (if NAK_SCHEDULED is clear), and a
+        Bad TLP error is reported. Confirm the LCRC checking algorithm matches the
+        generation algorithm (same polynomial, seed, bit ordering).
+      priority: P0
+      priority_rationale: LCRC checking is the primary TLP integrity mechanism; failure to detect corruption causes silent data corruption.
+      spec_ref: "PCIe 5.0 §3.6.3.1, Figure 3-19"
+      pass_criteria: >
+        Valid TLPs forwarded to Transaction Layer with sequence number and LCRC stripped.
+        Corrupted TLPs discarded (not forwarded). Nak DLLP generated for first corrupted
+        TLP. Bad TLP error logged in AER. 100% detection rate for single-bit and multi-bit
+        LCRC corruptions. Zero false positives (valid TLPs incorrectly rejected).
+      tool: "Protocol exerciser (LCRC corruption) + protocol analyzer"
+      test_method: protocol_analyzer
+
+    - id: DLL-031
+      title: TLP Sequence Number Assignment and Validation
+      description: >
+        Monitor the 12-bit TLP sequence number assignment on the transmitter side. Verify
+        NEXT_TRANSMIT_SEQ starts at 000h after DL_Inactive and increments per Equation 3-2
+        ((NEXT_TRANSMIT_SEQ + 1) mod 4096) for each transmitted TLP. On the receiver side,
+        verify NEXT_RCV_SEQ starts at 000h and increments for each correctly received TLP.
+        Verify sequence number wraps correctly from FFFh to 000h.
+      priority: P0
+      priority_rationale: Sequence numbers detect lost TLPs; incorrect numbering causes false loss detection or missed losses.
+      spec_ref: "PCIe 5.0 §3.6.2.1, §3.6.3.1, Equation 3-2, Figure 3-15"
+      pass_criteria: >
+        NEXT_TRANSMIT_SEQ starts at 000h after reset. Increments by 1 for each TLP.
+        Wraps from FFFh to 000h without error. Sequence number prepended to TLP with 4
+        Reserved bits per Figure 3-15. NEXT_RCV_SEQ matches transmitted sequence numbers.
+        No sequence number gaps during error-free operation. Zero Data Link Protocol Errors
+        during 10-minute continuous traffic test.
+      tool: "Protocol analyzer + fio (continuous traffic)"
+      test_method: protocol_analyzer
+
+  - name: Data Link Control and Management (DLCMSM)
+    items:
+    - id: DLL-032
+      title: DL_Inactive State Entry and Reset Behavior
+      description: >
+        Trigger entry to DL_Inactive via hot reset, warm reset, cold reset, and link-down
+        events. Verify the DUT resets all Data Link Layer state to default values per
+        §3.2.1: NEXT_TRANSMIT_SEQ = 000h, ACKD_SEQ = FFFh, REPLAY_NUM = 00b, retry
+        buffer contents discarded. Verify DL_Down status is reported to the Transaction
+        Layer, causing outstanding transactions to be discarded. Verify DL states are
+        unaffected by FLR. Confirm no DLLPs are generated or accepted in DL_Inactive.
+      priority: P0
+      priority_rationale: Correct DL_Inactive behavior ensures clean state after reset; leftover state causes Data Link Protocol Errors on re-initialization.
+      spec_ref: "PCIe 5.0 §3.2.1, §6.6"
+      pass_criteria: >
+        All DL state variables reset to defaults on entry. DL_Down reported to Transaction
+        Layer. Retry buffer contents discarded. No DLLPs generated or accepted. Remote
+        Data Link Feature Supported Valid cleared. Exit to DL_Feature (if supported) or
+        DL_Init when Physical Layer reports LinkUp = 1. State correctly maintained across
+        5 reset cycles.
+      tool: "Protocol analyzer + Linux (reset via sysfs, setpci)"
+      test_method: protocol_analyzer
+
+    - id: DLL-033
+      title: DL_Feature State — Data Link Feature Exchange Protocol
+      description: >
+        Verify the DUT enters DL_Feature state when the Data Link Feature Exchange Enable
+        bit is set in the Data Link Feature Capabilities Register (§7.7.4.2, bit 31) and
+        Physical Layer reports LinkUp = 1. During DL_Feature, verify the DUT transmits
+        Data Link Feature DLLPs at least once every 34 us per §3.3. Verify the Feature
+        Supported field equals the Local Data Link Feature Supported register value.
+        Confirm Feature Ack bit handling and exit conditions per §3.3.
+      priority: P1
+      priority_rationale: DL_Feature state negotiates optional features like Scaled FC; skipping or mishandling prevents feature activation at 16 GT/s+.
+      spec_ref: "PCIe 5.0 §3.2.1, §3.3, §7.7.4, Figure 3-2, Figure 3-12"
+      pass_criteria: >
+        DL_Feature state entered when Exchange Enable = 1 and LinkUp = 1. Data Link
+        Feature DLLPs transmitted at least once every 34 us. Feature Supported matches
+        register value. Feature Ack bit = 0 initially, set to 1 after receiving remote
+        Feature DLLP. Exit to DL_Init on receiving InitFC1, MRInit, or Feature DLLP with
+        Ack = 1. Remote Data Link Feature Supported Valid set in Status Register (§7.7.4.3).
+      tool: "Protocol analyzer + lspci (DL Feature registers)"
+      test_method: protocol_analyzer
+
+    - id: DLL-034
+      title: DL_Init State — Flow Control Initialization
+      description: >
+        Verify the DUT enters DL_Init state from DL_Feature (or directly from DL_Inactive
+        if DL Feature Exchange not supported). During DL_Init, verify the DUT initializes
+        Flow Control for VC0 per §3.4. Verify DL_Down status is reported during FC_INIT1
+        and DL_Up status is reported during FC_INIT2 per §3.2.1. Confirm transition to
+        DL_Active upon successful FC initialization, and return to DL_Inactive if Physical
+        Layer reports LinkUp = 0.
+      priority: P0
+      priority_rationale: DL_Init gates the transition to operational state; incorrect FC initialization prevents all TLP traffic.
+      spec_ref: "PCIe 5.0 §3.2.1, §3.4"
+      pass_criteria: >
+        DL_Init entered from DL_Feature or DL_Inactive. FC initialization for VC0
+        completes (FC_INIT1 then FC_INIT2). DL_Down reported during FC_INIT1. DL_Up
+        reported during FC_INIT2. DLCMSM transitions to DL_Active on success. Returns to
+        DL_Inactive if LinkUp = 0 during initialization. Transaction Layer blocks TLPs
+        during DL_Init.
+      tool: "Protocol analyzer + lspci (Link Status register)"
+      test_method: protocol_analyzer
+
+    - id: DLL-035
+      title: DL_Active State — Normal Operation
+      description: >
+        Verify correct DL_Active state behavior during normal link operation. Confirm the
+        DUT accepts and transfers TLP information with Transaction and Physical Layers per
+        §3.2.1. Verify DLLPs are generated and accepted (Ack, Nak, UpdateFC, PM). Verify
+        DL_Up status is reported. Trigger exit to DL_Inactive by removing the device or
+        causing link failure, and verify Surprise Down error handling for Downstream Ports
+        per §7.5.3.6 exceptions (hot-plug, Secondary Bus Reset, Link Disable, PME_Turn_Off).
+      priority: P0
+      priority_rationale: DL_Active is the normal operating state; correct behavior and exit handling are essential for link reliability.
+      spec_ref: "PCIe 5.0 §3.2.1, Figure 3-2"
+      pass_criteria: >
+        TLP traffic flows in both directions during DL_Active. Ack, Nak, UpdateFC DLLPs
+        generated and accepted. DL_Up status maintained. Exit to DL_Inactive on LinkUp = 0.
+        Surprise Down error reported for unexpected DL_Active to DL_Inactive transition.
+        No error reported when exit is caused by hot-plug, SBR, Link Disable, or
+        PME_Turn_Off. Link recovers to DL_Active after transient link retraining.
+      tool: "Protocol analyzer + fio + Linux (surprise removal testing)"
+      test_method: protocol_analyzer
+
+    - id: DLL-036
+      title: DLCMSM State Transition Sequence — Full Cycle
+      description: >
+        Perform a complete DLCMSM state transition cycle: DL_Inactive -> DL_Feature
+        (if supported) -> DL_Init -> DL_Active -> DL_Inactive (via link down). Capture
+        all state transitions on protocol analyzer. Verify the correct sequence per
+        Figure 3-2. Verify no illegal transitions occur (e.g., DL_Inactive directly to
+        DL_Active, or DL_Active to DL_Feature). Repeat for 10 link bring-up cycles and
+        verify deterministic behavior.
+      priority: P0
+      priority_rationale: DLCMSM state machine correctness is fundamental to Data Link Layer operation; illegal transitions cause undefined behavior.
+      spec_ref: "PCIe 5.0 §3.2, §3.2.1, Figure 3-2"
+      pass_criteria: >
+        State transition sequence matches Figure 3-2 for all 10 cycles. No illegal
+        transitions detected. DL_Feature state entered/skipped consistently based on
+        capability. FC initialization completes within 200 ms of LinkUp. DL_Active
+        reached within 500 ms of power-on. DL_Inactive entered cleanly on link-down.
+        All state transitions logged by protocol analyzer.
+      tool: "Protocol analyzer + Linux (link reset/recovery triggering)"
+      test_method: protocol_analyzer
+
+  - name: Data Link Feature Exchange
+    items:
+    - id: DLL-037
+      title: Data Link Feature Extended Capability Register Presence
+      description: >
+        Read the PCI Express Extended Capability linked list in configuration space and
+        verify the Data Link Feature Extended Capability (ID = 0025h, version 1h per
+        §7.7.4.1) is present for Ports that support 16.0 GT/s or higher. Verify the
+        structure contains the Header (offset 00h), Capabilities Register (offset 04h),
+        and Status Register (offset 08h) per Figure 7-74. Confirm the capability is
+        required for Downstream Ports supporting 16 GT/s.
+      priority: P0
+      priority_rationale: Data Link Feature Capability is required for 16 GT/s Ports to negotiate Scaled Flow Control; absence prevents FC scaling.
+      spec_ref: "PCIe 5.0 §7.7.4, §7.7.4.1, Figure 7-74, Figure 7-75, Table 7-59"
+      pass_criteria: >
+        Extended Capability ID = 0025h found in capability linked list. Capability Version
+        = 1h. Three registers present at offsets 00h, 04h, 08h. Capability present on all
+        Downstream Ports supporting 16 GT/s or higher. Local Scaled Flow Control Supported
+        (bit 0 of Capabilities Register) = 1 for Ports supporting 16 GT/s+.
+      tool: "lspci -vvv or setpci (configuration space read)"
+      test_method: software_driver
+
+    - id: DLL-038
+      title: Data Link Feature Exchange Enable/Disable
+      description: >
+        Test the Data Link Feature Exchange Enable bit (bit 31 of Data Link Feature
+        Capabilities Register, §7.7.4.2). With Enable = 1 (default), verify the DLCMSM
+        enters DL_Feature state and performs Data Link Feature exchange. With Enable = 0,
+        verify the DLCMSM skips DL_Feature and transitions directly from DL_Inactive to
+        DL_Init. Use setpci to toggle the bit and trigger link retraining to observe the
+        different behaviors.
+      priority: P1
+      priority_rationale: Exchange Enable allows disabling feature exchange to work around legacy hardware that mishandles the Feature DLLP.
+      spec_ref: "PCIe 5.0 §3.2.1, §7.7.4.2, Table 7-60"
+      pass_criteria: >
+        Enable = 1: DL_Feature state entered, Feature DLLPs exchanged, Scaled FC
+        negotiated. Enable = 0: DL_Feature state skipped, direct DL_Inactive to DL_Init
+        transition. Link functions correctly in both modes. Scaled FC not activated when
+        Enable = 0 (HdrScale/DataScale = 00b). Default value of Enable = 1.
+      tool: "setpci + protocol analyzer + lspci"
+      test_method: software_driver
+
+    - id: DLL-039
+      title: Remote Data Link Feature Supported Valid Bit
+      description: >
+        Read the Data Link Feature Status Register (offset 08h, §7.7.4.3) after link
+        training completes. Verify the Remote Data Link Feature Supported Valid bit
+        (bit 31) is set when the port has received a Data Link Feature DLLP in DL_Feature
+        state. Verify the Remote Data Link Feature Supported field (bits 22:0) captures
+        the Feature Supported information from the received DLLP. Confirm both fields are
+        cleared on entry to DL_Inactive state.
+      priority: P1
+      priority_rationale: Remote Feature Supported Valid indicates successful feature negotiation; software relies on this to confirm Scaled FC activation.
+      spec_ref: "PCIe 5.0 §7.7.4.3, Table 7-61, §3.2.1"
+      pass_criteria: >
+        Remote Data Link Feature Supported Valid = 1 after successful feature exchange.
+        Remote Scaled Flow Control Supported (bit 0) = 1 when remote supports Scaled FC.
+        Both fields cleared to 0 on DL_Inactive entry (verified after reset). Valid bit
+        = 0 when DL Feature Exchange disabled (Enable = 0). Values stable and readable
+        via lspci/setpci.
+      tool: "lspci -vvv or setpci + protocol analyzer"
+      test_method: software_driver
+
+    - id: DLL-040
+      title: Data Link Feature Exchange with Legacy Endpoint
+      description: >
+        Connect the DUT Root Port or Switch Downstream Port to a legacy endpoint that does
+        not support Data Link Feature Exchange (no Data Link Feature Capability, or
+        Exchange Enable = 0). Verify the DUT correctly determines the remote does not
+        support the protocol by either: (a) receiving an InitFC1 DLLP which triggers exit
+        from DL_Feature, or (b) receiving a MRInit DLLP, or (c) not receiving a Feature
+        DLLP with Ack = 1. Verify the DLCMSM transitions to DL_Init and FC initialization
+        proceeds without Scaled FC (HdrScale/DataScale = 00b).
+      priority: P1
+      priority_rationale: Backward compatibility with legacy devices is essential; DL Feature exchange must not block link operation with older hardware.
+      spec_ref: "PCIe 5.0 §3.2.1, §3.3"
+      pass_criteria: >
+        Link trains successfully with legacy endpoint. DL_Feature state exited within
+        timeout. FC initialization completes without Scaled FC. HdrScale/DataScale = 00b
+        in all FC DLLPs. Remote Data Link Feature Supported Valid = 0 in Status Register.
+        No link training failures or hangs. Normal IO traffic functions correctly.
+      tool: "Legacy Gen3 endpoint + protocol analyzer + lspci"
+      test_method: protocol_analyzer
+
+  - name: Transmission Priority and Scheduling
+    items:
+    - id: DLL-041
+      title: DLLP Transmission Priority Order
+      description: >
+        During a mixture of traffic conditions (TLP transmission, replay, and FC update
+        needs), verify the DUT follows the recommended transmission priority order per the
+        Implementation Note in §3.6.2.1: (1) Complete current transmission, (2) Nak DLLPs,
+        (3) Ack DLLPs on timer expiry or duplicate TLP, (4) FC DLLPs required by §2.6,
+        (5) Retry Buffer retransmissions, (6) New TLPs, (7) Other FC DLLPs, (8) Other
+        DLLPs. Verify Nak DLLPs are never starved by lower-priority traffic.
+      priority: P1
+      priority_rationale: Correct DLLP scheduling ensures timely error recovery and flow control without starving critical transmissions.
+      spec_ref: "PCIe 5.0 §3.6.2.1 (Implementation Note)"
+      pass_criteria: >
+        Nak DLLPs transmitted with higher priority than new TLPs. Ack DLLPs transmitted
+        within Ack Latency Limit. FC DLLPs not starved during sustained traffic. Replay
+        transmissions prioritized over new TLPs. No REPLAY_TIMER expirations due to
+        scheduling delays. No FC timeouts during 30-minute mixed-traffic test.
+      tool: "Protocol analyzer + fio (mixed read/write traffic)"
+      test_method: protocol_analyzer
+
+    - id: DLL-042
+      title: Ack DLLP Collapsing
+      description: >
+        During high-throughput traffic, verify the DUT transmitter correctly collapses
+        multiple pending Ack DLLPs into a single Ack DLLP per the Implementation Note in
+        §3.6.2.1. When multiple TLPs are received in quick succession, the receiver should
+        send a single Ack with the latest AckNak_Seq_Num rather than individual Acks for
+        each TLP. Verify this collapsing does not violate the Ack Latency Limit.
+      priority: P1
+      priority_rationale: Ack collapsing is an important performance optimization that reduces DLLP overhead on the link.
+      spec_ref: "PCIe 5.0 §3.6.2.1 (Implementation Note), §3.6.3.1"
+      pass_criteria: >
+        Number of Ack DLLPs transmitted is less than number of TLPs received (collapsing
+        observed). Each Ack DLLP AckNak_Seq_Num acknowledges all TLPs up to that sequence
+        number. Ack Latency Limit not violated despite collapsing. Link throughput not
+        degraded by excessive DLLP overhead. No REPLAY_TIMER expirations.
+      tool: "Protocol analyzer + fio (sequential read, 128K, QD=128)"
+      test_method: protocol_analyzer
+
+    - id: DLL-043
+      title: Physical Layer Throttling Handling
+      description: >
+        Create conditions where the Physical Layer temporarily cannot accept TLPs and
+        DLLPs from the Data Link Layer (e.g., during LTSSM Recovery transitions or
+        Ordered Set transmission). Verify the Data Link Layer correctly handles
+        backpressure from the Physical Layer per the Implementation Note on Physical
+        Layer Throttling in §3.2.1. Confirm no TLPs or DLLPs are lost during throttling
+        and that transmission resumes correctly when the Physical Layer is ready.
+      priority: P1
+      priority_rationale: Physical Layer throttling is a normal occurrence during link management; incorrect handling causes TLP/DLLP loss.
+      spec_ref: "PCIe 5.0 §3.2.1 (Implementation Note on Physical Layer Throttling)"
+      pass_criteria: >
+        No TLPs or DLLPs lost during Physical Layer throttling events. Transmission
+        resumes within 1 ms of throttling release. No REPLAY_TIMER expirations caused by
+        throttling. FC update DLLPs delivered within requirements despite throttling. Zero
+        data corruption during tests that trigger Recovery transitions under load.
+      tool: "Protocol analyzer + link perturbation (marginal channel to trigger Recovery)"
+      test_method: protocol_analyzer
+
+  - name: Error Handling and Reporting
+    items:
+    - id: DLL-044
+      title: Bad DLLP Error Detection and Reporting
+      description: >
+        Inject DLLPs with corrupted 16-bit CRC toward the DUT. Verify the DUT detects the
+        CRC mismatch per Figure 3-17, discards the corrupt DLLP, and reports a Bad DLLP
+        error per §6.2. Check the AER Correctable Error Status register for the Bad DLLP
+        Error bit. Verify the corrupt DLLP is not acted upon (no FC credit update, no Ack
+        processing, etc.).
+      priority: P0
+      priority_rationale: Bad DLLP detection prevents acting on corrupted link management packets; failure could cause FC corruption or false Ack/Nak processing.
+      spec_ref: "PCIe 5.0 §3.6.2.2, Figure 3-17, §6.2"
+      pass_criteria: >
+        Corrupt DLLPs detected and discarded (100% detection rate for injected errors).
+        Bad DLLP Error bit set in AER Correctable Error Status register. No FC credit
+        changes from corrupt UpdateFC DLLPs. No Ack/Nak processing from corrupt Ack/Nak
+        DLLPs. Link remains in DL_Active. AER error count increments correctly.
+      tool: "Protocol exerciser (CRC corruption) + protocol analyzer + lspci (AER)"
+      test_method: protocol_analyzer
+
+    - id: DLL-045
+      title: Bad TLP Error Detection and Reporting
+      description: >
+        Inject TLPs with corrupted 32-bit LCRC toward the DUT. Verify the DUT detects
+        the LCRC mismatch per Figure 3-19, discards the corrupt TLP, schedules a Nak DLLP,
+        and reports a Bad TLP error per §6.2. Also inject TLPs with out-of-range sequence
+        numbers and verify they trigger Bad TLP errors. Check the AER Correctable Error
+        Status register for the Bad TLP Error bit.
+      priority: P0
+      priority_rationale: Bad TLP detection is essential for data integrity; failure to detect corrupt TLPs causes silent data corruption.
+      spec_ref: "PCIe 5.0 §3.6.3.1, Figure 3-19, §6.2"
+      pass_criteria: >
+        Corrupt TLPs detected and discarded (100% detection rate). Bad TLP Error bit set
+        in AER Correctable Error Status register. Nak DLLP generated for first corrupt
+        TLP in a sequence. Corrupt TLP not forwarded to Transaction Layer. Out-of-range
+        sequence numbers also trigger Bad TLP error. AER error count accurate.
+      tool: "Protocol exerciser (LCRC corruption) + protocol analyzer + lspci (AER)"
+      test_method: protocol_analyzer
+
+    - id: DLL-046
+      title: Data Link Protocol Error Detection
+      description: >
+        Inject Ack/Nak DLLPs with invalid AckNak_Seq_Num values that do not correspond to
+        any unacknowledged TLP or the current ACKD_SEQ value. Verify the DUT detects the
+        invalid sequence number per Figure 3-18, discards the DLLP, and reports a Data
+        Link Protocol Error per §6.2. This is an uncorrectable error. Verify the error is
+        logged in the AER Uncorrectable Error Status register.
+      priority: P0
+      priority_rationale: Data Link Protocol Errors indicate fundamental DLL state desynchronization; proper detection prevents cascading failures.
+      spec_ref: "PCIe 5.0 §3.6.2.2, Figure 3-18, §6.2"
+      pass_criteria: >
+        Invalid AckNak_Seq_Num detected and DLLP discarded. Data Link Protocol Error
+        logged in AER Uncorrectable Error Status register. Error is not reported when
+        there are no outstanding unacknowledged TLPs and AckNak_Seq_Num matches ACKD_SEQ
+        (per note in §3.6.2.2). No link hang or crash on error detection. Error signaling
+        mechanism (ERR_NONFATAL) functions correctly.
+      tool: "Protocol exerciser (invalid seq# injection) + protocol analyzer + lspci (AER)"
+      test_method: protocol_analyzer
+
+    - id: DLL-047
+      title: Replay Timer Timeout Error
+      description: >
+        Suppress all Ack and Nak DLLPs from the link partner to force REPLAY_TIMER
+        expiration on the DUT. Verify the DUT reports a Replay Timer Timeout error per
+        §6.2 when the timer expires. Verify the error is a reported (correctable) error.
+        Confirm the DUT initiates replay upon timeout and increments REPLAY_NUM. After
+        4 consecutive timeouts (REPLAY_NUM rollover from 11b to 00b), verify link
+        retraining is triggered.
+      priority: P0
+      priority_rationale: Replay Timer Timeout is the ultimate safety net for lost acknowledgements; failure leaves TLPs permanently unacknowledged.
+      spec_ref: "PCIe 5.0 §3.6.2.1, §6.2"
+      pass_criteria: >
+        REPLAY_TIMER expires within Simplified Limit range (24,000-31,000 or 80,000-
+        100,000 Symbol Times). Replay Timer Timeout error reported in AER. Replay
+        initiated on each timeout. REPLAY_NUM increments correctly. Link retraining
+        triggered on REPLAY_NUM rollover (after 4 timeouts). Link recovers after
+        retraining if Ack suppression is removed.
+      tool: "Protocol exerciser (Ack suppression) + protocol analyzer + lspci (AER)"
+      test_method: protocol_analyzer
+
+    - id: DLL-048
+      title: Receiver Error Indication from Physical Layer
+      description: >
+        Inject physical layer errors (e.g., 8b/10b decode errors at Gen1/Gen2, or framing
+        errors at Gen3+) that cause the Physical Layer to indicate a Receiver Error to the
+        Data Link Layer. Verify the DUT Data Link Layer discards any TLP currently being
+        received when a Receiver Error is indicated, frees allocated storage, and schedules
+        a Nak DLLP if NAK_SCHEDULED is clear per §3.6.3.1. Verify that for DLLPs, the
+        corrupt DLLP is discarded per §3.6.2.2 and Figure 3-17.
+      priority: P1
+      priority_rationale: Physical Layer error propagation to DLL ensures corrupted data is caught early; incorrect handling bypasses DLL integrity checks.
+      spec_ref: "PCIe 5.0 §3.6.3.1, §3.6.2.2, Figure 3-17, Figure 3-19"
+      pass_criteria: >
+        TLPs in progress discarded on Physical Layer Receiver Error indication. Storage
+        freed for discarded TLPs. Nak scheduled if NAK_SCHEDULED is clear. DLLPs in
+        progress discarded without error reporting (Physical Layer reports these errors).
+        No data forwarded to Transaction Layer from corrupted TLPs. Link recovers
+        gracefully after transient physical errors.
+      tool: "BERT (physical layer error injection) + protocol analyzer"
+      test_method: protocol_analyzer
+
+    - id: DLL-049
+      title: Unsupported DLLP Type Handling
+      description: >
+        Inject DLLPs with Reserved (undefined) DLLP Type encodings toward the DUT. Per
+        §3.6.2.2, a received DLLP that is not corrupt but uses an unsupported Type encoding
+        must be discarded without further action — this is not considered an error. Verify
+        the DUT silently discards such DLLPs, does not report any error in AER, and does
+        not alter link state or flow control credits.
+      priority: P2
+      priority_rationale: Reserved DLLP types may be defined in future spec revisions; graceful handling ensures forward compatibility.
+      spec_ref: "PCIe 5.0 §3.6.2.2"
+      pass_criteria: >
+        DLLPs with undefined Type encodings are silently discarded. No error reported in
+        AER (neither correctable nor uncorrectable). Link remains in DL_Active. FC credits
+        unchanged. TLP sequence numbers unchanged. Test with at least 5 different reserved
+        Type encodings.
+      tool: "Protocol exerciser (custom DLLP injection) + protocol analyzer + lspci (AER)"
+      test_method: protocol_analyzer
+
+    - id: DLL-050
+      title: Sustained Error Injection Stress Test
+      description: >
+        Run sustained IO traffic (fio randrw 4K, 70/30 R/W, QD=64) while continuously
+        injecting random bit errors at a rate of 1 error per 10,000 TLPs for 60 minutes.
+        Verify the DUT Data Link Layer correctly handles all error events: Bad TLP
+        detection, Nak generation, replay, REPLAY_TIMER management, and AER error
+        reporting. Verify zero data corruption (fio verify mode) despite the continuous
+        error injection. Monitor for any link hang, REPLAY_NUM rollover, or unrecoverable
+        error conditions.
+      priority: P0
+      priority_rationale: Stress testing validates the entire DLL error recovery pipeline under sustained real-world error conditions.
+      spec_ref: "PCIe 5.0 §3.6 (all subsections)"
+      pass_criteria: >
+        Zero data corruption (fio verify pass) over 60-minute test. All injected errors
+        recovered via replay. Bad TLP errors logged in AER proportional to injection rate.
+        No link hang or REPLAY_NUM rollover (indicates healthy recovery). Link remains in
+        DL_Active throughout. Throughput degradation < 5% compared to error-free baseline.
+        No uncorrectable errors in AER.
+      tool: "BERT (continuous error injection) + protocol analyzer + fio (verify mode)"
+      test_method: protocol_analyzer
