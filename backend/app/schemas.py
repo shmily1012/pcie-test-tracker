@@ -14,6 +14,8 @@ class TestCaseBase(BaseModel):
     ocp_req_id: Optional[str] = None
     tool: Optional[str] = None
     pass_fail_criteria: Optional[str] = None
+    priority_rationale: Optional[str] = None
+    test_method: Optional[str] = None
     tags: Optional[str] = None
     status: str = "not_started"
     owner: Optional[str] = None
@@ -33,6 +35,8 @@ class TestCaseUpdate(BaseModel):
     ocp_req_id: Optional[str] = None
     tool: Optional[str] = None
     pass_fail_criteria: Optional[str] = None
+    priority_rationale: Optional[str] = None
+    test_method: Optional[str] = None
     tags: Optional[str] = None
     status: Optional[str] = None
     owner: Optional[str] = None
