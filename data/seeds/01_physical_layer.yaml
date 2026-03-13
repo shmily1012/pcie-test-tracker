@@ -225,7 +225,7 @@ categories:
         voltage support at Gen5 (MVoltageSupported = 1). Margin payload reports valid
         error count. No NAK responses. All 4 lanes report within spec.
       tool: "Linux pcm margin tool (e.g., pcie-margining) or LeCroy protocol analyzer"
-      test_method: software_automated
+      test_method: software_driver
 
     - id: PHY-013
       title: Lane Margining — Independent Error Sampler
@@ -242,7 +242,7 @@ categories:
         If MIndErrorSampler = 0: device does not return margin payload until IO is
         quiesced. Margin values consistent with hardware lab measurements (±10%).
       tool: "Linux pcm margin tool + fio (for traffic generation)"
-      test_method: software_automated
+      test_method: software_driver
 
     - id: PHY-014
       title: Lane Margining Under Thermal Stress
@@ -579,7 +579,7 @@ categories:
         PERST#, CLKREQ# connected to correct controller pins. No shorts between
         adjacent pins. DualPort#, IFDET# pulled to correct default state.
       tool: "Multimeter + continuity tester + schematic review"
-      test_method: manual_inspection
+      test_method: inspection
 
     - id: PHY-033
       title: U.2 Mechanical Dimensions
@@ -596,7 +596,7 @@ categories:
         position within SFF-8639 alignment tolerance. Clean insertion/extraction in
         reference backplane with ≤ 30 N force.
       tool: "Digital caliper (±0.01 mm) + gauge pins + reference U.2 backplane"
-      test_method: manual_inspection
+      test_method: inspection
 
     - id: PHY-034
       title: 12V Power Delivery and Inrush Current
@@ -678,7 +678,7 @@ categories:
         match spec (pulled low for NVMe, floating/high for SAS). U.3 backplane
         auto-selects NVMe within 500 ms of insertion. No false SAS/SATA detection.
       tool: "Multimeter + logic analyzer + U.3 backplane (if testing tri-mode)"
-      test_method: manual_inspection
+      test_method: inspection
 
     - id: PHY-039
       title: U.2 Hot-Swap Insertion and Removal
