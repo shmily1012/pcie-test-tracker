@@ -17,6 +17,8 @@ class TestCase(Base):
     ocp_req_id = Column(String, nullable=True)
     tool = Column(String, nullable=True)
     pass_fail_criteria = Column(Text, nullable=True)
+    priority_rationale = Column(Text, nullable=True)
+    test_method = Column(String, nullable=True)  # hardware_lab, software_automated, firmware_command, manual_inspection
     tags = Column(Text, nullable=True)  # JSON array
     status = Column(String, nullable=False, default="not_started")
     owner = Column(String, nullable=True)
