@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from sqlalchemy import func as sqlfunc
+from sqlalchemy import func as sqlfunc, case
 from ..database import get_db
 from ..models import TestCase
 from ..schemas import DashboardSummary, CoverageItem, HeatmapCell, TreemapNode
@@ -61,7 +61,7 @@ def get_heatmap(db: Session = Depends(get_db)):
     rows = db.query(
         TestCase.category, TestCase.priority,
         sqlfunc.count(TestCase.id),
-        sqlfunc.sum(sqlfunc.case((TestCase.status == "pass", 1), else_=0))
+        sqlfunc.sum(case((TestCase.status == "pass", 1), else_=0))
     ).group_by(TestCase.category, TestCase.priority).all()
     for cat, pri, total, passed in rows:
         result.append(HeatmapCell(

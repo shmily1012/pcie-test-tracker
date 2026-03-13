@@ -43,7 +43,7 @@ export default function TestCaseDetail() {
 
   return (
     <div className="p-6 space-y-6">
-      <button onClick={() => navigate('/test-cases')} className="flex items-center gap-2 text-slate-400 hover:text-slate-200 text-sm">
+      <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-slate-400 hover:text-slate-200 text-sm">
         <ArrowLeft size={16} /> Back to Test Cases
       </button>
 

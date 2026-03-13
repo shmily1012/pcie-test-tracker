@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useReactTable, getCoreRowModel, getSortedRowModel,
          getPaginationRowModel, flexRender, type ColumnDef, type SortingState } from '@tanstack/react-table';
 import { fetchTestCases, fetchFilters, updateStatus, type TestCase, type FilterOptions } from '../lib/api';
@@ -17,6 +17,8 @@ export default function TestCases() {
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [sorting, setSorting] = useState<SortingState>([]);
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialPage = parseInt(searchParams.get('page') || '1', 10) - 1;
 
   const load = () => {
     const params: Record<string, string> = {};
@@ -64,8 +66,25 @@ export default function TestCases() {
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
-    initialState: { pagination: { pageSize: 50 } },
+    initialState: { pagination: { pageSize: 50, pageIndex: initialPage } },
   });
+
+  // Sync page to URL when it changes
+  useEffect(() => {
+    const currentPage = table.getState().pagination.pageIndex + 1;
+    const urlPage = parseInt(searchParams.get('page') || '1', 10);
+    if (currentPage !== urlPage) {
+      setSearchParams(prev => {
+        const newParams = new URLSearchParams(prev);
+        if (currentPage === 1) {
+          newParams.delete('page');
+        } else {
+          newParams.set('page', String(currentPage));
+        }
+        return newParams;
+      }, { replace: true });
+    }
+  }, [table.getState().pagination.pageIndex]);
 
   return (
     <div className="p-6 space-y-4">
