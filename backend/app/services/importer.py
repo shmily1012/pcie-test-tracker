@@ -146,7 +146,9 @@ def parse_yaml_seed(content: str, spec_source_override: str = None) -> List[dict
                     "spec_ref": item.get("spec_ref"),
                     "ocp_req_id": item.get("ocp_req_id"),
                     "tool": item.get("tool"),
-                    "pass_fail_criteria": item.get("pass_fail_criteria"),
+                    "pass_fail_criteria": item.get("pass_fail_criteria") or item.get("pass_criteria"),
+                    "priority_rationale": item.get("priority_rationale"),
+                    "test_method": item.get("test_method"),
                     "status": "not_started",
                 }
                 results.append(tc)
