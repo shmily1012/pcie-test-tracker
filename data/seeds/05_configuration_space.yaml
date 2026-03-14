@@ -13,1599 +13,1231 @@ categories:
   subcategories:
   - name: Enhanced Configuration Access Mechanism (ECAM)
     items:
-    - id: CFG-001
+    - id: "CFG-001"
       title: ECAM Address Mapping Compliance
-      description: 'Validate that the Enhanced Configuration Access Mechanism (ECAM)
-        correctly maps memory-mapped configuration space accesses using the address
-        format defined in Table 7-1. The ECAM address must encode Bus Number in bits
-        [27:20], Device Number in bits [19:15], Function Number in bits [14:12], and
-        Register Number in bits [11:2], with bits [1:0] always zero for DWORD-aligned
-        access. Verify the host bridge correctly decodes all fields and routes configuration
-        requests to the appropriate target function across the full Bus/Device/Function
-        address range.
-
-        '
+      description: >-
+        Validate that the Enhanced Configuration Access Mechanism (ECAM) correctly maps memory-mapped
+        configuration space accesses using the address format defined in Table 7-1. The ECAM address must
+        encode Bus Number in bits [27:20], Device Number in bits [19:15], Function Number in bits [14:12],
+        and Register Number in bits [11:2], with bits [1:0] always zero for DWORD-aligned access. Verify
+        the host bridge correctly decodes all fields and routes configuration requests to the appropriate
+        target function across the full Bus/Device/Function address range.
       priority: P0
-      priority_rationale: ECAM is the fundamental mechanism for accessing PCIe configuration
-        space; failure prevents all device enumeration and configuration.
-      spec_ref: §7.2.2, Table 7-1
-      pass_criteria: 'All 256 buses, 32 devices per bus, and 8 functions per device
-        are addressable via ECAM. Configuration reads to valid BDF targets return
-        correct register values. Configuration reads to non-existent BDF targets return
-        all-ones (FFFFFFFFh) data. All accesses are naturally aligned to DWORD boundaries.
-
-        '
-      tool: lspci, custom ECAM driver
+      priority_rationale: >-
+        ECAM is the fundamental mechanism for accessing PCIe configuration space; failure prevents all
+        device enumeration and configuration.
+      spec_ref: "§7.2.2, Table 7-1"
+      pass_criteria: >-
+        All 256 buses, 32 devices per bus, and 8 functions per device are addressable via ECAM. Configuration
+        reads to valid BDF targets return correct register values. Configuration reads to non-existent
+        BDF targets return all-ones (FFFFFFFFh) data. All accesses are naturally aligned to DWORD boundaries.
+      tool: "lspci, custom ECAM driver"
       test_method: software_driver
-      validation:
-        status: valid
-        validated_at: '2026-03-14'
-        glean_validated: true
-        changes_made:
-        - Validated via Glean MCP - accurate
-    - id: CFG-002
-      title: ECAM Memory-Mapped I/O Region Size Verification
-      description: 'Verify that the ECAM MMIO region is correctly sized and aligned
-        for the bus number range it serves. Per §7.2.2, each function requires 4 KB
-        of address space (4096 bytes for the full extended configuration space), and
-        the total ECAM region must accommodate Bus x 32 Devices x 8 Functions x 4
-        KB. For a single root port supporting 256 buses, this yields 256 MB. Confirm
-        the MCFG ACPI table reports the correct base address and bus number range,
-        and that the memory region is marked as uncacheable in the processor memory
-        map.
-
-        '
+      glean_validated: true
+    - id: "CFG-002"
+      title: "ECAM Memory-Mapped I/O Region Size Verification"
+      description: >-
+        Verify that the ECAM MMIO region is correctly sized and aligned for the bus number range it serves.
+        Per §7.2.2, each function requires 4 KB of address space (4096 bytes for the full extended configuration
+        space), and the total ECAM region must accommodate Bus x 32 Devices x 8 Functions x 4 KB. For
+        a single root port supporting 256 buses, this yields 256 MB. Confirm the MCFG ACPI table reports
+        the correct base address and bus number range, and that the memory region is marked as uncacheable
+        in the processor memory map.
       priority: P0
-      priority_rationale: Incorrect ECAM region sizing or caching attributes cause
-        configuration access failures or data corruption.
+      priority_rationale: >-
+        Incorrect ECAM region sizing or caching attributes cause configuration access failures or data
+        corruption.
       spec_ref: §7.2.2
-      pass_criteria: 'MCFG table base address is 256 MB-aligned for full 256-bus range.
-        ECAM region size matches (EndBus - StartBus + 1) x 1 MB per bus. Memory type
-        is marked UC (uncacheable) in MTRR/PAT. Accesses to the last valid offset
-        (Bus=max, Dev=31, Func=7, Reg=FFCh) succeed without fault.
-
-        '
-      tool: ACPI table parser, /proc/iomem
+      pass_criteria: >-
+        MCFG table base address is 256 MB-aligned for full 256-bus range. ECAM region size matches (EndBus
+        - StartBus + 1) x 1 MB per bus. Memory type is marked UC (uncacheable) in MTRR/PAT. Accesses to
+        the last valid offset (Bus=max, Dev=31, Func=7, Reg=FFCh) succeed without fault.
+      tool: "ACPI table parser, /proc/iomem"
       test_method: software_driver
-      validation:
-        status: valid
-        validated_at: '2026-03-14'
-        glean_validated: true
-        changes_made:
-        - Validated via Glean MCP - accurate
-    - id: CFG-003
+      glean_validated: true
+    - id: "CFG-003"
       title: Configuration Transaction Type Routing
-      description: 'Validate that configuration transactions are correctly generated
-        and routed per §7.3. Type 0 Configuration Requests must be used when the target
-        function resides on the bus segment directly connected to the requesting bridge''s
-        secondary side. Type 1 Configuration Requests must be used when the target
-        function resides on a bus segment further downstream, and these must be forwarded
-        by intermediate bridges toward the target bus. Verify that bridges correctly
-        convert Type 1 to Type 0 when the target bus matches the bridge''s secondary
-        bus number.
-
-        '
+      description: >-
+        Validate that configuration transactions are correctly generated and routed per §7.3. Type 0 Configuration
+        Requests must be used when the target function resides on the bus segment directly connected to
+        the requesting bridge's secondary side. Type 1 Configuration Requests must be used when the target
+        function resides on a bus segment further downstream, and these must be forwarded by intermediate
+        bridges toward the target bus. Verify that bridges correctly convert Type 1 to Type 0 when the
+        target bus matches the bridge's secondary bus number.
       priority: P0
-      priority_rationale: Incorrect configuration routing prevents device discovery
-        and violates the hierarchical bus topology model.
+      priority_rationale: >-
+        Incorrect configuration routing prevents device discovery and violates the hierarchical bus topology
+        model.
       spec_ref: §7.3
-      pass_criteria: 'Type 0 requests reach endpoints on directly connected bus segments.
-        Type 1 requests are forwarded through intermediate bridges. Bridges convert
-        Type 1 to Type 0 when Destination Bus equals Secondary Bus Number. No configuration
-        requests are dropped or misrouted for valid BDF targets in a multi-level hierarchy.
-
-        '
-      tool: PCIe protocol analyzer, lspci
+      pass_criteria: >-
+        Type 0 requests reach endpoints on directly connected bus segments. Type 1 requests are forwarded
+        through intermediate bridges. Bridges convert Type 1 to Type 0 when Destination Bus equals Secondary
+        Bus Number. No configuration requests are dropped or misrouted for valid BDF targets in a multi-level
+        hierarchy.
+      tool: "PCIe protocol analyzer, lspci"
       test_method: protocol_analyzer
-      validation:
-        status: valid
-        validated_at: '2026-03-14'
-        glean_validated: true
-        changes_made:
-        - Validated via Glean MCP - accurate
+      glean_validated: true
 - name: Type 0/Type 1 Configuration Headers
   subcategories:
   - name: Common Header Fields
     items:
-    - id: CFG-004
+    - id: "CFG-004"
       title: Vendor ID and Device ID Register Validation
-      description: 'Verify that the Vendor ID register at offset 00h and Device ID
-        register at offset 02h return valid, non-reserved values for all enumerated
-        functions. Per §7.5.1, the Vendor ID is assigned by PCI-SIG and must not be
-        FFFFh (which indicates a non-existent function). The Device ID is vendor-assigned
-        and identifies the particular device. For multi-function devices, each function
-        may report a different Device ID. Confirm these fields are read-only (RO)
-        and retain their values across multiple reads and after secondary bus reset.
-
-        '
+      description: >-
+        Verify that the Vendor ID register at offset 00h and Device ID register at offset 02h return valid,
+        non-reserved values for all enumerated functions. Per §7.5.1, the Vendor ID is assigned by PCI-SIG
+        and must not be FFFFh (which indicates a non-existent function). The Device ID is vendor-assigned
+        and identifies the particular device. For multi-function devices, each function may report a different
+        Device ID. Confirm these fields are read-only (RO) and retain their values across multiple reads
+        and after secondary bus reset.
       priority: P0
-      priority_rationale: Vendor/Device ID is the primary mechanism for OS driver
-        binding; incorrect values prevent driver loading.
+      priority_rationale: >-
+        Vendor/Device ID is the primary mechanism for OS driver binding; incorrect values prevent driver
+        loading.
       spec_ref: §7.5.1.1
-      pass_criteria: 'Vendor ID is a valid PCI-SIG assigned value (not 0000h or FFFFh).
-        Device ID is non-zero and matches the device datasheet. Both fields are RO
-        — writes have no effect. Values are stable across 1000 consecutive reads.
-        Values are preserved after Function Level Reset and secondary bus reset.
-
-        '
-      tool: lspci -vvv, setpci
+      pass_criteria: >-
+        Vendor ID is a valid PCI-SIG assigned value (not 0000h or FFFFh). Device ID is non-zero and matches
+        the device datasheet. Both fields are RO — writes have no effect. Values are stable across 1000
+        consecutive reads. Values are preserved after Function Level Reset and secondary bus reset.
+      tool: "lspci -vvv, setpci"
       test_method: software_driver
-      validation:
-        status: valid
-        validated_at: '2026-03-14'
-        glean_validated: true
-        changes_made:
-        - Validated via Glean MCP - accurate
-    - id: CFG-005
+      glean_validated: true
+    - id: "CFG-005"
       title: Command Register Bit Functionality
-      description: 'Validate all programmable bits of the Command Register at offset
-        04h per Table 7-3. Key bits include: I/O Space Enable (bit 0), Memory Space
-        Enable (bit 1), Bus Master Enable (bit 2), Special Cycle Enable (bit 3, must
-        be RO/hardwired to 0 for PCIe), Parity Error Response Enable (bit 6), SERR#
-        Enable (bit 8), and Interrupt Disable (bit 10). After reset, the default value
-        must be 0000h. Verify that enabling Memory Space (bit 1) allows MMIO access
-        to BAR-mapped regions, and disabling it causes the function to not claim memory
-        transactions.
-
-        '
+      description: >-
+        Validate all programmable bits of the Command Register at offset 04h per Table 7-3. Key bits include:
+        I/O Space Enable (bit 0), Memory Space Enable (bit 1), Bus Master Enable (bit 2), Special Cycle
+        Enable (bit 3, must be RO/hardwired to 0 for PCIe), Parity Error Response Enable (bit 6), SERR#
+        Enable (bit 8), and Interrupt Disable (bit 10). After reset, the default value must be 0000h.
+        Verify that enabling Memory Space (bit 1) allows MMIO access to BAR-mapped regions, and disabling
+        it causes the function to not claim memory transactions.
       priority: P0
-      priority_rationale: The Command Register controls fundamental device operation
-        including memory/IO space decoding and bus mastering.
-      spec_ref: §7.5.1.1, Table 7-3
-      pass_criteria: 'Default value after reset is 0000h. Bits 3, 4, 5, 7 are hardwired
-        to 0 for PCIe endpoints. Setting bit 1 enables memory space decoding; clearing
-        it causes UR for memory transactions to the function''s BARs. Setting bit
-        2 enables bus master capability. All RW bits toggle correctly. Writing to
-        hardwired bits has no effect.
-
-        '
-      tool: setpci, custom driver
+      priority_rationale: >-
+        The Command Register controls fundamental device operation including memory/IO space decoding
+        and bus mastering.
+      spec_ref: "§7.5.1.1, Table 7-3"
+      pass_criteria: >-
+        Default value after reset is 0000h. Bits 3, 4, 5, 7 are hardwired to 0 for PCIe endpoints. Setting
+        bit 1 enables memory space decoding; clearing it causes UR for memory transactions to the function's
+        BARs. Setting bit 2 enables bus master capability. All RW bits toggle correctly. Writing to hardwired
+        bits has no effect.
+      tool: "setpci, custom driver"
       test_method: software_driver
-      validation:
-        status: valid
-        validated_at: '2026-03-14'
-        glean_validated: true
-        changes_made:
-        - Validated via Glean MCP - accurate
-    - id: CFG-006
+      glean_validated: true
+    - id: "CFG-006"
       title: Status Register Bit Reporting
-      description: 'Validate the Status Register at offset 06h reports error and capability
-        status correctly per Table 7-4. Verify Capabilities List bit (bit 4) is set
-        to 1b indicating the presence of a PCI Capability linked list starting at
-        offset 34h. Confirm RW1C behavior for error status bits: Master Data Parity
-        Error (bit 8), Signaled Target Abort (bit 11), Received Target Abort (bit
-        12), Received Master Abort (bit 13), Signaled System Error (bit 14), and Detected
-        Parity Error (bit 15). Writing 1b to these bits must clear them; writing 0b
-        must have no effect.
-
-        '
+      description: >-
+        Validate the Status Register at offset 06h reports error and capability status correctly per Table
+        7-4. Verify Capabilities List bit (bit 4) is set to 1b indicating the presence of a PCI Capability
+        linked list starting at offset 34h. Confirm RW1C behavior for error status bits: Master Data Parity
+        Error (bit 8), Signaled Target Abort (bit 11), Received Target Abort (bit 12), Received Master
+        Abort (bit 13), Signaled System Error (bit 14), and Detected Parity Error (bit 15). Writing 1b
+        to these bits must clear them; writing 0b must have no effect.
       priority: P1
-      priority_rationale: Status Register provides critical error reporting but is
-        secondary to basic device configuration.
-      spec_ref: §7.5.1.1, Table 7-4
-      pass_criteria: 'Capabilities List bit (bit 4) reads 1b. Interrupt Status bit
-        (bit 3) reflects pending interrupt state when INTx is not disabled. Error
-        bits are RW1C: writing 1b clears a set bit, writing 0b has no effect. Devsel
-        Timing bits [10:9] read 00b for PCIe. Reserved bits read as 0.
-
-        '
-      tool: setpci, lspci -vvv
+      priority_rationale: >-
+        Status Register provides critical error reporting but is secondary to basic device configuration.
+      spec_ref: "§7.5.1.1, Table 7-4"
+      pass_criteria: >-
+        Capabilities List bit (bit 4) reads 1b. Interrupt Status bit (bit 3) reflects pending interrupt
+        state when INTx is not disabled. Error bits are RW1C: writing 1b clears a set bit, writing 0b
+        has no effect. Devsel Timing bits [10:9] read 00b for PCIe. Reserved bits read as 0.
+      tool: "setpci, lspci -vvv"
       test_method: software_driver
-    - id: CFG-007
+      glean_validated: false
+    - id: "CFG-007"
       title: Class Code and Revision ID Verification
-      description: 'Verify the Class Code register at offsets 09h-0Bh correctly identifies
-        the device function type per §7.5.1.1. The Class Code consists of Base Class
-        (offset 0Bh), Sub-Class (offset 0Ah), and Programming Interface (offset 09h).
-        For NVMe SSDs, the Base Class must be 01h (Mass Storage Controller), Sub-Class
-        must be 08h (Non-Volatile Memory Controller), and Programming Interface must
-        be 02h (NVM Express). The Revision ID at offset 08h is vendor-defined and
-        must be read-only.
-
-        '
+      description: >-
+        Verify the Class Code register at offsets 09h-0Bh correctly identifies the device function type
+        per §7.5.1.1. The Class Code consists of Base Class (offset 0Bh), Sub-Class (offset 0Ah), and
+        Programming Interface (offset 09h). For NVMe SSDs, the Base Class must be 01h (Mass Storage Controller),
+        Sub-Class must be 08h (Non-Volatile Memory Controller), and Programming Interface must be 02h
+        (NVM Express). The Revision ID at offset 08h is vendor-defined and must be read-only.
       priority: P1
-      priority_rationale: Class Code drives OS device classification; incorrect values
-        cause wrong driver binding or device not recognized.
+      priority_rationale: >-
+        Class Code drives OS device classification; incorrect values cause wrong driver binding or device
+        not recognized.
       spec_ref: §7.5.1.1
-      pass_criteria: 'Class Code fields match device datasheet values. For NVMe: Base
-        Class = 01h, Sub-Class = 08h, Interface = 02h. All three bytes are RO. Revision
-        ID is RO and matches datasheet. Values stable across power cycles.
-
-        '
-      tool: lspci -vvv
+      pass_criteria: >-
+        Class Code fields match device datasheet values. For NVMe: Base Class = 01h, Sub-Class = 08h,
+        Interface = 02h. All three bytes are RO. Revision ID is RO and matches datasheet. Values stable
+        across power cycles.
+      tool: "lspci -vvv"
       test_method: software_driver
-    - id: CFG-008
-      title: Header Type Register and Multi-Function Device Detection
-      description: 'Verify the Header Type register at offset 0Eh correctly identifies
-        the header layout and multi-function capability. Bit 7 indicates multi-function
-        device when set (1b). Bits [6:0] encode the header layout: 00h for Type 0
-        (endpoint), 01h for Type 1 (bridge). For a single-function device, Function
-        0 must have bit 7 clear and Functions 1-7 must not respond to configuration
-        accesses (return FFFFFFFFh). For multi-function devices, bit 7 of Function
-        0''s Header Type must be set.
-
-        '
+      glean_validated: false
+    - id: "CFG-008"
+      title: "Header Type Register and Multi-Function Device Detection"
+      description: >-
+        Verify the Header Type register at offset 0Eh correctly identifies the header layout and multi-function
+        capability. Bit 7 indicates multi-function device when set (1b). Bits [6:0] encode the header
+        layout: 00h for Type 0 (endpoint), 01h for Type 1 (bridge). For a single-function device, Function
+        0 must have bit 7 clear and Functions 1-7 must not respond to configuration accesses (return FFFFFFFFh).
+        For multi-function devices, bit 7 of Function 0's Header Type must be set.
       priority: P1
-      priority_rationale: Header Type determines how the OS parses the remaining configuration
-        header fields.
+      priority_rationale: >-
+        Header Type determines how the OS parses the remaining configuration header fields.
       spec_ref: §7.5.1.1
-      pass_criteria: 'Type 0 endpoints report bits [6:0] = 00h. Type 1 bridges report
-        bits [6:0] = 01h. Multi-function devices have bit 7 = 1b in Function 0. Single-function
-        devices have bit 7 = 0b and Functions 1-7 return all-ones. Header Type is
-        RO.
-
-        '
-      tool: lspci -vvv, setpci
+      pass_criteria: >-
+        Type 0 endpoints report bits [6:0] = 00h. Type 1 bridges report bits [6:0] = 01h. Multi-function
+        devices have bit 7 = 1b in Function 0. Single-function devices have bit 7 = 0b and Functions 1-7
+        return all-ones. Header Type is RO.
+      tool: "lspci -vvv, setpci"
       test_method: software_driver
+      glean_validated: false
   - name: Type 0 Specific Fields
     items:
-    - id: CFG-009
+    - id: "CFG-009"
       title: Capability Pointer and Linked List Traversal
-      description: 'Validate the Capabilities Pointer register at offset 34h and the
-        complete capability linked list traversal for Type 0 endpoints. The Capabilities
-        Pointer provides the offset to the first capability structure. Each capability
-        has an 8-bit Capability ID and an 8-bit Next Capability Pointer forming a
-        linked list. The list terminates when Next Pointer is 00h. Verify all capability
-        pointers are DWORD-aligned (bits [1:0] must be 00b), all pointed-to offsets
-        are within the 256-byte PCI-compatible space, and no circular references exist.
-
-        '
+      description: >-
+        Validate the Capabilities Pointer register at offset 34h and the complete capability linked list
+        traversal for Type 0 endpoints. The Capabilities Pointer provides the offset to the first capability
+        structure. Each capability has an 8-bit Capability ID and an 8-bit Next Capability Pointer forming
+        a linked list. The list terminates when Next Pointer is 00h. Verify all capability pointers are
+        DWORD-aligned (bits [1:0] must be 00b), all pointed-to offsets are within the 256-byte PCI-compatible
+        space, and no circular references exist.
       priority: P0
-      priority_rationale: Capability list traversal is essential for discovering PCIe,
-        PM, MSI, and MSI-X capabilities.
-      spec_ref: §7.5.1.1, §7.5.1.2
-      pass_criteria: 'Capabilities Pointer at 34h is DWORD-aligned (bits [1:0] = 00b).
-        Following the linked list reaches all expected capabilities (PCIe, PM, MSI/MSI-X
-        at minimum). The list terminates with Next Pointer = 00h. No pointer references
-        an offset outside [40h, FCh]. No circular references detected in traversal
-        of up to 48 capabilities.
-
-        '
-      tool: lspci -vvv, custom parser
+      priority_rationale: >-
+        Capability list traversal is essential for discovering PCIe, PM, MSI, and MSI-X capabilities.
+      spec_ref: "§7.5.1.1, §7.5.1.2"
+      pass_criteria: >-
+        Capabilities Pointer at 34h is DWORD-aligned (bits [1:0] = 00b). Following the linked list reaches
+        all expected capabilities (PCIe, PM, MSI/MSI-X at minimum). The list terminates with Next Pointer
+        = 00h. No pointer references an offset outside [40h, FCh]. No circular references detected in
+        traversal of up to 48 capabilities.
+      tool: "lspci -vvv, custom parser"
       test_method: software_driver
-      validation:
-        status: valid
-        validated_at: '2026-03-14'
-        glean_validated: true
-        changes_made:
-        - Validated via Glean MCP - accurate
-    - id: CFG-010
+      glean_validated: true
+    - id: "CFG-010"
       title: Subsystem Vendor ID and Subsystem ID
-      description: 'Verify the Subsystem Vendor ID register at offset 2Ch and Subsystem
-        ID register at offset 2Eh for Type 0 endpoints. These registers identify the
-        add-in card or subsystem and are used by operating systems for more specific
-        driver matching beyond Vendor/Device ID. The Subsystem Vendor ID must be a
-        valid PCI-SIG assigned value. Both fields are RO for PCI Express endpoints
-        per the specification and must retain their values after reset.
-
-        '
+      description: >-
+        Verify the Subsystem Vendor ID register at offset 2Ch and Subsystem ID register at offset 2Eh
+        for Type 0 endpoints. These registers identify the add-in card or subsystem and are used by operating
+        systems for more specific driver matching beyond Vendor/Device ID. The Subsystem Vendor ID must
+        be a valid PCI-SIG assigned value. Both fields are RO for PCI Express endpoints per the specification
+        and must retain their values after reset.
       priority: P2
-      priority_rationale: Subsystem IDs enable precise driver matching but basic functionality
-        works with Vendor/Device ID alone.
+      priority_rationale: >-
+        Subsystem IDs enable precise driver matching but basic functionality works with Vendor/Device
+        ID alone.
       spec_ref: §7.5.1.2
-      pass_criteria: 'Subsystem Vendor ID is a valid PCI-SIG assigned value (not 0000h
-        or FFFFh). Subsystem ID is non-zero. Both fields are RO — writes have no effect.
-        Values match the device datasheet and are consistent across power cycles.
-
-        '
-      tool: lspci -vvv
+      pass_criteria: >-
+        Subsystem Vendor ID is a valid PCI-SIG assigned value (not 0000h or FFFFh). Subsystem ID is non-zero.
+        Both fields are RO — writes have no effect. Values match the device datasheet and are consistent
+        across power cycles.
+      tool: "lspci -vvv"
       test_method: software_driver
+      glean_validated: false
 - name: Base Address Registers (BARs)
   subcategories:
   - name: BAR Configuration and Sizing
     items:
-    - id: CFG-011
-      title: BAR Type and Size Detection via Write-All-Ones Method
-      description: 'Validate BAR sizing by writing all ones (FFFFFFFFh) to each BAR
-        register at offsets 10h-24h and reading back the result. Per §7.5.1.2.1, the
-        number of low-order bits returned as zero determines the BAR size (the address
-        space requested). Bit 0 determines Memory (0b) vs. I/O (1b) space. For memory
-        BARs, bits [2:1] encode the type per Table 7-8: 00b = 32-bit, 10b = 64-bit.
-        For 64-bit BARs, two consecutive BAR registers are consumed. Bit 3 indicates
-        prefetchable when set. The Command Register Memory Space Enable bit must be
-        cleared before performing BAR sizing.
-
-        '
+    - id: "CFG-011"
+      title: "BAR Type and Size Detection via Write-All-Ones Method"
+      description: >-
+        Validate BAR sizing by writing all ones (FFFFFFFFh) to each BAR register at offsets 10h-24h and
+        reading back the result. Per §7.5.1.2.1, the number of low-order bits returned as zero determines
+        the BAR size (the address space requested). Bit 0 determines Memory (0b) vs. I/O (1b) space. For
+        memory BARs, bits [2:1] encode the type per Table 7-8: 00b = 32-bit, 10b = 64-bit. For 64-bit
+        BARs, two consecutive BAR registers are consumed. Bit 3 indicates prefetchable when set. The Command
+        Register Memory Space Enable bit must be cleared before performing BAR sizing.
       priority: P0
-      priority_rationale: BAR sizing is fundamental to BIOS/OS resource allocation;
-        incorrect sizing prevents device MMIO mapping.
-      spec_ref: §7.5.1.2.1, Table 7-8, Figure 7-11, Figure 7-12
-      pass_criteria: 'Writing FFFFFFFFh and reading back correctly encodes the requested
-        size. BAR type bits [2:0] match datasheet (memory/IO, 32/64-bit, prefetchable).
-        64-bit BARs consume two consecutive register slots. Minimum memory BAR size
-        is 128 bytes. After writing the assigned base address, the BAR correctly decodes
-        accesses within its range. Original BAR value is restored after sizing.
-
-        '
-      tool: setpci, custom BAR sizing tool
+      priority_rationale: >-
+        BAR sizing is fundamental to BIOS/OS resource allocation; incorrect sizing prevents device MMIO
+        mapping.
+      spec_ref: "§7.5.1.2.1, Table 7-8, Figure 7-11, Figure 7-12"
+      pass_criteria: >-
+        Writing FFFFFFFFh and reading back correctly encodes the requested size. BAR type bits [2:0] match
+        datasheet (memory/IO, 32/64-bit, prefetchable). 64-bit BARs consume two consecutive register slots.
+        Minimum memory BAR size is 128 bytes. After writing the assigned base address, the BAR correctly
+        decodes accesses within its range. Original BAR value is restored after sizing.
+      tool: "setpci, custom BAR sizing tool"
       test_method: software_driver
-      validation:
-        status: valid
-        validated_at: '2026-03-14'
-        glean_validated: true
-        changes_made:
-        - Validated via Glean MCP - accurate
-    - id: CFG-012
-      title: 64-bit BAR Address Assignment and Upper 32 Bits
-      description: 'For 64-bit memory BARs (Type field bits [2:1] = 10b in Table 7-8),
-        verify that the upper 32 bits of the base address are stored in the next consecutive
-        BAR register. Write a 64-bit address above 4 GB to the BAR pair and confirm
-        the device correctly decodes memory accesses at the assigned address. PCI
-        Express Endpoints are required to support 64-bit addressing per §7.5.1.2.1,
-        so the 64-bit Address Capable bit must be set. Verify that the upper BAR register
-        participates correctly in the write-all-ones sizing procedure.
-
-        '
+      glean_validated: true
+    - id: "CFG-012"
+      title: "64-bit BAR Address Assignment and Upper 32 Bits"
+      description: >-
+        For 64-bit memory BARs (Type field bits [2:1] = 10b in Table 7-8), verify that the upper 32 bits
+        of the base address are stored in the next consecutive BAR register. Write a 64-bit address above
+        4 GB to the BAR pair and confirm the device correctly decodes memory accesses at the assigned
+        address. PCI Express Endpoints are required to support 64-bit addressing per §7.5.1.2.1, so the
+        64-bit Address Capable bit must be set. Verify that the upper BAR register participates correctly
+        in the write-all-ones sizing procedure.
       priority: P1
-      priority_rationale: 64-bit BAR support is mandatory for PCIe endpoints and critical
-        for systems with >4GB physical memory.
-      spec_ref: §7.5.1.2.1, Table 7-8
-      pass_criteria: 'Upper BAR register (offset+4) stores address bits [63:32]. Writing
-        FFFFFFFFh to both BAR registers and reading back returns the correct 64-bit
-        size mask. Device correctly responds to MMIO accesses at addresses above 4
-        GB. BAR pair consumes two register slots, leaving the next BAR index unavailable.
-
-        '
-      tool: setpci, custom MMIO test
+      priority_rationale: >-
+        64-bit BAR support is mandatory for PCIe endpoints and critical for systems with >4GB physical
+        memory.
+      spec_ref: "§7.5.1.2.1, Table 7-8"
+      pass_criteria: >-
+        Upper BAR register (offset+4) stores address bits [63:32]. Writing FFFFFFFFh to both BAR registers
+        and reading back returns the correct 64-bit size mask. Device correctly responds to MMIO accesses
+        at addresses above 4 GB. BAR pair consumes two register slots, leaving the next BAR index unavailable.
+      tool: "setpci, custom MMIO test"
       test_method: software_driver
-    - id: CFG-013
+      glean_validated: false
+    - id: "CFG-013"
       title: BAR Memory Space Enable Gating
-      description: 'Verify that the function only claims memory transactions targeting
-        its BAR regions when the Memory Space Enable bit (Command Register bit 1)
-        is set. When Memory Space Enable is cleared, the function must not respond
-        to any memory transactions regardless of the BAR configuration. This test
-        ensures proper isolation during BAR reprogramming. Additionally verify that
-        the Bus Master Enable bit (Command Register bit 2) independently controls
-        the function''s ability to issue memory requests as a master.
-
-        '
+      description: >-
+        Verify that the function only claims memory transactions targeting its BAR regions when the Memory
+        Space Enable bit (Command Register bit 1) is set. When Memory Space Enable is cleared, the function
+        must not respond to any memory transactions regardless of the BAR configuration. This test ensures
+        proper isolation during BAR reprogramming. Additionally verify that the Bus Master Enable bit
+        (Command Register bit 2) independently controls the function's ability to issue memory requests
+        as a master.
       priority: P1
-      priority_rationale: Memory space enable gating is essential for safe BAR reprogramming
-        and resource rebalancing.
-      spec_ref: §7.5.1.1, Table 7-3, §7.5.1.2.1
-      pass_criteria: 'With Memory Space Enable = 0b, memory reads to BAR regions receive
-        Unsupported Request completion. With Memory Space Enable = 1b, memory reads
-        return valid data. Transition between states is immediate — no stale claims.
-        Bus Master Enable independently controls master capability.
-
-        '
-      tool: custom driver, PCIe protocol analyzer
+      priority_rationale: >-
+        Memory space enable gating is essential for safe BAR reprogramming and resource rebalancing.
+      spec_ref: "§7.5.1.1, Table 7-3, §7.5.1.2.1"
+      pass_criteria: >-
+        With Memory Space Enable = 0b, memory reads to BAR regions receive Unsupported Request completion.
+        With Memory Space Enable = 1b, memory reads return valid data. Transition between states is immediate
+        — no stale claims. Bus Master Enable independently controls master capability.
+      tool: "custom driver, PCIe protocol analyzer"
       test_method: software_driver
-      validation:
-        status: valid
-        validated_at: '2026-03-14'
-        glean_validated: true
-        changes_made:
-        - Validated via Glean MCP - accurate
+      glean_validated: true
 - name: PCI Power Management Capability
   subcategories:
   - name: PM Capability Structure
     items:
-    - id: CFG-014
+    - id: "CFG-014"
       title: PM Capability Register Validation
-      description: 'Validate the PCI Power Management Capability structure per §7.5.2.
-        Verify the Capability ID is 01h at offset +00h. Check the PM Capabilities
-        Register (offset +02h) reports correct PME support for D0, D3hot, and D3cold
-        states. For PCI Express devices, the Version field must be 03h. The DSI (Device
-        Specific Initialization) bit, D1 Support, and D2 Support bits should match
-        the device capabilities. Verify the PME_Clock bit is hardwired to 0b for PCI
-        Express devices.
-
-        '
+      description: >-
+        Validate the PCI Power Management Capability structure per §7.5.2. Verify the Capability ID is
+        01h at offset +00h. Check the PM Capabilities Register (offset +02h) reports correct PME support
+        for D0, D3hot, and D3cold states. For PCI Express devices, the Version field must be 03h. The
+        DSI (Device Specific Initialization) bit, D1 Support, and D2 Support bits should match the device
+        capabilities. Verify the PME_Clock bit is hardwired to 0b for PCI Express devices.
       priority: P1
-      priority_rationale: Power management capability discovery is required for OS
-        PM framework integration.
-      spec_ref: §7.5.2, Figure 7-17
-      pass_criteria: 'Capability ID = 01h. Version field = 03h for PCIe. PME_Clock
-        = 0b. PME Support bits correctly reflect supported states (at minimum D0 and
-        D3hot for endpoints). Aux_Current field matches device power specs. All fields
-        are read-only per their defined attributes.
-
-        '
-      tool: lspci -vvv
+      priority_rationale: >-
+        Power management capability discovery is required for OS PM framework integration.
+      spec_ref: "§7.5.2, Figure 7-17"
+      pass_criteria: >-
+        Capability ID = 01h. Version field = 03h for PCIe. PME_Clock = 0b. PME Support bits correctly
+        reflect supported states (at minimum D0 and D3hot for endpoints). Aux_Current field matches device
+        power specs. All fields are read-only per their defined attributes.
+      tool: "lspci -vvv"
       test_method: software_driver
-    - id: CFG-015
+      glean_validated: false
+    - id: "CFG-015"
       title: PM Control/Status Register State Transitions
-      description: 'Verify the Power Management Control/Status Register (PMCSR) correctly
-        handles power state transitions. The PowerState field (bits [1:0]) must support
-        transitions between D0 (00b) and D3hot (11b) at minimum. Writing 11b must
-        transition the device to D3hot; writing 00b must return it to D0. Per §7.5.2,
-        a minimum recovery time of 10ms is required after D3hot-to-D0 transition before
-        the function is required to respond to configuration space accesses. Verify
-        the PME_Status bit (bit 15) is RW1C and the PME_En bit (bit 8) enables PME
-        signaling.
-
-        '
+      description: >-
+        Verify the Power Management Control/Status Register (PMCSR) correctly handles power state transitions.
+        The PowerState field (bits [1:0]) must support transitions between D0 (00b) and D3hot (11b) at
+        minimum. Writing 11b must transition the device to D3hot; writing 00b must return it to D0. Per
+        §7.5.2, a minimum recovery time of 10ms is required after D3hot-to-D0 transition before the function
+        is required to respond to configuration space accesses. Verify the PME_Status bit (bit 15) is
+        RW1C and the PME_En bit (bit 8) enables PME signaling.
       priority: P0
-      priority_rationale: PM state transitions are essential for system sleep/wake
-        and runtime power management.
+      priority_rationale: >-
+        PM state transitions are essential for system sleep/wake and runtime power management.
       spec_ref: §7.5.2
-      pass_criteria: 'Writing PowerState = 11b transitions to D3hot; reading back
-        confirms 11b. Writing PowerState = 00b transitions to D0; device responds
-        to config accesses after 10ms recovery. PME_Status (bit 15) is RW1C. PME_En
-        (bit 8) toggles correctly. No_Soft_Reset bit value preserved across D3hot-to-D0
-        if supported. Configuration context lost in D3hot is restored by software
-        after D0 transition.
-
-        '
-      tool: setpci, custom PM driver
+      pass_criteria: >-
+        Writing PowerState = 11b transitions to D3hot; reading back confirms 11b. Writing PowerState =
+        00b transitions to D0; device responds to config accesses after 10ms recovery. PME_Status (bit
+        15) is RW1C. PME_En (bit 8) toggles correctly. No_Soft_Reset bit value preserved across D3hot-to-D0
+        if supported. Configuration context lost in D3hot is restored by software after D0 transition.
+      tool: "setpci, custom PM driver"
       test_method: software_driver
-      validation:
-        status: corrected
-        validated_at: '2026-03-14'
-        glean_validated: true
-        changes_made:
-        - Device Capabilities is §7.5.3.2, not §7.5.3.3
+      glean_validated: true
 - name: PCI Express Capability Structure
   subcategories:
   - name: PCIe Capabilities Register
     items:
-    - id: CFG-016
+    - id: "CFG-016"
       title: PCIe Capability ID and Version Verification
-      description: 'Verify the PCI Express Capability Structure is present in the
-        capability list with Capability ID 10h per §7.5.3. Check the PCI Express Capabilities
-        Register (offset +02h) reports the correct Capability Version (must be 2h
-        for PCIe 3.0+ devices), Device/Port Type field correctly identifies the component
-        type (0000b for Endpoint, 0100b for Root Port, etc.), and the Slot Implemented
-        bit is correctly set for ports with physical slots. The Interrupt Message
-        Number field must be valid if MSI/MSI-X is implemented.
-
-        '
+      description: >-
+        Verify the PCI Express Capability Structure is present in the capability list with Capability
+        ID 10h per §7.5.3. Check the PCI Express Capabilities Register (offset +02h) reports the correct
+        Capability Version (must be 2h for PCIe 3.0+ devices), Device/Port Type field correctly identifies
+        the component type (0000b for Endpoint, 0100b for Root Port, etc.), and the Slot Implemented bit
+        is correctly set for ports with physical slots. The Interrupt Message Number field must be valid
+        if MSI/MSI-X is implemented.
       priority: P0
-      priority_rationale: PCIe Capability Structure is mandatory for all PCIe devices
-        and defines fundamental device characteristics.
-      spec_ref: §7.5.3, Figure 7-21
-      pass_criteria: 'Capability ID = 10h. Capability Version = 2h. Device/Port Type
-        matches the physical component (endpoint, root port, switch port, etc.). Slot
-        Implemented bit correctly reflects physical slot presence. Interrupt Message
-        Number is valid when MSI/MSI-X is enabled. All fields are RO.
-
-        '
-      tool: lspci -vvv
+      priority_rationale: >-
+        PCIe Capability Structure is mandatory for all PCIe devices and defines fundamental device characteristics.
+      spec_ref: "§7.5.3, Figure 7-21"
+      pass_criteria: >-
+        Capability ID = 10h. Capability Version = 2h. Device/Port Type matches the physical component
+        (endpoint, root port, switch port, etc.). Slot Implemented bit correctly reflects physical slot
+        presence. Interrupt Message Number is valid when MSI/MSI-X is enabled. All fields are RO.
+      tool: "lspci -vvv"
       test_method: software_driver
-      validation:
-        status: corrected
-        validated_at: '2026-03-14'
-        glean_validated: true
-        changes_made:
-        - Status Register ref should be PCI-compat config regs, not §7.5.1.2
+      glean_validated: true
   - name: Device Capabilities and Control
     items:
-    - id: CFG-017
+    - id: "CFG-017"
       title: Device Capabilities Register Field Validation
-      description: 'Validate all fields in the Device Capabilities Register (offset
-        +04h in PCIe Cap) per Table 7-19. Verify Max_Payload_Size_Supported reports
-        the correct maximum TLP payload (000b=128, 001b=256, 010b=512, 011b=1024,
-        100b=2048, 101b=4096 bytes). Check Phantom Functions Supported, Extended Tag
-        Field Supported (8-bit or 10-bit), Acceptable L0s and L1 Latency fields, Role-Based
-        Error Reporting (must be 1b for PCIe), and Function Level Reset Capability.
-        For endpoints, Captured Slot Power Limit fields reflect upstream port programming.
-
-        '
+      description: >-
+        Validate all fields in the Device Capabilities Register (offset +04h in PCIe Cap) per Table 7-19.
+        Verify Max_Payload_Size_Supported reports the correct maximum TLP payload (000b=128, 001b=256,
+        010b=512, 011b=1024, 100b=2048, 101b=4096 bytes). Check Phantom Functions Supported, Extended
+        Tag Field Supported (8-bit or 10-bit), Acceptable L0s and L1 Latency fields, Role-Based Error
+        Reporting (must be 1b for PCIe), and Function Level Reset Capability. For endpoints, Captured
+        Slot Power Limit fields reflect upstream port programming.
       priority: P0
-      priority_rationale: Device Capabilities determine maximum TLP payload, tag width,
-        and latency tolerance which directly impact performance.
-      spec_ref: §7.5.3.3, Table 7-19
-      pass_criteria: 'Max_Payload_Size_Supported matches device datasheet. Extended
-        Tag support matches implementation (5-bit, 8-bit, or 10-bit). Role-Based Error
-        Reporting = 1b. FLR Capability accurately reflects hardware support. All fields
-        are RO/HwInit. L0s and L1 latency values are within specified encoding range.
-
-        '
-      tool: lspci -vvv
+      priority_rationale: >-
+        Device Capabilities determine maximum TLP payload, tag width, and latency tolerance which directly
+        impact performance.
+      spec_ref: "§7.5.3.3, Table 7-19"
+      pass_criteria: >-
+        Max_Payload_Size_Supported matches device datasheet. Extended Tag support matches implementation
+        (5-bit, 8-bit, or 10-bit). Role-Based Error Reporting = 1b. FLR Capability accurately reflects
+        hardware support. All fields are RO/HwInit. L0s and L1 latency values are within specified encoding
+        range.
+      tool: "lspci -vvv"
       test_method: software_driver
-      validation:
-        status: corrected
-        validated_at: '2026-03-14'
-        glean_validated: true
-        changes_made:
-        - Link Capabilities is §7.5.3.6, not §7.5.3.5
-    - id: CFG-018
+      glean_validated: true
+    - id: "CFG-018"
       title: Device Control Register Programming
-      description: 'Verify all programmable fields in the Device Control Register
-        (offset +08h in PCIe Cap) per Table 7-20. Test Correctable Error Reporting
-        Enable, Non-Fatal Error Reporting Enable, Fatal Error Reporting Enable, and
-        Unsupported Request Reporting Enable bits. Validate Max_Payload_Size (bits
-        [7:5]) can be programmed up to the value in Max_Payload_Size_Supported. Verify
-        Max_Read_Request_Size (bits [14:12]) accepts values 000b through 101b (128B
-        through 4096B). Test Enable No Snoop and Enable Relaxed Ordering bits for
-        TLP attribute control.
-
-        '
+      description: >-
+        Verify all programmable fields in the Device Control Register (offset +08h in PCIe Cap) per Table
+        7-20. Test Correctable Error Reporting Enable, Non-Fatal Error Reporting Enable, Fatal Error Reporting
+        Enable, and Unsupported Request Reporting Enable bits. Validate Max_Payload_Size (bits [7:5])
+        can be programmed up to the value in Max_Payload_Size_Supported. Verify Max_Read_Request_Size
+        (bits [14:12]) accepts values 000b through 101b (128B through 4096B). Test Enable No Snoop and
+        Enable Relaxed Ordering bits for TLP attribute control.
       priority: P0
-      priority_rationale: Device Control configures error reporting, payload size,
-        and TLP attributes critical for correct operation.
-      spec_ref: §7.5.3.4, Table 7-20
-      pass_criteria: 'All error reporting enable bits toggle correctly (default 0b).
-        Max_Payload_Size cannot exceed Max_Payload_Size_Supported — writing a larger
-        value has defined behavior. Max_Read_Request_Size accepts all valid encodings.
-        Relaxed Ordering and No Snoop bits toggle and affect TLP attribute fields.
-        Initiate FLR (bit 15) when FLR Capable = 1b causes function reset within 100ms.
-
-        '
-      tool: setpci, custom driver
+      priority_rationale: >-
+        Device Control configures error reporting, payload size, and TLP attributes critical for correct
+        operation.
+      spec_ref: "§7.5.3.4, Table 7-20"
+      pass_criteria: >-
+        All error reporting enable bits toggle correctly (default 0b). Max_Payload_Size cannot exceed
+        Max_Payload_Size_Supported — writing a larger value has defined behavior. Max_Read_Request_Size
+        accepts all valid encodings. Relaxed Ordering and No Snoop bits toggle and affect TLP attribute
+        fields. Initiate FLR (bit 15) when FLR Capable = 1b causes function reset within 100ms.
+      tool: "setpci, custom driver"
       test_method: software_driver
-      validation:
-        status: corrected
-        validated_at: '2026-03-14'
-        glean_validated: true
-        changes_made:
-        - Link Control needs correct section ref
-    - id: CFG-019
+      glean_validated: true
+    - id: "CFG-019"
       title: Device Status Register Error Reporting
-      description: 'Validate the Device Status Register (offset +0Ah in PCIe Cap)
-        correctly reports error conditions per Table 7-21. Verify Correctable Error
-        Detected (bit 0), Non-Fatal Error Detected (bit 1), Fatal Error Detected (bit
-        2), Unsupported Request Detected (bit 3) are properly set when corresponding
-        errors are injected. Confirm all error bits are RW1C. Verify Transactions
-        Pending (bit 5) correctly reflects outstanding Non-Posted requests, and AUX
-        Power Detected (bit 4) reflects auxiliary power availability.
-
-        '
+      description: >-
+        Validate the Device Status Register (offset +0Ah in PCIe Cap) correctly reports error conditions
+        per Table 7-21. Verify Correctable Error Detected (bit 0), Non-Fatal Error Detected (bit 1), Fatal
+        Error Detected (bit 2), Unsupported Request Detected (bit 3) are properly set when corresponding
+        errors are injected. Confirm all error bits are RW1C. Verify Transactions Pending (bit 5) correctly
+        reflects outstanding Non-Posted requests, and AUX Power Detected (bit 4) reflects auxiliary power
+        availability.
       priority: P1
-      priority_rationale: Device Status error bits provide first-level error visibility
-        used by OS error handlers.
-      spec_ref: §7.5.3.5, Table 7-21
-      pass_criteria: 'Error bits set to 1b upon corresponding error injection (UR
-        for Unsupported Request, poisoned TLP for Non-Fatal, etc.). Each bit is independently
-        clearable by writing 1b. Writing 0b to a set bit has no effect. Transactions
-        Pending reads 0b when no outstanding Non-Posted requests exist. Bits clear
-        to default 0b after FLR.
-
-        '
-      tool: custom error injection driver, setpci
+      priority_rationale: >-
+        Device Status error bits provide first-level error visibility used by OS error handlers.
+      spec_ref: "§7.5.3.5, Table 7-21"
+      pass_criteria: >-
+        Error bits set to 1b upon corresponding error injection (UR for Unsupported Request, poisoned
+        TLP for Non-Fatal, etc.). Each bit is independently clearable by writing 1b. Writing 0b to a set
+        bit has no effect. Transactions Pending reads 0b when no outstanding Non-Posted requests exist.
+        Bits clear to default 0b after FLR.
+      tool: "custom error injection driver, setpci"
       test_method: software_driver
-      validation:
-        status: corrected
-        validated_at: '2026-03-14'
-        glean_validated: true
-        changes_made:
-        - Link Status is §7.5.3.7, not §7.5.3.6
+      glean_validated: true
   - name: Link Capabilities and Control
     items:
-    - id: CFG-020
+    - id: "CFG-020"
       title: Link Capabilities Register Speed and Width
-      description: 'Validate the Link Capabilities Register (offset +0Ch in PCIe Cap)
-        per Table 7-22. Verify Max Link Speed (bits [3:0]) reports the correct maximum
-        supported speed (1h=2.5GT/s, 2h=5.0GT/s, 3h=8.0GT/s, 4h=16.0GT/s, 5h=32.0GT/s).
-        Verify Maximum Link Width (bits [9:4]) reports correct lane count (01h=x1,
-        02h=x2, 04h=x4, 08h=x8, 10h=x16). Check ASPM Support (bits [11:10]), L0s Exit
-        Latency (bits [14:12]), L1 Exit Latency (bits [17:15]), and Port Number (bits
-        [31:24]). Confirm Surprise Down Error Reporting Capable bit for hotplug-capable
-        ports.
-
-        '
+      description: >-
+        Validate the Link Capabilities Register (offset +0Ch in PCIe Cap) per Table 7-22. Verify Max Link
+        Speed (bits [3:0]) reports the correct maximum supported speed (1h=2.5GT/s, 2h=5.0GT/s, 3h=8.0GT/s,
+        4h=16.0GT/s, 5h=32.0GT/s). Verify Maximum Link Width (bits [9:4]) reports correct lane count (01h=x1,
+        02h=x2, 04h=x4, 08h=x8, 10h=x16). Check ASPM Support (bits [11:10]), L0s Exit Latency (bits [14:12]),
+        L1 Exit Latency (bits [17:15]), and Port Number (bits [31:24]). Confirm Surprise Down Error Reporting
+        Capable bit for hotplug-capable ports.
       priority: P0
-      priority_rationale: Link Capabilities define the maximum achievable bandwidth;
-        incorrect reporting causes suboptimal link negotiation.
-      spec_ref: §7.5.3.6, Table 7-22
-      pass_criteria: 'Max Link Speed matches device specification (e.g., 5h for Gen5
-        device). Maximum Link Width matches physical lane count. ASPM Support reflects
-        actual L0s/L1 capability. L0s and L1 exit latencies are within valid encoding
-        range. Port Number is unique among ports of the same component. All fields
-        are RO.
-
-        '
-      tool: lspci -vvv
+      priority_rationale: >-
+        Link Capabilities define the maximum achievable bandwidth; incorrect reporting causes suboptimal
+        link negotiation.
+      spec_ref: "§7.5.3.6, Table 7-22"
+      pass_criteria: >-
+        Max Link Speed matches device specification (e.g., 5h for Gen5 device). Maximum Link Width matches
+        physical lane count. ASPM Support reflects actual L0s/L1 capability. L0s and L1 exit latencies
+        are within valid encoding range. Port Number is unique among ports of the same component. All
+        fields are RO.
+      tool: "lspci -vvv"
       test_method: software_driver
-      validation:
-        status: valid
-        validated_at: '2026-03-14'
-        glean_validated: true
-        changes_made:
-        - Validated via Glean MCP - accurate
-    - id: CFG-021
+      glean_validated: true
+    - id: "CFG-021"
       title: Link Control Register ASPM and Common Clock Configuration
-      description: 'Verify the Link Control Register (offset +10h in PCIe Cap) per
-        Table 7-23. Test ASPM Control (bits [1:0]): 00b=disabled, 01b=L0s only, 10b=L1
-        only, 11b=L0s+L1. Verify Common Clock Configuration (bit 6) — when set, both
-        ports on the link use a common reference clock. After changing this bit, software
-        must retrain the link by setting the Retrain Link bit (bit 5). Verify Read
-        Completion Boundary (bit 3) toggles between 64B and 128B. Test Extended Synch
-        (bit 7) for extended sync ordered set transmission.
-
-        '
+      description: >-
+        Verify the Link Control Register (offset +10h in PCIe Cap) per Table 7-23. Test ASPM Control (bits
+        [1:0]): 00b=disabled, 01b=L0s only, 10b=L1 only, 11b=L0s+L1. Verify Common Clock Configuration
+        (bit 6) — when set, both ports on the link use a common reference clock. After changing this bit,
+        software must retrain the link by setting the Retrain Link bit (bit 5). Verify Read Completion
+        Boundary (bit 3) toggles between 64B and 128B. Test Extended Synch (bit 7) for extended sync ordered
+        set transmission.
       priority: P1
-      priority_rationale: ASPM control is critical for power management; Common Clock
-        Configuration affects link training parameters.
-      spec_ref: §7.5.3.7, Table 7-23
-      pass_criteria: 'ASPM Control bits accept all valid combinations supported by
-        both endpoints. Setting Common Clock Configuration and retraining produces
-        a successful link retrain. Link retraining completes within 100ms. RCB bit
-        toggles correctly. Extended Synch enables additional TS1/TS2 ordered sets
-        during training (verified on protocol analyzer).
-
-        '
-      tool: setpci, lspci, protocol analyzer
+      priority_rationale: >-
+        ASPM control is critical for power management; Common Clock Configuration affects link training
+        parameters.
+      spec_ref: "§7.5.3.7, Table 7-23"
+      pass_criteria: >-
+        ASPM Control bits accept all valid combinations supported by both endpoints. Setting Common Clock
+        Configuration and retraining produces a successful link retrain. Link retraining completes within
+        100ms. RCB bit toggles correctly. Extended Synch enables additional TS1/TS2 ordered sets during
+        training (verified on protocol analyzer).
+      tool: "setpci, lspci, protocol analyzer"
       test_method: software_driver
-      validation:
-        status: corrected
-        validated_at: '2026-03-14'
-        glean_validated: true
-        changes_made:
-        - Device Control 2 is §7.5.3.16, not §7.5.3.15
-    - id: CFG-022
+      glean_validated: true
+    - id: "CFG-022"
       title: Link Status Register Current Speed and Width
-      description: 'Validate the Link Status Register (offset +12h in PCIe Cap) per
-        Table 7-24. Verify Current Link Speed (bits [3:0]) and Negotiated Link Width
-        (bits [9:4]) reflect the actual negotiated link parameters. Confirm Link Training
-        (bit 11) transitions from 1b to 0b after link training completes. Verify Slot
-        Clock Configuration (bit 12) correctly indicates whether the component uses
-        the reference clock provided on the connector. Check Data Link Layer Link
-        Active (bit 13) reads 1b when the DL layer is in DL_Active state.
-
-        '
+      description: >-
+        Validate the Link Status Register (offset +12h in PCIe Cap) per Table 7-24. Verify Current Link
+        Speed (bits [3:0]) and Negotiated Link Width (bits [9:4]) reflect the actual negotiated link parameters.
+        Confirm Link Training (bit 11) transitions from 1b to 0b after link training completes. Verify
+        Slot Clock Configuration (bit 12) correctly indicates whether the component uses the reference
+        clock provided on the connector. Check Data Link Layer Link Active (bit 13) reads 1b when the
+        DL layer is in DL_Active state.
       priority: P0
-      priority_rationale: Link Status reflects actual operational bandwidth; discrepancies
-        indicate link training or hardware failures.
-      spec_ref: §7.5.3.8, Table 7-24
-      pass_criteria: 'Current Link Speed matches the expected negotiated speed (up
-        to Max Link Speed of both link partners). Negotiated Link Width matches expected
-        lane count. Link Training = 0b when link is up. Data Link Layer Link Active
-        = 1b in normal operation. Slot Clock Configuration matches physical clock
-        topology. Speed/width downgrade scenarios are detectable via these fields.
-
-        '
-      tool: lspci -vvv
+      priority_rationale: >-
+        Link Status reflects actual operational bandwidth; discrepancies indicate link training or hardware
+        failures.
+      spec_ref: "§7.5.3.8, Table 7-24"
+      pass_criteria: >-
+        Current Link Speed matches the expected negotiated speed (up to Max Link Speed of both link partners).
+        Negotiated Link Width matches expected lane count. Link Training = 0b when link is up. Data Link
+        Layer Link Active = 1b in normal operation. Slot Clock Configuration matches physical clock topology.
+        Speed/width downgrade scenarios are detectable via these fields.
+      tool: "lspci -vvv"
       test_method: software_driver
-      validation:
-        status: corrected
-        validated_at: '2026-03-14'
-        glean_validated: true
-        changes_made:
-        - Secondary Status is Type 1 header field, narrow ref
+      glean_validated: true
   - name: Device Capabilities 2 and Control 2
     items:
-    - id: CFG-023
+    - id: "CFG-023"
       title: Completion Timeout Ranges and Disable
-      description: 'Validate Completion Timeout functionality via Device Capabilities
-        2 Register (offset +24h, Table 7-31) and Device Control 2 Register (offset
-        +28h, Table 7-32). Device Capabilities 2 bits [3:0] report supported Completion
-        Timeout Ranges (A: 50us-10ms, B: 10ms-250ms, C: 250ms-4s, D: 4s-64s). The
-        Completion Timeout Disable Supported bit (bit 4) indicates if timeout can
-        be disabled. In Device Control 2, Completion Timeout Value (bits [3:0]) selects
-        the timeout range, and Completion Timeout Disable (bit 4) disables the timeout
-        mechanism entirely.
-
-        '
+      description: >-
+        Validate Completion Timeout functionality via Device Capabilities 2 Register (offset +24h, Table
+        7-31) and Device Control 2 Register (offset +28h, Table 7-32). Device Capabilities 2 bits [3:0]
+        report supported Completion Timeout Ranges (A: 50us-10ms, B: 10ms-250ms, C: 250ms-4s, D: 4s-64s).
+        The Completion Timeout Disable Supported bit (bit 4) indicates if timeout can be disabled. In
+        Device Control 2, Completion Timeout Value (bits [3:0]) selects the timeout range, and Completion
+        Timeout Disable (bit 4) disables the timeout mechanism entirely.
       priority: P1
-      priority_rationale: Completion Timeout prevents hung transactions; incorrect
-        configuration causes system hangs or premature timeouts.
-      spec_ref: §7.5.3.15, Table 7-31, §7.5.3.16, Table 7-32
-      pass_criteria: 'Completion Timeout Ranges Supported matches device datasheet.
-        Setting Completion Timeout Value selects the corresponding range. Setting
-        Completion Timeout Disable (when supported) prevents timeout signaling. Without
-        timeout disable, expired completions trigger Completion Timeout error in Device
-        Status. Timeout values fall within the specified range for each encoding.
-
-        '
+      priority_rationale: >-
+        Completion Timeout prevents hung transactions; incorrect configuration causes system hangs or
+        premature timeouts.
+      spec_ref: "§7.5.3.15, Table 7-31, §7.5.3.16, Table 7-32"
+      pass_criteria: >-
+        Completion Timeout Ranges Supported matches device datasheet. Setting Completion Timeout Value
+        selects the corresponding range. Setting Completion Timeout Disable (when supported) prevents
+        timeout signaling. Without timeout disable, expired completions trigger Completion Timeout error
+        in Device Status. Timeout values fall within the specified range for each encoding.
       tool: custom completion timeout test driver
       test_method: software_driver
-      validation:
-        status: corrected
-        validated_at: '2026-03-14'
-        glean_validated: true
-        changes_made:
-        - Extended Capabilities are §7.8, not §7.6
-    - id: CFG-024
-      title: 10-Bit Tag Requester and Completer Support
-      description: 'Verify 10-Bit Tag Requester Supported and 10-Bit Tag Completer
-        Supported bits in Device Capabilities 2 Register (offset +24h, Table 7-31).
-        When 10-Bit Tag Requester Supported is set, the device can generate tags in
-        the range 0-1023. Device Control 2 (offset +28h) provides the 10-Bit Tag Requester
-        Enable bit. Verify enabling 10-bit tags increases the effective tag space
-        from 256 to 1024, allowing more outstanding non-posted requests. The completer
-        must correctly handle 10-bit tags from requesters regardless of its own requester
-        capability.
-
-        '
+      glean_validated: true
+    - id: "CFG-024"
+      title: "10-Bit Tag Requester and Completer Support"
+      description: >-
+        Verify 10-Bit Tag Requester Supported and 10-Bit Tag Completer Supported bits in Device Capabilities
+        2 Register (offset +24h, Table 7-31). When 10-Bit Tag Requester Supported is set, the device can
+        generate tags in the range 0-1023. Device Control 2 (offset +28h) provides the 10-Bit Tag Requester
+        Enable bit. Verify enabling 10-bit tags increases the effective tag space from 256 to 1024, allowing
+        more outstanding non-posted requests. The completer must correctly handle 10-bit tags from requesters
+        regardless of its own requester capability.
       priority: P2
-      priority_rationale: 10-bit tags improve high-bandwidth performance but 8-bit
-        tags provide adequate functionality.
-      spec_ref: §7.5.3.15, Table 7-31, §7.5.3.16, Table 7-32
-      pass_criteria: '10-Bit Tag Requester Supported and Completer Supported bits
-        match datasheet. After enabling 10-bit tag requester, device issues tags >
-        255 (verified on protocol analyzer). Completer returns correct completions
-        for tags 0-1023. Disabling 10-bit tags restricts tag range back to 0-255 (or
-        0-31 for 5-bit).
-
-        '
-      tool: protocol analyzer, custom driver
+      priority_rationale: >-
+        10-bit tags improve high-bandwidth performance but 8-bit tags provide adequate functionality.
+      spec_ref: "§7.5.3.15, Table 7-31, §7.5.3.16, Table 7-32"
+      pass_criteria: >-
+        10-Bit Tag Requester Supported and Completer Supported bits match datasheet. After enabling 10-bit
+        tag requester, device issues tags > 255 (verified on protocol analyzer). Completer returns correct
+        completions for tags 0-1023. Disabling 10-bit tags restricts tag range back to 0-255 (or 0-31
+        for 5-bit).
+      tool: "protocol analyzer, custom driver"
       test_method: protocol_analyzer
-    - id: CFG-025
+      glean_validated: false
+    - id: "CFG-025"
       title: LTR Mechanism Enable and AtomicOp Support
-      description: 'Validate Latency Tolerance Reporting (LTR) and AtomicOp capabilities
-        in Device Capabilities 2 (Table 7-31) and Device Control 2 (Table 7-32). LTR
-        Mechanism Supported (bit 11) indicates the endpoint can generate LTR Messages.
-        Verify Device Control 2 LTR Mechanism Enable (bit 10) controls LTR message
-        transmission. AtomicOp Routing Supported, 32-bit/64-bit/128-bit CAS AtomicOp
-        Completer Supported bits must match hardware capability. Device Control 2
-        AtomicOp Requester Enable and AtomicOp Egress Blocking affect transaction
-        routing.
-
-        '
+      description: >-
+        Validate Latency Tolerance Reporting (LTR) and AtomicOp capabilities in Device Capabilities 2
+        (Table 7-31) and Device Control 2 (Table 7-32). LTR Mechanism Supported (bit 11) indicates the
+        endpoint can generate LTR Messages. Verify Device Control 2 LTR Mechanism Enable (bit 10) controls
+        LTR message transmission. AtomicOp Routing Supported, 32-bit/64-bit/128-bit CAS AtomicOp Completer
+        Supported bits must match hardware capability. Device Control 2 AtomicOp Requester Enable and
+        AtomicOp Egress Blocking affect transaction routing.
       priority: P2
-      priority_rationale: LTR and AtomicOps are optimization features that improve
-        power efficiency and synchronization performance.
-      spec_ref: §7.5.3.15, Table 7-31, §7.5.3.16, Table 7-32
-      pass_criteria: 'LTR Mechanism Supported matches datasheet. When LTR Enable is
-        set, device sends LTR Messages with valid snoop and no-snoop latency values.
-        AtomicOp support bits match hardware. AtomicOp Requester Enable allows 32/64-bit
-        AtomicOp requests. OBFF support bits (if implemented) match device capability.
-
-        '
-      tool: protocol analyzer, custom driver
+      priority_rationale: >-
+        LTR and AtomicOps are optimization features that improve power efficiency and synchronization
+        performance.
+      spec_ref: "§7.5.3.15, Table 7-31, §7.5.3.16, Table 7-32"
+      pass_criteria: >-
+        LTR Mechanism Supported matches datasheet. When LTR Enable is set, device sends LTR Messages with
+        valid snoop and no-snoop latency values. AtomicOp support bits match hardware. AtomicOp Requester
+        Enable allows 32/64-bit AtomicOp requests. OBFF support bits (if implemented) match device capability.
+      tool: "protocol analyzer, custom driver"
       test_method: protocol_analyzer
-      validation:
-        status: valid
-        validated_at: '2026-03-14'
-        glean_validated: true
-        changes_made:
-        - Validated via Glean MCP - accurate
+      glean_validated: true
   - name: Link Capabilities 2 and Control 2
     items:
-    - id: CFG-026
+    - id: "CFG-026"
       title: Supported Link Speeds Vector Validation
-      description: 'Validate the Link Capabilities 2 Register (offset +2Ch in PCIe
-        Cap) per Table 7-33. The Supported Link Speeds Vector (bits [7:1]) must indicate
-        all link speeds the port is capable of operating at: bit 1 = 2.5GT/s, bit
-        2 = 5.0GT/s, bit 3 = 8.0GT/s, bit 4 = 16.0GT/s, bit 5 = 32.0GT/s. All speeds
-        up to and including the Max Link Speed from Link Capabilities must be set.
-        The Crosslink Supported bit indicates whether the port supports crosslink
-        configuration. The Retimer Presence Detect Supported bit indicates support
-        for retimer detection via Link Status 2.
-
-        '
+      description: >-
+        Validate the Link Capabilities 2 Register (offset +2Ch in PCIe Cap) per Table 7-33. The Supported
+        Link Speeds Vector (bits [7:1]) must indicate all link speeds the port is capable of operating
+        at: bit 1 = 2.5GT/s, bit 2 = 5.0GT/s, bit 3 = 8.0GT/s, bit 4 = 16.0GT/s, bit 5 = 32.0GT/s. All
+        speeds up to and including the Max Link Speed from Link Capabilities must be set. The Crosslink
+        Supported bit indicates whether the port supports crosslink configuration. The Retimer Presence
+        Detect Supported bit indicates support for retimer detection via Link Status 2.
       priority: P1
-      priority_rationale: Supported Link Speeds Vector drives multi-speed link training
-        and speed change negotiation.
-      spec_ref: §7.5.3.18, Table 7-33
-      pass_criteria: 'Supported Link Speeds Vector has all bits set from 2.5GT/s up
-        to and including the maximum speed. No gaps in supported speeds. Vector is
-        consistent with Max Link Speed in Link Capabilities. Crosslink and DRS Supported
-        bits match hardware. All fields are RO/HwInit.
-
-        '
-      tool: lspci -vvv
+      priority_rationale: >-
+        Supported Link Speeds Vector drives multi-speed link training and speed change negotiation.
+      spec_ref: "§7.5.3.18, Table 7-33"
+      pass_criteria: >-
+        Supported Link Speeds Vector has all bits set from 2.5GT/s up to and including the maximum speed.
+        No gaps in supported speeds. Vector is consistent with Max Link Speed in Link Capabilities. Crosslink
+        and DRS Supported bits match hardware. All fields are RO/HwInit.
+      tool: "lspci -vvv"
       test_method: software_driver
-    - id: CFG-027
+      glean_validated: false
+    - id: "CFG-027"
       title: Target Link Speed and Link Speed Retraining
-      description: 'Verify the Link Control 2 Register (offset +30h in PCIe Cap) Target
-        Link Speed field (bits [3:0]) per Table 7-34. Writing a valid speed encoding
-        (1h-5h) sets the target speed for the next link training. After writing Target
-        Link Speed and triggering a retrain via Link Control Retrain Link bit, the
-        link must renegotiate to the new target speed (or the highest mutually supported
-        speed if the target is not supported by the link partner). Verify that Enter
-        Compliance (bit 4) transitions the link into the compliance pattern state.
-
-        '
+      description: >-
+        Verify the Link Control 2 Register (offset +30h in PCIe Cap) Target Link Speed field (bits [3:0])
+        per Table 7-34. Writing a valid speed encoding (1h-5h) sets the target speed for the next link
+        training. After writing Target Link Speed and triggering a retrain via Link Control Retrain Link
+        bit, the link must renegotiate to the new target speed (or the highest mutually supported speed
+        if the target is not supported by the link partner). Verify that Enter Compliance (bit 4) transitions
+        the link into the compliance pattern state.
       priority: P1
-      priority_rationale: Target Link Speed control enables speed downgrade for debugging
-        and field compatibility mitigation.
-      spec_ref: §7.5.3.19, Table 7-34
-      pass_criteria: 'Writing Target Link Speed = 1h and retraining drops link to
-        Gen1 2.5GT/s. Writing the maximum supported speed and retraining achieves
-        the highest negotiated speed. Link Status Current Link Speed updates to reflect
-        the new speed after retraining. Invalid speed values (0h or above max supported)
-        produce defined behavior. Retrain completes within specification timeout.
-
-        '
-      tool: setpci, lspci, protocol analyzer
+      priority_rationale: >-
+        Target Link Speed control enables speed downgrade for debugging and field compatibility mitigation.
+      spec_ref: "§7.5.3.19, Table 7-34"
+      pass_criteria: >-
+        Writing Target Link Speed = 1h and retraining drops link to Gen1 2.5GT/s. Writing the maximum
+        supported speed and retraining achieves the highest negotiated speed. Link Status Current Link
+        Speed updates to reflect the new speed after retraining. Invalid speed values (0h or above max
+        supported) produce defined behavior. Retrain completes within specification timeout.
+      tool: "setpci, lspci, protocol analyzer"
       test_method: software_driver
-      validation:
-        status: valid
-        validated_at: '2026-03-14'
-        glean_validated: true
-        changes_made:
-        - Validated via Glean MCP - accurate
-    - id: CFG-028
+      glean_validated: true
+    - id: "CFG-028"
       title: Link Status 2 Register Equalization and Retimer Reporting
-      description: 'Validate the Link Status 2 Register (offset +32h in PCIe Cap)
-        per Table 7-35. Verify Current De-emphasis Level (bit 0) reports the de-emphasis
-        level used at 5.0 GT/s. Check Equalization 8.0 GT/s Complete (bit 1), Equalization
-        8.0 GT/s Phase 1/2/3 Successful bits reflect the equalization outcome for
-        8.0 GT/s operation. The Retimer Presence Detected and Two Retimers Presence
-        Detected bits must accurately reflect the retimer configuration in the physical
-        link path. Verify Crosslink Resolution reports correct downstream/upstream
-        port assignment.
-
-        '
+      description: >-
+        Validate the Link Status 2 Register (offset +32h in PCIe Cap) per Table 7-35. Verify Current De-emphasis
+        Level (bit 0) reports the de-emphasis level used at 5.0 GT/s. Check Equalization 8.0 GT/s Complete
+        (bit 1), Equalization 8.0 GT/s Phase 1/2/3 Successful bits reflect the equalization outcome for
+        8.0 GT/s operation. The Retimer Presence Detected and Two Retimers Presence Detected bits must
+        accurately reflect the retimer configuration in the physical link path. Verify Crosslink Resolution
+        reports correct downstream/upstream port assignment.
       priority: P2
-      priority_rationale: Link Status 2 provides diagnostic information for equalization
-        and retimer topology; not required for basic operation.
-      spec_ref: §7.5.3.20, Table 7-35
-      pass_criteria: 'At 5.0GT/s, de-emphasis level matches configured value. At 8.0GT/s+,
-        equalization complete and phase success bits accurately reflect training outcome.
-        Retimer presence bits match physical topology. DRS Message Received updates
-        when DRS is active. All status bits are RO/ROS and update automatically during
-        link training.
-
-        '
-      tool: lspci -vvv, protocol analyzer
+      priority_rationale: >-
+        Link Status 2 provides diagnostic information for equalization and retimer topology; not required
+        for basic operation.
+      spec_ref: "§7.5.3.20, Table 7-35"
+      pass_criteria: >-
+        At 5.0GT/s, de-emphasis level matches configured value. At 8.0GT/s+, equalization complete and
+        phase success bits accurately reflect training outcome. Retimer presence bits match physical topology.
+        DRS Message Received updates when DRS is active. All status bits are RO/ROS and update automatically
+        during link training.
+      tool: "lspci -vvv, protocol analyzer"
       test_method: software_driver
+      glean_validated: false
 - name: Extended Configuration Space
   subcategories:
   - name: Extended Capability Header Format
     items:
-    - id: CFG-029
+    - id: "CFG-029"
       title: Extended Capability Linked List Traversal
-      description: 'Validate the Extended Capability Header format at offset 100h
-        and the linked list traversal through all extended capabilities per §7.6 and
-        Table 7-37. Each header contains Extended Capability ID (bits [15:0]), Capability
-        Version (bits [19:16]), and Next Capability Offset (bits [31:20]). The first
-        extended capability must start at offset 100h. The list terminates when Next
-        Capability Offset is 000h. Verify all Next Capability Offsets are DWORD-aligned
-        and point to locations within [100h, FFFh]. Confirm no circular references
-        exist.
-
-        '
+      description: >-
+        Validate the Extended Capability Header format at offset 100h and the linked list traversal through
+        all extended capabilities per §7.6 and Table 7-37. Each header contains Extended Capability ID
+        (bits [15:0]), Capability Version (bits [19:16]), and Next Capability Offset (bits [31:20]). The
+        first extended capability must start at offset 100h. The list terminates when Next Capability
+        Offset is 000h. Verify all Next Capability Offsets are DWORD-aligned and point to locations within
+        [100h, FFFh]. Confirm no circular references exist.
       priority: P0
-      priority_rationale: Extended capability discovery is essential for accessing
-        AER, SR-IOV, LTR, and other advanced capabilities.
-      spec_ref: §7.6, §7.6.3, Table 7-37, Figure 7-43
-      pass_criteria: 'First extended capability is at offset 100h. Extended Capability
-        ID at 100h is a valid PCI-SIG defined ID (not 0000h unless the space is empty).
-        All Next Capability Offset values are DWORD-aligned (bits [1:0] = 00b) and
-        within valid range or 000h for termination. No circular references in up to
-        96 capabilities. Capability Version matches specification version.
-
-        '
-      tool: lspci -vvv, custom config space parser
+      priority_rationale: >-
+        Extended capability discovery is essential for accessing AER, SR-IOV, LTR, and other advanced
+        capabilities.
+      spec_ref: "§7.6, §7.6.3, Table 7-37, Figure 7-43"
+      pass_criteria: >-
+        First extended capability is at offset 100h. Extended Capability ID at 100h is a valid PCI-SIG
+        defined ID (not 0000h unless the space is empty). All Next Capability Offset values are DWORD-aligned
+        (bits [1:0] = 00b) and within valid range or 000h for termination. No circular references in up
+        to 96 capabilities. Capability Version matches specification version.
+      tool: "lspci -vvv, custom config space parser"
       test_method: software_driver
-      validation:
-        status: valid
-        validated_at: '2026-03-14'
-        glean_validated: true
-        changes_made:
-        - Validated via Glean MCP - accurate
-    - id: CFG-030
+      glean_validated: true
+    - id: "CFG-030"
       title: Extended Configuration Space Accessibility (4096 Bytes)
-      description: 'Verify the full 4096-byte extended configuration space (offsets
-        000h-FFFh) is accessible via ECAM. The first 256 bytes (000h-0FFh) contain
-        the PCI-compatible configuration space, and offsets 100h-FFFh contain the
-        extended configuration space for PCI Express extended capabilities. Reads
-        to implemented offsets must return valid data. Reads to unimplemented regions
-        within 100h-FFFh must return all zeros (00000000h). Writes to read-only extended
-        capability registers must have no effect.
-
-        '
+      description: >-
+        Verify the full 4096-byte extended configuration space (offsets 000h-FFFh) is accessible via ECAM.
+        The first 256 bytes (000h-0FFh) contain the PCI-compatible configuration space, and offsets 100h-FFFh
+        contain the extended configuration space for PCI Express extended capabilities. Reads to implemented
+        offsets must return valid data. Reads to unimplemented regions within 100h-FFFh must return all
+        zeros (00000000h). Writes to read-only extended capability registers must have no effect.
       priority: P1
-      priority_rationale: Extended configuration space access is required for all
-        PCIe extended capabilities.
+      priority_rationale: >-
+        Extended configuration space access is required for all PCIe extended capabilities.
       spec_ref: §7.6
-      pass_criteria: 'All 4096 bytes are readable without bus errors. Implemented
-        extended capabilities return valid header data at their respective offsets.
-        Unimplemented regions read as 00000000h (not FFFFFFFFh). Writing to RO fields
-        within extended capabilities has no effect. Access at offsets 100h-FFFh works
+      pass_criteria: >-
+        All 4096 bytes are readable without bus errors. Implemented extended capabilities return valid
+        header data at their respective offsets. Unimplemented regions read as 00000000h (not FFFFFFFFh).
+        Writing to RO fields within extended capabilities has no effect. Access at offsets 100h-FFFh works
         identically through ECAM as offsets 000h-0FFh.
-
-        '
-      tool: setpci, custom config space dumper
+      tool: "setpci, custom config space dumper"
       test_method: software_driver
+      glean_validated: false
 - name: MSI Capability
   subcategories:
   - name: MSI Configuration and Operation
     items:
-    - id: CFG-031
+    - id: "CFG-031"
       title: MSI Capability Structure and Message Control Register
-      description: 'Validate the MSI Capability Structure per §7.7.1. Verify the Capability
-        ID is 05h (Table 7-38). Check the Message Control Register (offset +02h, Table
-        7-39) fields: MSI Enable (bit 0, default 0b), Multiple Message Capable (bits
-        [3:1], RO), Multiple Message Enable (bits [6:4], RW), 64-bit Address Capable
-        (bit 7, RO — must be 1b for PCIe endpoints), Per-Vector Masking Capable (bit
-        8, RO), Extended Message Data Capable (bit 9), and Extended Message Data Enable
-        (bit 10). The MSI structure layout must match one of the four formats in Figures
-        7-44 through 7-47 based on the capability bits.
-
-        '
+      description: >-
+        Validate the MSI Capability Structure per §7.7.1. Verify the Capability ID is 05h (Table 7-38).
+        Check the Message Control Register (offset +02h, Table 7-39) fields: MSI Enable (bit 0, default
+        0b), Multiple Message Capable (bits [3:1], RO), Multiple Message Enable (bits [6:4], RW), 64-bit
+        Address Capable (bit 7, RO — must be 1b for PCIe endpoints), Per-Vector Masking Capable (bit 8,
+        RO), Extended Message Data Capable (bit 9), and Extended Message Data Enable (bit 10). The MSI
+        structure layout must match one of the four formats in Figures 7-44 through 7-47 based on the
+        capability bits.
       priority: P0
-      priority_rationale: MSI is a fundamental interrupt mechanism for PCIe; correct
-        capability reporting is essential for driver initialization.
-      spec_ref: §7.7.1, §7.7.1.2, Table 7-38, Table 7-39, Figures 7-44 to 7-47
-      pass_criteria: 'Capability ID = 05h. 64-bit Address Capable = 1b for PCIe endpoints.
-        Multiple Message Capable reports valid power-of-two encoding (000b-101b).
-        MSI Enable defaults to 0b. Multiple Message Enable cannot exceed Multiple
-        Message Capable. Structure size matches the combination of 32/64-bit address
+      priority_rationale: >-
+        MSI is a fundamental interrupt mechanism for PCIe; correct capability reporting is essential for
+        driver initialization.
+      spec_ref: "§7.7.1, §7.7.1.2, Table 7-38, Table 7-39, Figures 7-44 to 7-47"
+      pass_criteria: >-
+        Capability ID = 05h. 64-bit Address Capable = 1b for PCIe endpoints. Multiple Message Capable
+        reports valid power-of-two encoding (000b-101b). MSI Enable defaults to 0b. Multiple Message Enable
+        cannot exceed Multiple Message Capable. Structure size matches the combination of 32/64-bit address
         and PVM support.
-
-        '
-      tool: lspci -vvv, setpci
+      tool: "lspci -vvv, setpci"
       test_method: software_driver
-      validation:
-        status: valid
-        validated_at: '2026-03-14'
-        glean_validated: true
-        changes_made:
-        - Validated via Glean MCP - accurate
-    - id: CFG-032
+      glean_validated: true
+    - id: "CFG-032"
       title: MSI Message Address and Data Register Programming
-      description: 'Verify the MSI Message Address Register (offset +04h, Table 7-40),
-        Message Upper Address Register (offset +08h for 64-bit, Table 7-41), and Message
-        Data Register (offset +08h or +0Ch, Table 7-42) can be correctly programmed.
-        The Message Address must be DWORD-aligned (bits [1:0] = 00b). For 64-bit capable
-        devices, the upper address register provides address bits [63:32]. After programming
-        and enabling MSI, the device must send a DWORD Memory Write transaction to
-        the specified address with the specified data when requesting service.
-
-        '
+      description: >-
+        Verify the MSI Message Address Register (offset +04h, Table 7-40), Message Upper Address Register
+        (offset +08h for 64-bit, Table 7-41), and Message Data Register (offset +08h or +0Ch, Table 7-42)
+        can be correctly programmed. The Message Address must be DWORD-aligned (bits [1:0] = 00b). For
+        64-bit capable devices, the upper address register provides address bits [63:32]. After programming
+        and enabling MSI, the device must send a DWORD Memory Write transaction to the specified address
+        with the specified data when requesting service.
       priority: P1
-      priority_rationale: Correct MSI address and data programming is required for
-        interrupt delivery to the correct CPU/vector.
-      spec_ref: §7.7.1.3, §7.7.1.4, §7.7.1.5, Tables 7-40 to 7-42
-      pass_criteria: 'Message Address register is RW for bits [31:2], bits [1:0] read
-        as 00b. Message Upper Address register is RW (all 32 bits). Message Data register
-        is RW (16 bits). After enabling MSI and triggering an interrupt, protocol
-        analyzer captures a DWORD Memory Write to the programmed address with the
+      priority_rationale: >-
+        Correct MSI address and data programming is required for interrupt delivery to the correct CPU/vector.
+      spec_ref: "§7.7.1.3, §7.7.1.4, §7.7.1.5, Tables 7-40 to 7-42"
+      pass_criteria: >-
+        Message Address register is RW for bits [31:2], bits [1:0] read as 00b. Message Upper Address
+        register is RW (all 32 bits). Message Data register is RW (16 bits). After enabling MSI and triggering
+        an interrupt, protocol analyzer captures a DWORD Memory Write to the programmed address with the
         programmed data value.
-
-        '
-      tool: setpci, protocol analyzer
+      tool: "setpci, protocol analyzer"
       test_method: protocol_analyzer
-    - id: CFG-033
-      title: MSI Per-Vector Masking Functionality
-      description: 'Validate MSI Per-Vector Masking (PVM) when supported (Per-Vector
-        Masking Capable bit = 1b in Message Control). The Mask Bits register (offset
-        +0Ch or +10h, Table 7-44) allows software to mask individual interrupt vectors
-        by setting the corresponding bit. The Pending Bits register (Table 7-45) is
-        read-only and indicates vectors with pending interrupt requests. When a vector
-        is masked and the device attempts to signal that vector, the corresponding
-        Pending bit must be set without generating an MSI write. Unmasking the vector
-        must then trigger the MSI write.
-
-        '
+      glean_validated: false
+    - id: "CFG-033"
+      title: "MSI Per-Vector Masking Functionality"
+      description: >-
+        Validate MSI Per-Vector Masking (PVM) when supported (Per-Vector Masking Capable bit = 1b in Message
+        Control). The Mask Bits register (offset +0Ch or +10h, Table 7-44) allows software to mask individual
+        interrupt vectors by setting the corresponding bit. The Pending Bits register (Table 7-45) is
+        read-only and indicates vectors with pending interrupt requests. When a vector is masked and the
+        device attempts to signal that vector, the corresponding Pending bit must be set without generating
+        an MSI write. Unmasking the vector must then trigger the MSI write.
       priority: P2
-      priority_rationale: PVM provides fine-grained interrupt control but basic MSI
-        works without per-vector masking.
-      spec_ref: §7.7.1.7, §7.7.1.8, Table 7-44, Table 7-45
-      pass_criteria: 'Mask Bits register is RW (default all zeros = unmasked). Setting
-        a mask bit prevents MSI delivery for that vector. Pending Bits register sets
-        the corresponding bit when a masked vector is requested. Clearing the mask
-        bit triggers delivery of the pending interrupt. Pending Bits register is RO.
+      priority_rationale: >-
+        PVM provides fine-grained interrupt control but basic MSI works without per-vector masking.
+      spec_ref: "§7.7.1.7, §7.7.1.8, Table 7-44, Table 7-45"
+      pass_criteria: >-
+        Mask Bits register is RW (default all zeros = unmasked). Setting a mask bit prevents MSI delivery
+        for that vector. Pending Bits register sets the corresponding bit when a masked vector is requested.
+        Clearing the mask bit triggers delivery of the pending interrupt. Pending Bits register is RO.
         PVM works independently for each allocated vector.
-
-        '
-      tool: custom interrupt test driver, protocol analyzer
+      tool: "custom interrupt test driver, protocol analyzer"
       test_method: software_driver
-      validation:
-        status: valid
-        validated_at: '2026-03-14'
-        glean_validated: true
-        changes_made:
-        - Validated via Glean MCP - accurate
-- name: MSI-X Capability
+      glean_validated: true
+- name: "MSI-X Capability"
   subcategories:
-  - name: MSI-X Configuration and Table Access
+  - name: "MSI-X Configuration and Table Access"
     items:
-    - id: CFG-034
-      title: MSI-X Capability Structure Validation
-      description: 'Validate the MSI-X Capability Structure per §7.7.2. Verify the
-        Capability ID is 11h (Table 7-46). Check the Message Control Register (offset
-        +02h, Table 7-47): Table Size (bits [10:0], RO, encoded as N-1), Function
-        Mask (bit 14, RW, default 0b), MSI-X Enable (bit 15, RW, default 0b). Verify
-        the Table Offset/Table BIR Register (offset +04h, Table 7-48) correctly encodes
-        the BAR index (bits [2:0]) and QWORD-aligned offset (bits [31:3]). Verify
-        PBA Offset/PBA BIR Register (offset +08h, Table 7-49) similarly points to
-        the Pending Bit Array.
-
-        '
+    - id: "CFG-034"
+      title: "MSI-X Capability Structure Validation"
+      description: >-
+        Validate the MSI-X Capability Structure per §7.7.2. Verify the Capability ID is 11h (Table 7-46).
+        Check the Message Control Register (offset +02h, Table 7-47): Table Size (bits [10:0], RO, encoded
+        as N-1), Function Mask (bit 14, RW, default 0b), MSI-X Enable (bit 15, RW, default 0b). Verify
+        the Table Offset/Table BIR Register (offset +04h, Table 7-48) correctly encodes the BAR index
+        (bits [2:0]) and QWORD-aligned offset (bits [31:3]). Verify PBA Offset/PBA BIR Register (offset
+        +08h, Table 7-49) similarly points to the Pending Bit Array.
       priority: P0
-      priority_rationale: MSI-X is the preferred interrupt mechanism for multi-queue
-        NVMe devices; structure validation is essential.
-      spec_ref: §7.7.2, §7.7.2.1, §7.7.2.2, Tables 7-46 to 7-49, Figure 7-56
-      pass_criteria: 'Capability ID = 11h. Table Size + 1 matches expected vector
-        count. Table BIR and PBA BIR point to valid BARs. Table Offset and PBA Offset
-        are QWORD-aligned (bits [2:0] of offset = 000b). MSI-X Enable defaults to
-        0b. Function Mask defaults to 0b. MSI-X Table and PBA do not overlap.
-
-        '
-      tool: lspci -vvv, setpci
+      priority_rationale: >-
+        MSI-X is the preferred interrupt mechanism for multi-queue NVMe devices; structure validation
+        is essential.
+      spec_ref: "§7.7.2, §7.7.2.1, §7.7.2.2, Tables 7-46 to 7-49, Figure 7-56"
+      pass_criteria: >-
+        Capability ID = 11h. Table Size + 1 matches expected vector count. Table BIR and PBA BIR point
+        to valid BARs. Table Offset and PBA Offset are QWORD-aligned (bits [2:0] of offset = 000b). MSI-X
+        Enable defaults to 0b. Function Mask defaults to 0b. MSI-X Table and PBA do not overlap.
+      tool: "lspci -vvv, setpci"
       test_method: software_driver
-      validation:
-        status: corrected
-        validated_at: '2026-03-14'
-        glean_validated: true
-        changes_made:
-        - PRI is PCIe Extended Capability §7.x, not §10.x
-    - id: CFG-035
-      title: MSI-X Table Entry Read/Write Access
-      description: 'Validate the MSI-X Table structure in memory space per §7.7.2
-        and Figure 7-57. Each 16-byte table entry consists of Message Address (offset
-        +0h, Table 7-50), Message Upper Address (offset +4h, Table 7-51), Message
-        Data (offset +8h, Table 7-52), and Vector Control (offset +Ch, Table 7-53).
-        Verify all entries are accessible via aligned DWORD or QWORD memory transactions
-        to the BAR region identified by Table BIR and Table Offset. The Vector Control
-        Mask Bit (bit 0) must default to 1b (entry masked). Verify entry address calculation
-        follows Equation 7-1: base + k * 16.
-
-        '
+      glean_validated: true
+    - id: "CFG-035"
+      title: "MSI-X Table Entry Read/Write Access"
+      description: >-
+        Validate the MSI-X Table structure in memory space per §7.7.2 and Figure 7-57. Each 16-byte table
+        entry consists of Message Address (offset +0h, Table 7-50), Message Upper Address (offset +4h,
+        Table 7-51), Message Data (offset +8h, Table 7-52), and Vector Control (offset +Ch, Table 7-53).
+        Verify all entries are accessible via aligned DWORD or QWORD memory transactions to the BAR region
+        identified by Table BIR and Table Offset. The Vector Control Mask Bit (bit 0) must default to
+        1b (entry masked). Verify entry address calculation follows Equation 7-1: base + k * 16.
       priority: P1
-      priority_rationale: MSI-X Table entries must be correctly accessible for interrupt
-        vector configuration.
-      spec_ref: §7.7.2.5, §7.7.2.6, §7.7.2.7, §7.7.2.8, Tables 7-50 to 7-53, Figure
-        7-57
-      pass_criteria: 'All Table Size + 1 entries are accessible at (Table Base + k
-        * 16). Message Address bits [1:0] are reserved. Message Data is 32-bit RW.
-        Vector Control Mask Bit defaults to 1b for all entries. Writes to Message
-        Address, Message Upper Address, Message Data, and Vector Control succeed and
+      priority_rationale: >-
+        MSI-X Table entries must be correctly accessible for interrupt vector configuration.
+      spec_ref: "§7.7.2.5, §7.7.2.6, §7.7.2.7, §7.7.2.8, Tables 7-50 to 7-53, Figure 7-57"
+      pass_criteria: >-
+        All Table Size + 1 entries are accessible at (Table Base + k * 16). Message Address bits [1:0]
+        are reserved. Message Data is 32-bit RW. Vector Control Mask Bit defaults to 1b for all entries.
+        Writes to Message Address, Message Upper Address, Message Data, and Vector Control succeed and
         read back correctly. Accesses use aligned DWORD transactions.
-
-        '
       tool: custom MMIO driver
       test_method: software_driver
-      validation:
-        status: valid
-        validated_at: '2026-03-14'
-        glean_validated: true
-        changes_made:
-        - Validated via Glean MCP - accurate
-    - id: CFG-036
-      title: MSI-X Enable and Function Mask Behavior
-      description: 'Test the MSI-X enable sequence and Function Mask behavior per
-        §7.7.2.2 (Table 7-47). When MSI-X Enable is set and MSI Enable is cleared,
-        the function must use MSI-X for interrupt delivery. Function Mask (bit 14)
-        must globally mask all vectors when set — no MSI-X writes are generated and
-        Pending bits accumulate. Clearing Function Mask while individual entry masks
-        are clear must trigger delivery of any pending interrupts. Verify that MSI
-        and MSI-X cannot both be enabled simultaneously (only one interrupt mechanism
-        active at a time).
-
-        '
+      glean_validated: true
+    - id: "CFG-036"
+      title: "MSI-X Enable and Function Mask Behavior"
+      description: >-
+        Test the MSI-X enable sequence and Function Mask behavior per §7.7.2.2 (Table 7-47). When MSI-X
+        Enable is set and MSI Enable is cleared, the function must use MSI-X for interrupt delivery. Function
+        Mask (bit 14) must globally mask all vectors when set — no MSI-X writes are generated and Pending
+        bits accumulate. Clearing Function Mask while individual entry masks are clear must trigger delivery
+        of any pending interrupts. Verify that MSI and MSI-X cannot both be enabled simultaneously (only
+        one interrupt mechanism active at a time).
       priority: P1
-      priority_rationale: Correct MSI-X enable and masking behavior is essential for
-        OS interrupt management.
-      spec_ref: §7.7.2.2, Table 7-47
-      pass_criteria: 'Setting MSI-X Enable = 1b and MSI Enable = 0b enables MSI-X
-        delivery. Function Mask = 1b prevents all MSI-X writes and sets Pending bits.
-        Clearing Function Mask delivers pending interrupts for unmasked entries. Setting
-        both MSI-X Enable and MSI Enable simultaneously: MSI-X takes priority per
-        spec. INTx is disabled when either MSI or MSI-X is enabled.
-
-        '
-      tool: custom interrupt driver, protocol analyzer
+      priority_rationale: >-
+        Correct MSI-X enable and masking behavior is essential for OS interrupt management.
+      spec_ref: "§7.7.2.2, Table 7-47"
+      pass_criteria: >-
+        Setting MSI-X Enable = 1b and MSI Enable = 0b enables MSI-X delivery. Function Mask = 1b prevents
+        all MSI-X writes and sets Pending bits. Clearing Function Mask delivers pending interrupts for
+        unmasked entries. Setting both MSI-X Enable and MSI Enable simultaneously: MSI-X takes priority
+        per spec. INTx is disabled when either MSI or MSI-X is enabled.
+      tool: "custom interrupt driver, protocol analyzer"
       test_method: software_driver
-    - id: CFG-037
-      title: MSI-X Pending Bit Array (PBA) Structure
-      description: 'Validate the MSI-X PBA structure per §7.7.2.9 and Figure 7-58.
-        The PBA is a packed bit array with one bit per Table entry, organized in QWORDs.
-        For a given Pending bit k, its QWORD address is calculated per Equation 7-2:
-        PBA base + (k div 64) * 8, and the bit position within the QWORD is (k mod
-        64). Verify Pending bits are set when the corresponding vector is masked and
-        an interrupt is requested. Software must read Pending bits via aligned DWORD
-        or QWORD accesses. Pending bits for unimplemented entries must be reserved
-        (0b).
-
-        '
+      glean_validated: false
+    - id: "CFG-037"
+      title: "MSI-X Pending Bit Array (PBA) Structure"
+      description: >-
+        Validate the MSI-X PBA structure per §7.7.2.9 and Figure 7-58. The PBA is a packed bit array with
+        one bit per Table entry, organized in QWORDs. For a given Pending bit k, its QWORD address is
+        calculated per Equation 7-2: PBA base + (k div 64) * 8, and the bit position within the QWORD
+        is (k mod 64). Verify Pending bits are set when the corresponding vector is masked and an interrupt
+        is requested. Software must read Pending bits via aligned DWORD or QWORD accesses. Pending bits
+        for unimplemented entries must be reserved (0b).
       priority: P2
-      priority_rationale: PBA provides interrupt coalescing visibility but is not
-        required for basic MSI-X operation.
-      spec_ref: §7.7.2.9, Table 7-54, Figure 7-58, Equation 7-2
-      pass_criteria: 'PBA is readable at (PBA Base + (k div 64) * 8). Pending bits
-        for masked vectors with pending interrupts read as 1b. Pending bits clear
-        after the interrupt is delivered (vector unmasked). Pending bits for non-existent
-        entries read as 0b. PBA accesses must use aligned DWORD or QWORD transactions;
+      priority_rationale: >-
+        PBA provides interrupt coalescing visibility but is not required for basic MSI-X operation.
+      spec_ref: "§7.7.2.9, Table 7-54, Figure 7-58, Equation 7-2"
+      pass_criteria: >-
+        PBA is readable at (PBA Base + (k div 64) * 8). Pending bits for masked vectors with pending interrupts
+        read as 1b. Pending bits clear after the interrupt is delivered (vector unmasked). Pending bits
+        for non-existent entries read as 0b. PBA accesses must use aligned DWORD or QWORD transactions;
         unaligned access results are undefined.
-
-        '
       tool: custom MMIO driver
       test_method: software_driver
-      validation:
-        status: valid
-        validated_at: '2026-03-14'
-        glean_validated: true
-        changes_made:
-        - Validated via Glean MCP - accurate
+      glean_validated: true
 - name: Advanced Error Reporting (AER) Extended Capability
   subcategories:
   - name: AER Register Validation
     items:
-    - id: CFG-038
+    - id: "CFG-038"
       title: AER Extended Capability Header and Structure Presence
-      description: 'Validate the Advanced Error Reporting Extended Capability Structure
-        per §7.8.4 and Figure 7-122. Verify the Extended Capability ID is 0001h (Table
-        7-99). Check the Capability Version is 1h or 2h (2h when End-End TLP Prefix
-        Supported is set). The AER structure contains Uncorrectable Error Status (offset
-        +04h), Uncorrectable Error Mask (offset +08h), Uncorrectable Error Severity
-        (offset +0Ch), Correctable Error Status (offset +10h), Correctable Error Mask
-        (offset +14h), Advanced Error Capabilities and Control (offset +18h), and
-        Header Log (offset +1Ch).
-
-        '
+      description: >-
+        Validate the Advanced Error Reporting Extended Capability Structure per §7.8.4 and Figure 7-122.
+        Verify the Extended Capability ID is 0001h (Table 7-99). Check the Capability Version is 1h or
+        2h (2h when End-End TLP Prefix Supported is set). The AER structure contains Uncorrectable Error
+        Status (offset +04h), Uncorrectable Error Mask (offset +08h), Uncorrectable Error Severity (offset
+        +0Ch), Correctable Error Status (offset +10h), Correctable Error Mask (offset +14h), Advanced
+        Error Capabilities and Control (offset +18h), and Header Log (offset +1Ch).
       priority: P0
-      priority_rationale: AER is the primary advanced error reporting mechanism for
-        PCIe; presence and structure validation is fundamental.
-      spec_ref: §7.8.4, §7.8.4.1, Table 7-99, Figure 7-122
-      pass_criteria: 'Extended Capability ID = 0001h at the expected offset in extended
-        capability list. Capability Version matches End-End TLP Prefix Supported state.
-        All registers at offsets +04h through +2Ch are accessible. Root Port/RCEC
-        additional registers (Root Error Command, Root Error Status, Error Source
-        ID) are present when applicable.
-
-        '
-      tool: lspci -vvv
+      priority_rationale: >-
+        AER is the primary advanced error reporting mechanism for PCIe; presence and structure validation
+        is fundamental.
+      spec_ref: "§7.8.4, §7.8.4.1, Table 7-99, Figure 7-122"
+      pass_criteria: >-
+        Extended Capability ID = 0001h at the expected offset in extended capability list. Capability
+        Version matches End-End TLP Prefix Supported state. All registers at offsets +04h through +2Ch
+        are accessible. Root Port/RCEC additional registers (Root Error Command, Root Error Status, Error
+        Source ID) are present when applicable.
+      tool: "lspci -vvv"
       test_method: software_driver
-      validation:
-        status: corrected
-        validated_at: '2026-03-14'
-        glean_validated: true
-        changes_made:
-        - CXL is outside PCIe 5.0 base spec
-    - id: CFG-039
+      glean_validated: true
+    - id: "CFG-039"
       title: Uncorrectable Error Status Register Error Detection
-      description: 'Validate the Uncorrectable Error Status Register (offset +04h,
-        Table 7-100) by injecting specific error conditions and verifying the corresponding
-        status bits are set. Key error types: Data Link Protocol Error (bit 4), Poisoned
-        TLP Received (bit 12), Completion Timeout (bit 14), Unexpected Completion
-        (bit 16), Malformed TLP (bit 18), ECRC Error (bit 19), and Unsupported Request
-        (bit 20). Each bit is RW1CS (clear by writing 1b). Verify bits corresponding
-        to unimplemented error types are hardwired to 0b.
-
-        '
+      description: >-
+        Validate the Uncorrectable Error Status Register (offset +04h, Table 7-100) by injecting specific
+        error conditions and verifying the corresponding status bits are set. Key error types: Data Link
+        Protocol Error (bit 4), Poisoned TLP Received (bit 12), Completion Timeout (bit 14), Unexpected
+        Completion (bit 16), Malformed TLP (bit 18), ECRC Error (bit 19), and Unsupported Request (bit
+        20). Each bit is RW1CS (clear by writing 1b). Verify bits corresponding to unimplemented error
+        types are hardwired to 0b.
       priority: P0
-      priority_rationale: Uncorrectable errors represent serious conditions that can
-        cause data corruption or system failure.
-      spec_ref: §7.8.4.2, Table 7-100, Figure 7-124
-      pass_criteria: 'Error injection (e.g., completion timeout via no-response, UR
-        via invalid request) sets the corresponding bit. Writing 1b to a set bit clears
-        it. Writing 0b has no effect. Bits for unimplemented errors read as 0b. Default
-        value of all implemented bits is 0b. ACS Violation, AtomicOp Egress Blocked,
+      priority_rationale: >-
+        Uncorrectable errors represent serious conditions that can cause data corruption or system failure.
+      spec_ref: "§7.8.4.2, Table 7-100, Figure 7-124"
+      pass_criteria: >-
+        Error injection (e.g., completion timeout via no-response, UR via invalid request) sets the corresponding
+        bit. Writing 1b to a set bit clears it. Writing 0b has no effect. Bits for unimplemented errors
+        read as 0b. Default value of all implemented bits is 0b. ACS Violation, AtomicOp Egress Blocked,
         and TLP Prefix Blocked error bits match implementation.
-
-        '
-      tool: custom error injection driver, AER driver
+      tool: "custom error injection driver, AER driver"
       test_method: software_driver
-      validation:
-        status: corrected
-        validated_at: '2026-03-14'
-        glean_validated: true
-        changes_made:
-        - IDE is PCIe 6.0 §6.30, not PCIe 5.0
-    - id: CFG-040
+      glean_validated: true
+    - id: "CFG-040"
       title: Uncorrectable Error Mask and Severity Registers
-      description: 'Validate the Uncorrectable Error Mask Register (offset +08h, Table
-        7-101) and Uncorrectable Error Severity Register (offset +0Ch, Table 7-102).
-        The mask register controls whether individual errors are reported to the Root
-        Complex via error messages — masked errors (bit = 1b) are not reported. The
-        severity register determines whether an error is Non-Fatal (bit = 0b) or Fatal
-        (bit = 1b). Verify default severity values per Table 7-102 (e.g., DLLP Error
-        = Fatal, Poisoned TLP = Non-Fatal, Malformed TLP = Fatal). Confirm mask and
-        severity bits implement the RWS attribute.
-
-        '
+      description: >-
+        Validate the Uncorrectable Error Mask Register (offset +08h, Table 7-101) and Uncorrectable Error
+        Severity Register (offset +0Ch, Table 7-102). The mask register controls whether individual errors
+        are reported to the Root Complex via error messages — masked errors (bit = 1b) are not reported.
+        The severity register determines whether an error is Non-Fatal (bit = 0b) or Fatal (bit = 1b).
+        Verify default severity values per Table 7-102 (e.g., DLLP Error = Fatal, Poisoned TLP = Non-Fatal,
+        Malformed TLP = Fatal). Confirm mask and severity bits implement the RWS attribute.
       priority: P1
-      priority_rationale: Error masking and severity classification affect system
-        error handling policies.
-      spec_ref: §7.8.4.3, §7.8.4.4, Tables 7-101, 7-102, Figures 7-125, 7-126
-      pass_criteria: 'Default mask values are all 0b (unmasked). Default severity
-        values match Table 7-102 (DLLP Error=1b, Surprise Down=1b, Poisoned TLP=0b,
-        Completion Timeout=0b, Malformed TLP=1b, etc.). All implemented bits toggle
-        between 0b and 1b. Masking an error prevents error message generation while
-        still logging in Status. Severity changes affect whether ERR_NONFATAL or ERR_FATAL
-        is signaled.
-
-        '
-      tool: setpci, custom AER test driver
+      priority_rationale: Error masking and severity classification affect system error handling policies.
+      spec_ref: "§7.8.4.3, §7.8.4.4, Tables 7-101, 7-102, Figures 7-125, 7-126"
+      pass_criteria: >-
+        Default mask values are all 0b (unmasked). Default severity values match Table 7-102 (DLLP Error=1b,
+        Surprise Down=1b, Poisoned TLP=0b, Completion Timeout=0b, Malformed TLP=1b, etc.). All implemented
+        bits toggle between 0b and 1b. Masking an error prevents error message generation while still
+        logging in Status. Severity changes affect whether ERR_NONFATAL or ERR_FATAL is signaled.
+      tool: "setpci, custom AER test driver"
       test_method: software_driver
-    - id: CFG-041
+      glean_validated: false
+    - id: "CFG-041"
       title: Correctable Error Status and Mask Registers
-      description: 'Validate the Correctable Error Status Register (offset +10h, Table
-        7-103) and Correctable Error Mask Register (offset +14h, Table 7-104). Key
-        correctable error types: Receiver Error (bit 0), Bad TLP (bit 6), Bad DLLP
-        (bit 7), REPLAY_NUM Rollover (bit 8), Replay Timer Timeout (bit 12), Advisory
-        Non-Fatal Error (bit 13), Corrected Internal Error (bit 14, optional), and
-        Header Log Overflow (bit 15, optional). Status bits are RW1CS. Verify Advisory
-        Non-Fatal Error Mask defaults to 1b for compatibility. Corrected Internal
-        Error Mask defaults to 1b.
-
-        '
+      description: >-
+        Validate the Correctable Error Status Register (offset +10h, Table 7-103) and Correctable Error
+        Mask Register (offset +14h, Table 7-104). Key correctable error types: Receiver Error (bit 0),
+        Bad TLP (bit 6), Bad DLLP (bit 7), REPLAY_NUM Rollover (bit 8), Replay Timer Timeout (bit 12),
+        Advisory Non-Fatal Error (bit 13), Corrected Internal Error (bit 14, optional), and Header Log
+        Overflow (bit 15, optional). Status bits are RW1CS. Verify Advisory Non-Fatal Error Mask defaults
+        to 1b for compatibility. Corrected Internal Error Mask defaults to 1b.
       priority: P1
-      priority_rationale: Correctable errors indicate recoverable conditions that
-        may signal degrading link or device health.
-      spec_ref: §7.8.4.5, §7.8.4.6, Tables 7-103, 7-104, Figures 7-127, 7-128
-      pass_criteria: 'Status bits set upon corresponding correctable error detection.
-        Writing 1b to status clears the bit. Default mask for Advisory Non-Fatal Error
-        = 1b. Default mask for Corrected Internal Error = 1b. Default mask for Header
-        Log Overflow = 1b. All other masks default to 0b. Masking prevents ERR_COR
-        message while status bit still logs the error.
-
-        '
+      priority_rationale: >-
+        Correctable errors indicate recoverable conditions that may signal degrading link or device health.
+      spec_ref: "§7.8.4.5, §7.8.4.6, Tables 7-103, 7-104, Figures 7-127, 7-128"
+      pass_criteria: >-
+        Status bits set upon corresponding correctable error detection. Writing 1b to status clears the
+        bit. Default mask for Advisory Non-Fatal Error = 1b. Default mask for Corrected Internal Error
+        = 1b. Default mask for Header Log Overflow = 1b. All other masks default to 0b. Masking prevents
+        ERR_COR message while status bit still logs the error.
       tool: custom AER test driver
       test_method: software_driver
-      validation:
-        status: valid
-        validated_at: '2026-03-14'
-        glean_validated: true
-        changes_made:
-        - Validated via Glean MCP - accurate
-    - id: CFG-042
+      glean_validated: true
+    - id: "CFG-042"
       title: AER Capabilities and Control Register ECRC Fields
-      description: 'Validate the Advanced Error Capabilities and Control Register
-        (offset +18h, Table 7-105) focusing on ECRC support. ECRC Generation Capable
-        (bit 5, RO) and ECRC Check Capable (bit 7, RO) indicate hardware support.
-        ECRC Generation Enable (bit 6, RWS) and ECRC Check Enable (bit 8, RWS) activate
-        the features. When ECRC generation is enabled, the function appends ECRC to
-        TLPs. When ECRC check is enabled, the function verifies incoming TLP ECRC.
-        Also verify First Error Pointer (bits [4:0]) correctly identifies the first
-        uncorrectable error bit position, and Multiple Header Recording Capable/Enable
-        bits.
-
-        '
+      description: >-
+        Validate the Advanced Error Capabilities and Control Register (offset +18h, Table 7-105) focusing
+        on ECRC support. ECRC Generation Capable (bit 5, RO) and ECRC Check Capable (bit 7, RO) indicate
+        hardware support. ECRC Generation Enable (bit 6, RWS) and ECRC Check Enable (bit 8, RWS) activate
+        the features. When ECRC generation is enabled, the function appends ECRC to TLPs. When ECRC check
+        is enabled, the function verifies incoming TLP ECRC. Also verify First Error Pointer (bits [4:0])
+        correctly identifies the first uncorrectable error bit position, and Multiple Header Recording
+        Capable/Enable bits.
       priority: P1
-      priority_rationale: ECRC provides end-to-end data integrity; AER control fields
-        affect error logging behavior.
-      spec_ref: §7.8.4.7, Table 7-105, Figure 7-129
-      pass_criteria: 'ECRC Generation Capable and Check Capable match device implementation.
-        Enable bits are RWS and default to 0b. First Error Pointer updates to the
-        bit position of the first logged uncorrectable error. Multiple Header Recording
-        Capable/Enable function correctly. TLP Prefix Log Present reflects prefix
-        log validity. Functions not implementing ECRC hardwire enable bits to 0b.
-
-        '
-      tool: setpci, protocol analyzer
+      priority_rationale: >-
+        ECRC provides end-to-end data integrity; AER control fields affect error logging behavior.
+      spec_ref: "§7.8.4.7, Table 7-105, Figure 7-129"
+      pass_criteria: >-
+        ECRC Generation Capable and Check Capable match device implementation. Enable bits are RWS and
+        default to 0b. First Error Pointer updates to the bit position of the first logged uncorrectable
+        error. Multiple Header Recording Capable/Enable function correctly. TLP Prefix Log Present reflects
+        prefix log validity. Functions not implementing ECRC hardwire enable bits to 0b.
+      tool: "setpci, protocol analyzer"
       test_method: software_driver
+      glean_validated: false
 - name: Configuration Register Types and Behavior
   subcategories:
   - name: Register Attribute Compliance
     items:
-    - id: CFG-043
-      title: Read-Only (RO) Register Write Immunity
-      description: 'Systematically verify that all registers defined with the RO attribute
-        in Table 7-2 are immune to software writes. Per §7.4, an RO register returns
-        a valid value when read and is not affected by writes. Test all RO fields
-        in the PCI-compatible header (Vendor ID, Device ID, Revision ID, Class Code,
-        Header Type) and in key capability structures. Writing all-ones (FFFFFFFFh)
-        and all-zeros (00000000h) to RO registers must not change the read-back value.
-
-        '
+    - id: "CFG-043"
+      title: "Read-Only (RO) Register Write Immunity"
+      description: >-
+        Systematically verify that all registers defined with the RO attribute in Table 7-2 are immune
+        to software writes. Per §7.4, an RO register returns a valid value when read and is not affected
+        by writes. Test all RO fields in the PCI-compatible header (Vendor ID, Device ID, Revision ID,
+        Class Code, Header Type) and in key capability structures. Writing all-ones (FFFFFFFFh) and all-zeros
+        (00000000h) to RO registers must not change the read-back value.
       priority: P1
-      priority_rationale: RO compliance prevents accidental corruption of hardware-defined
-        device identity and capability fields.
-      spec_ref: §7.4, Table 7-2
-      pass_criteria: 'For each RO register: read original value, write FFFFFFFFh,
-        read back matches original. Write 00000000h, read back still matches original.
-        Test across at least 20 distinct RO register fields including Vendor ID, Device
-        ID, Class Code, Capabilities registers, and Link Capabilities. No RO field
-        is modified by writes.
-
-        '
+      priority_rationale: >-
+        RO compliance prevents accidental corruption of hardware-defined device identity and capability
+        fields.
+      spec_ref: "§7.4, Table 7-2"
+      pass_criteria: >-
+        For each RO register: read original value, write FFFFFFFFh, read back matches original. Write
+        00000000h, read back still matches original. Test across at least 20 distinct RO register fields
+        including Vendor ID, Device ID, Class Code, Capabilities registers, and Link Capabilities. No
+        RO field is modified by writes.
       tool: custom register test script
       test_method: software_driver
-    - id: CFG-044
-      title: Read-Write-1-to-Clear (RW1C) Status Bit Behavior
-      description: 'Validate RW1C behavior across all status registers per §7.4 Table
-        7-2. An RW1C bit is set by hardware when a condition occurs, and cleared by
-        software writing 1b to it. Writing 0b must have no effect on RW1C bits. Key
-        RW1C registers include: Status Register error bits (offset 06h), Device Status
-        error bits, Uncorrectable Error Status, and Correctable Error Status in AER.
-        Verify that reading the register does not clear the bits (non-destructive
-        read), and that writing 1b to one bit does not affect other bits in the same
-        register.
-
-        '
+      glean_validated: false
+    - id: "CFG-044"
+      title: "Read-Write-1-to-Clear (RW1C) Status Bit Behavior"
+      description: >-
+        Validate RW1C behavior across all status registers per §7.4 Table 7-2. An RW1C bit is set by hardware
+        when a condition occurs, and cleared by software writing 1b to it. Writing 0b must have no effect
+        on RW1C bits. Key RW1C registers include: Status Register error bits (offset 06h), Device Status
+        error bits, Uncorrectable Error Status, and Correctable Error Status in AER. Verify that reading
+        the register does not clear the bits (non-destructive read), and that writing 1b to one bit does
+        not affect other bits in the same register.
       priority: P1
-      priority_rationale: RW1C is the standard mechanism for software error acknowledgment;
-        incorrect behavior breaks error handling flows.
-      spec_ref: §7.4, Table 7-2
-      pass_criteria: 'Set a condition that triggers an RW1C bit. Read confirms bit
-        = 1b. Write 0b to the bit; read confirms bit still = 1b. Write 1b to the bit;
-        read confirms bit = 0b. Writing 1b to one RW1C bit does not clear adjacent
-        RW1C bits. Reading does not clear bits. Test at least 10 distinct RW1C fields
-        across Status, Device Status, and AER registers.
-
-        '
-      tool: custom register test script, error injection driver
+      priority_rationale: >-
+        RW1C is the standard mechanism for software error acknowledgment; incorrect behavior breaks error
+        handling flows.
+      spec_ref: "§7.4, Table 7-2"
+      pass_criteria: >-
+        Set a condition that triggers an RW1C bit. Read confirms bit = 1b. Write 0b to the bit; read confirms
+        bit still = 1b. Write 1b to the bit; read confirms bit = 0b. Writing 1b to one RW1C bit does not
+        clear adjacent RW1C bits. Reading does not clear bits. Test at least 10 distinct RW1C fields across
+        Status, Device Status, and AER registers.
+      tool: "custom register test script, error injection driver"
       test_method: software_driver
-    - id: CFG-045
+      glean_validated: false
+    - id: "CFG-045"
       title: HwInit Register Reset Behavior
-      description: 'Validate that HwInit (Hardware-Initialized) registers per §7.4
-        Table 7-2 are initialized to their hardware-determined values at power-on
-        and after Conventional Reset. HwInit registers are set by hardware and may
-        be writable or read-only depending on the specific field. After reset, these
-        fields must reflect the hardware capabilities of the device. Key HwInit fields
-        include Max Link Speed, Maximum Link Width, Max_Payload_Size_Supported, and
-        various capability support bits. Verify values are consistent across multiple
-        reset cycles.
-
-        '
+      description: >-
+        Validate that HwInit (Hardware-Initialized) registers per §7.4 Table 7-2 are initialized to their
+        hardware-determined values at power-on and after Conventional Reset. HwInit registers are set
+        by hardware and may be writable or read-only depending on the specific field. After reset, these
+        fields must reflect the hardware capabilities of the device. Key HwInit fields include Max Link
+        Speed, Maximum Link Width, Max_Payload_Size_Supported, and various capability support bits. Verify
+        values are consistent across multiple reset cycles.
       priority: P2
-      priority_rationale: HwInit consistency ensures reliable device enumeration after
-        reset events.
-      spec_ref: §7.4, Table 7-2
-      pass_criteria: 'After power-on reset, all HwInit fields match device datasheet
-        values. After secondary bus reset (SBR), HwInit fields return to their hardware-determined
-        values. After Function Level Reset (FLR), HwInit fields are preserved (FLR
-        does not affect HwInit). Values are identical across 10 consecutive reset
-        cycles.
-
-        '
+      priority_rationale: HwInit consistency ensures reliable device enumeration after reset events.
+      spec_ref: "§7.4, Table 7-2"
+      pass_criteria: >-
+        After power-on reset, all HwInit fields match device datasheet values. After secondary bus reset
+        (SBR), HwInit fields return to their hardware-determined values. After Function Level Reset (FLR),
+        HwInit fields are preserved (FLR does not affect HwInit). Values are identical across 10 consecutive
+        reset cycles.
       tool: custom reset and register dump script
       test_method: software_driver
-    - id: CFG-046
+      glean_validated: false
+    - id: "CFG-046"
       title: Reserved (RsvdP/RsvdZ) Register Field Compliance
-      description: 'Verify reserved register fields comply with RsvdP and RsvdZ behavior
-        per §7.4 Table 7-2. RsvdP (Reserved and Preserved) fields must return 0 on
-        read and software must preserve the value when writing (write back the read
-        value). RsvdZ (Reserved and Zero) fields must return 0 on read and software
-        must write 0. Test reserved fields in the Command Register, Status Register,
-        Device Capabilities, Link Capabilities, and key extended capability registers.
-        Writing non-zero values to reserved fields must not cause unpredictable device
-        behavior.
-
-        '
+      description: >-
+        Verify reserved register fields comply with RsvdP and RsvdZ behavior per §7.4 Table 7-2. RsvdP
+        (Reserved and Preserved) fields must return 0 on read and software must preserve the value when
+        writing (write back the read value). RsvdZ (Reserved and Zero) fields must return 0 on read and
+        software must write 0. Test reserved fields in the Command Register, Status Register, Device Capabilities,
+        Link Capabilities, and key extended capability registers. Writing non-zero values to reserved
+        fields must not cause unpredictable device behavior.
       priority: P2
-      priority_rationale: Reserved field compliance ensures forward compatibility
-        with future specification revisions.
-      spec_ref: §7.4, Table 7-2
-      pass_criteria: 'All RsvdP and RsvdZ fields read as 0. Writing 1s to RsvdP fields:
-        read back is 0 (hardware ignores or preserves). Writing 1s to RsvdZ fields:
-        read back is 0. Device continues normal operation after writing non-zero to
-        reserved fields. Test at least 15 reserved field locations across different
+      priority_rationale: >-
+        Reserved field compliance ensures forward compatibility with future specification revisions.
+      spec_ref: "§7.4, Table 7-2"
+      pass_criteria: >-
+        All RsvdP and RsvdZ fields read as 0. Writing 1s to RsvdP fields: read back is 0 (hardware ignores
+        or preserves). Writing 1s to RsvdZ fields: read back is 0. Device continues normal operation after
+        writing non-zero to reserved fields. Test at least 15 reserved field locations across different
         registers.
-
-        '
       tool: custom register test script
       test_method: software_driver
+      glean_validated: false
 - name: Power Management and ASPM Integration
   subcategories:
   - name: L1 PM Substates Configuration
     items:
-    - id: CFG-047
+    - id: "CFG-047"
       title: L1 PM Substates Extended Capability Validation
-      description: 'Validate the L1 PM Substates Extended Capability per §7.8.3. Verify
-        Extended Capability ID is 001Eh (Table 7-94). Check the L1 PM Substates Capabilities
-        Register (offset +04h, Table 7-95) for: PCI-PM L1.2 Supported, PCI-PM L1.1
-        Supported, ASPM L1.2 Supported, ASPM L1.1 Supported, L1 PM Substates Supported,
-        and Port Common_Mode_Restore_Time. Validate the L1 PM Substates Control 1
-        Register (offset +08h, Table 7-96) enables for each sub-state and the LTR_L1.2_THRESHOLD
-        fields. Verify Control 2 Register (offset +0Ch) T_POWER_ON timing parameters.
-
-        '
+      description: >-
+        Validate the L1 PM Substates Extended Capability per §7.8.3. Verify Extended Capability ID is
+        001Eh (Table 7-94). Check the L1 PM Substates Capabilities Register (offset +04h, Table 7-95)
+        for: PCI-PM L1.2 Supported, PCI-PM L1.1 Supported, ASPM L1.2 Supported, ASPM L1.1 Supported, L1
+        PM Substates Supported, and Port Common_Mode_Restore_Time. Validate the L1 PM Substates Control
+        1 Register (offset +08h, Table 7-96) enables for each sub-state and the LTR_L1.2_THRESHOLD fields.
+        Verify Control 2 Register (offset +0Ch) T_POWER_ON timing parameters.
       priority: P1
-      priority_rationale: L1 PM Substates enable significant idle power reduction
-        for NVMe SSDs in mobile platforms.
-      spec_ref: §7.8.3, Tables 7-94 to 7-98, Figures 7-116 to 7-121
-      pass_criteria: 'Extended Capability ID = 001Eh. Capability Version is 1h or
-        2h. Substate support bits match device datasheet. Enabling PCI-PM L1.2 and
-        ASPM L1.2 in Control 1 allows entry into respective substates. Port Common_Mode_Restore_Time
-        and T_POWER_ON values are within specification range. L1 PM Substates Status
-        Register (if version 2h) reports Link Activation Status correctly.
-
-        '
-      tool: lspci -vvv, custom PM driver, power analyzer
+      priority_rationale: >-
+        L1 PM Substates enable significant idle power reduction for NVMe SSDs in mobile platforms.
+      spec_ref: "§7.8.3, Tables 7-94 to 7-98, Figures 7-116 to 7-121"
+      pass_criteria: >-
+        Extended Capability ID = 001Eh. Capability Version is 1h or 2h. Substate support bits match device
+        datasheet. Enabling PCI-PM L1.2 and ASPM L1.2 in Control 1 allows entry into respective substates.
+        Port Common_Mode_Restore_Time and T_POWER_ON values are within specification range. L1 PM Substates
+        Status Register (if version 2h) reports Link Activation Status correctly.
+      tool: "lspci -vvv, custom PM driver, power analyzer"
       test_method: software_driver
-- name: ARI (Alternative Routing-ID Interpretation)
+      glean_validated: false
+- name: "ARI (Alternative Routing-ID Interpretation)"
   subcategories:
   - name: ARI Capability and Configuration
     items:
-    - id: CFG-048
+    - id: "CFG-048"
       title: ARI Extended Capability Structure Validation
-      description: 'Validate the ARI Extended Capability Structure per §7.8.7. Verify
-        Extended Capability ID is 000Eh (Table 7-118). Check the ARI Capability Register
-        (offset +04h, Table 7-119) for MFVC Function Groups Capability and ACS Function
-        Groups Capability bits. Verify the Next Function Number field (bits [15:8])
-        correctly implements the linked list of functions for ARI devices — Function
-        0 starts the list, and the last function returns 00h. Check the ARI Control
-        Register (offset +06h, Table 7-120) for MFVC/ACS Function Groups Enable and
-        Function Group assignment.
-
-        '
+      description: >-
+        Validate the ARI Extended Capability Structure per §7.8.7. Verify Extended Capability ID is 000Eh
+        (Table 7-118). Check the ARI Capability Register (offset +04h, Table 7-119) for MFVC Function
+        Groups Capability and ACS Function Groups Capability bits. Verify the Next Function Number field
+        (bits [15:8]) correctly implements the linked list of functions for ARI devices — Function 0 starts
+        the list, and the last function returns 00h. Check the ARI Control Register (offset +06h, Table
+        7-120) for MFVC/ACS Function Groups Enable and Function Group assignment.
       priority: P2
-      priority_rationale: ARI enables >8 functions per device; relevant for multi-function
-        NVMe controllers but not universally required.
-      spec_ref: §7.8.7, Tables 7-118 to 7-120, Figures 7-148 to 7-150
-      pass_criteria: 'Extended Capability ID = 000Eh. Next Function Number field correctly
-        chains all implemented functions. Last function in chain returns Next Function
-        Number = 00h. Function numbering spans 0-255 (not limited to 0-7 as in non-ARI
-        mode). MFVC and ACS Function Groups Capability bits match device implementation.
-        ARI Forwarding Enable in downstream port''s Device Control 2 is required for
-        ARI to operate.
-
-        '
-      tool: lspci -vvv, custom ARI enumeration tool
+      priority_rationale: >-
+        ARI enables >8 functions per device; relevant for multi-function NVMe controllers but not universally
+        required.
+      spec_ref: "§7.8.7, Tables 7-118 to 7-120, Figures 7-148 to 7-150"
+      pass_criteria: >-
+        Extended Capability ID = 000Eh. Next Function Number field correctly chains all implemented functions.
+        Last function in chain returns Next Function Number = 00h. Function numbering spans 0-255 (not
+        limited to 0-7 as in non-ARI mode). MFVC and ACS Function Groups Capability bits match device
+        implementation. ARI Forwarding Enable in downstream port's Device Control 2 is required for ARI
+        to operate.
+      tool: "lspci -vvv, custom ARI enumeration tool"
       test_method: software_driver
+      glean_validated: false
 - name: Type 1 (Bridge) Configuration Header
   subcategories:
-  - name: Bridge-Specific Registers
+  - name: "Bridge-Specific Registers"
     items:
-    - id: CFG-049
-      title: Primary, Secondary, and Subordinate Bus Number Registers
-      description: 'Validate bus number registers in the Type 1 header per §7.5.1.3
-        (Figure 7-14). Primary Bus Number (offset 18h) contains the bus number of
-        the upstream side. Secondary Bus Number (offset 19h) defines the bus number
-        of the downstream side. Subordinate Bus Number (offset 1Ah) defines the highest
-        bus number downstream. Verify software can program all three registers (all
-        are RW). Configuration requests with destination bus in the range [Secondary,
-        Subordinate] must be forwarded downstream. Requests outside this range must
-        not be forwarded.
-
-        '
+    - id: "CFG-049"
+      title: "Primary, Secondary, and Subordinate Bus Number Registers"
+      description: >-
+        Validate bus number registers in the Type 1 header per §7.5.1.3 (Figure 7-14). Primary Bus Number
+        (offset 18h) contains the bus number of the upstream side. Secondary Bus Number (offset 19h) defines
+        the bus number of the downstream side. Subordinate Bus Number (offset 1Ah) defines the highest
+        bus number downstream. Verify software can program all three registers (all are RW). Configuration
+        requests with destination bus in the range [Secondary, Subordinate] must be forwarded downstream.
+        Requests outside this range must not be forwarded.
       priority: P0
-      priority_rationale: Bus number configuration defines the topology hierarchy;
-        incorrect values break device enumeration.
-      spec_ref: §7.5.1.3, Figure 7-14
-      pass_criteria: 'All three registers are RW and default to 00h. Writing valid
-        bus numbers programs the bridge routing. Type 1 configuration requests with
-        destination bus in [Secondary, Subordinate] range are forwarded. Requests
-        outside the range generate UR. Secondary Bus Reset (bit 6 of Bridge Control,
-        offset 3Eh) resets the secondary bus when toggled.
-
-        '
-      tool: setpci, lspci -t
+      priority_rationale: >-
+        Bus number configuration defines the topology hierarchy; incorrect values break device enumeration.
+      spec_ref: "§7.5.1.3, Figure 7-14"
+      pass_criteria: >-
+        All three registers are RW and default to 00h. Writing valid bus numbers programs the bridge routing.
+        Type 1 configuration requests with destination bus in [Secondary, Subordinate] range are forwarded.
+        Requests outside the range generate UR. Secondary Bus Reset (bit 6 of Bridge Control, offset 3Eh)
+        resets the secondary bus when toggled.
+      tool: "setpci, lspci -t"
       test_method: software_driver
-      validation:
-        status: valid
-        validated_at: '2026-03-14'
-        glean_validated: true
-        changes_made:
-        - Validated via Glean MCP - accurate
-    - id: CFG-050
+      glean_validated: true
+    - id: "CFG-050"
       title: Memory Base and Limit Register Window Configuration
-      description: 'Validate the Memory Base (offset 20h) and Memory Limit (offset
-        22h) registers in the Type 1 header. These registers define the non-prefetchable
-        memory address window that the bridge forwards downstream. Both registers
-        contain the upper 12 bits of 32-bit addresses aligned on 1 MB boundaries (bits
-        [15:4] contain address bits [31:20], bits [3:0] are read-only). The bridge
-        forwards memory transactions within the range [Memory Base, Memory Limit +
-        FFFFFh]. Setting Memory Base > Memory Limit disables the window.
-
-        '
+      description: >-
+        Validate the Memory Base (offset 20h) and Memory Limit (offset 22h) registers in the Type 1 header.
+        These registers define the non-prefetchable memory address window that the bridge forwards downstream.
+        Both registers contain the upper 12 bits of 32-bit addresses aligned on 1 MB boundaries (bits
+        [15:4] contain address bits [31:20], bits [3:0] are read-only). The bridge forwards memory transactions
+        within the range [Memory Base, Memory Limit + FFFFFh]. Setting Memory Base > Memory Limit disables
+        the window.
       priority: P0
-      priority_rationale: Memory window configuration is essential for routing MMIO
-        transactions through the switch/bridge hierarchy.
+      priority_rationale: >-
+        Memory window configuration is essential for routing MMIO transactions through the switch/bridge
+        hierarchy.
       spec_ref: §7.5.1.3
-      pass_criteria: 'Memory Base and Limit bits [15:4] are RW, bits [3:0] are RO
-        (read as 0h for 32-bit addressing). Setting a valid window routes memory transactions
-        within the range downstream. Transactions outside the window are not forwarded.
-        Setting Base > Limit disables forwarding. 1 MB alignment of window boundaries
-        is enforced.
-
-        '
-      tool: setpci, memory access test
+      pass_criteria: >-
+        Memory Base and Limit bits [15:4] are RW, bits [3:0] are RO (read as 0h for 32-bit addressing).
+        Setting a valid window routes memory transactions within the range downstream. Transactions outside
+        the window are not forwarded. Setting Base > Limit disables forwarding. 1 MB alignment of window
+        boundaries is enforced.
+      tool: "setpci, memory access test"
       test_method: software_driver
-      validation:
-        status: corrected
-        validated_at: '2026-03-14'
-        glean_validated: true
-        changes_made:
-        - VF BAR is SR-IOV ECap §7.x, not §9.3
-    - id: CFG-051
-      title: Prefetchable Memory Base/Limit and 64-bit Range
-      description: 'Validate the Prefetchable Memory Base (offset 24h), Prefetchable
-        Memory Limit (offset 26h), Prefetchable Base Upper 32 Bits (offset 28h), and
-        Prefetchable Limit Upper 32 Bits (offset 2Ch) registers. When bits [3:0] of
-        Base/Limit are 0001b, the bridge supports 64-bit prefetchable memory addressing
-        and the upper 32-bit registers are implemented. The bridge forwards prefetchable
-        memory transactions within [Prefetchable Base, Prefetchable Limit + FFFFFh].
-        This window must be configured for devices with prefetchable BARs.
-
-        '
+      glean_validated: true
+    - id: "CFG-051"
+      title: "Prefetchable Memory Base/Limit and 64-bit Range"
+      description: >-
+        Validate the Prefetchable Memory Base (offset 24h), Prefetchable Memory Limit (offset 26h), Prefetchable
+        Base Upper 32 Bits (offset 28h), and Prefetchable Limit Upper 32 Bits (offset 2Ch) registers.
+        When bits [3:0] of Base/Limit are 0001b, the bridge supports 64-bit prefetchable memory addressing
+        and the upper 32-bit registers are implemented. The bridge forwards prefetchable memory transactions
+        within [Prefetchable Base, Prefetchable Limit + FFFFFh]. This window must be configured for devices
+        with prefetchable BARs.
       priority: P1
-      priority_rationale: Prefetchable memory window enables efficient forwarding
-        of prefetchable BAR access through the hierarchy.
+      priority_rationale: >-
+        Prefetchable memory window enables efficient forwarding of prefetchable BAR access through the
+        hierarchy.
       spec_ref: §7.5.1.3
-      pass_criteria: 'Prefetchable Base/Limit bits [3:0] = 0001b for 64-bit support.
-        Upper 32-bit registers are RW when 64-bit is supported. 64-bit prefetchable
-        window correctly forwards transactions to addresses above 4 GB. Setting Base
-        > Limit disables prefetchable forwarding. Window boundaries are 1 MB aligned.
-
-        '
-      tool: setpci, custom memory test
+      pass_criteria: >-
+        Prefetchable Base/Limit bits [3:0] = 0001b for 64-bit support. Upper 32-bit registers are RW when
+        64-bit is supported. 64-bit prefetchable window correctly forwards transactions to addresses above
+        4 GB. Setting Base > Limit disables prefetchable forwarding. Window boundaries are 1 MB aligned.
+      tool: "setpci, custom memory test"
       test_method: software_driver
+      glean_validated: false
 - name: Register Reset and Default Values
   subcategories:
   - name: Reset Behavior Validation
     items:
-    - id: CFG-052
+    - id: "CFG-052"
       title: Configuration Space Default Values After Conventional Reset
-      description: 'Verify that all configuration registers return to their specification-defined
-        default values after a Conventional Reset (power-on reset or hot reset via
-        SBR). Per §7.5.1, Command Register must default to 0000h, all error status
-        bits must be 0b, Device Control must default to 0000h (MPS=000b, MRRS=010b
-        is implementation specific), Link Control ASPM must default to 00b, and all
-        interrupt enable bits must default to 0b. Extended configuration space capabilities
-        must return to their documented default values.
-
-        '
+      description: >-
+        Verify that all configuration registers return to their specification-defined default values after
+        a Conventional Reset (power-on reset or hot reset via SBR). Per §7.5.1, Command Register must
+        default to 0000h, all error status bits must be 0b, Device Control must default to 0000h (MPS=000b,
+        MRRS=010b is implementation specific), Link Control ASPM must default to 00b, and all interrupt
+        enable bits must default to 0b. Extended configuration space capabilities must return to their
+        documented default values.
       priority: P0
-      priority_rationale: Predictable reset state is essential for reliable OS boot
-        and device re-initialization.
-      spec_ref: §7.5.1, §7.5.2, §7.5.3
-      pass_criteria: 'Command Register = 0000h. Status Register error bits = 0b (Capabilities
-        List bit remains 1b). Device Control = default (error reporting enables =
-        0b, MPS = 000b). Link Control ASPM = 00b. MSI Enable = 0b. MSI-X Enable =
-        0b. PM Control PowerState = 00b (D0). All AER error status bits = 0b. Default
-        values match specification for at least 30 register fields.
-
-        '
+      priority_rationale: >-
+        Predictable reset state is essential for reliable OS boot and device re-initialization.
+      spec_ref: "§7.5.1, §7.5.2, §7.5.3"
+      pass_criteria: >-
+        Command Register = 0000h. Status Register error bits = 0b (Capabilities List bit remains 1b).
+        Device Control = default (error reporting enables = 0b, MPS = 000b). Link Control ASPM = 00b.
+        MSI Enable = 0b. MSI-X Enable = 0b. PM Control PowerState = 00b (D0). All AER error status bits
+        = 0b. Default values match specification for at least 30 register fields.
       tool: custom reset and register validation script
       test_method: software_driver
-      validation:
-        status: valid
-        validated_at: '2026-03-14'
-        glean_validated: true
-        changes_made:
-        - Validated via Glean MCP - accurate
-    - id: CFG-053
+      glean_validated: true
+    - id: "CFG-053"
       title: Function Level Reset Configuration Context Impact
-      description: 'Validate which configuration registers are affected by Function
-        Level Reset (FLR) and which are preserved. Per the specification, FLR must
-        reset: Command Register, Device Status error bits, Device Control to default,
-        MSI/MSI-X enable to 0b, Bus Master Enable to 0b, and pending transactions
-        must complete or be terminated. HwInit fields and sticky registers must be
-        preserved. FLR must complete within 100ms. After FLR, the function must respond
-        to configuration accesses (at least return valid Vendor/Device ID) within
-        100ms plus any FLR recovery time.
-
-        '
+      description: >-
+        Validate which configuration registers are affected by Function Level Reset (FLR) and which are
+        preserved. Per the specification, FLR must reset: Command Register, Device Status error bits,
+        Device Control to default, MSI/MSI-X enable to 0b, Bus Master Enable to 0b, and pending transactions
+        must complete or be terminated. HwInit fields and sticky registers must be preserved. FLR must
+        complete within 100ms. After FLR, the function must respond to configuration accesses (at least
+        return valid Vendor/Device ID) within 100ms plus any FLR recovery time.
       priority: P0
-      priority_rationale: FLR enables per-function reset in virtualization; correct
-        context reset is essential for VM isolation.
-      spec_ref: §7.5.3.4, Table 7-20
-      pass_criteria: 'FLR Capability = 1b in Device Capabilities. Initiating FLR via
-        Device Control bit 15 resets command register, error status, interrupt enables.
-        Transactions Pending transitions to 0b within 100ms. Vendor/Device ID reads
-        correctly after FLR + recovery. HwInit registers (Max Link Speed, Port Number,
-        etc.) are preserved. Bus Master Enable = 0b after FLR. Memory/IO Space Enable
-        = 0b after FLR.
-
-        '
+      priority_rationale: >-
+        FLR enables per-function reset in virtualization; correct context reset is essential for VM isolation.
+      spec_ref: "§7.5.3.4, Table 7-20"
+      pass_criteria: >-
+        FLR Capability = 1b in Device Capabilities. Initiating FLR via Device Control bit 15 resets command
+        register, error status, interrupt enables. Transactions Pending transitions to 0b within 100ms.
+        Vendor/Device ID reads correctly after FLR + recovery. HwInit registers (Max Link Speed, Port
+        Number, etc.) are preserved. Bus Master Enable = 0b after FLR. Memory/IO Space Enable = 0b after
+        FLR.
       tool: custom FLR test driver
       test_method: software_driver
-      validation:
-        status: corrected
-        validated_at: '2026-03-14'
-        glean_validated: true
-        changes_made:
-        - 14-bit Tag is PCIe 6.x, not PCIe 5.0
+      glean_validated: true
 - name: Power Budgeting and LTR Extended Capabilities
   subcategories:
   - name: Extended Capability Registers
     items:
-    - id: CFG-054
+    - id: "CFG-054"
       title: LTR Extended Capability Max Latency Registers
-      description: 'Validate the Latency Tolerance Reporting (LTR) Extended Capability
-        Max Snoop and Max No-Snoop Latency Registers per §7.8.2. The Extended Capability
-        ID for LTR is 0018h. Max Snoop Latency Register (offset +04h, Table 7-92)
-        contains Max Snoop LatencyValue (bits [9:0]) and Max Snoop LatencyScale (bits
-        [12:10]). Max No-Snoop Latency Register (offset +06h, Table 7-93) has identical
-        format. Software programs these registers to constrain the maximum latency
-        the device is permitted to request via LTR Messages. Values should be set
-        to the platform''s maximum supported latency.
-
-        '
+      description: >-
+        Validate the Latency Tolerance Reporting (LTR) Extended Capability Max Snoop and Max No-Snoop
+        Latency Registers per §7.8.2. The Extended Capability ID for LTR is 0018h. Max Snoop Latency Register
+        (offset +04h, Table 7-92) contains Max Snoop LatencyValue (bits [9:0]) and Max Snoop LatencyScale
+        (bits [12:10]). Max No-Snoop Latency Register (offset +06h, Table 7-93) has identical format.
+        Software programs these registers to constrain the maximum latency the device is permitted to
+        request via LTR Messages. Values should be set to the platform's maximum supported latency.
       priority: P2
-      priority_rationale: LTR max latency registers constrain device power management
-        behavior but are not required for basic operation.
-      spec_ref: §7.8.2, Tables 7-92, 7-93
-      pass_criteria: 'Extended Capability ID = 0018h. Max Snoop and No-Snoop LatencyValue
-        fields are RW (10 bits). LatencyScale fields are RW (3 bits) with encodings
-        000b (1ns) through 101b (32768ns). Writing values and reading back matches.
-        LTR Messages from the device respect the programmed maximum. Writing a Not
-        Permitted value produces undefined hardware behavior (scale = 110b or 111b).
-
-        '
-      tool: setpci, protocol analyzer
+      priority_rationale: >-
+        LTR max latency registers constrain device power management behavior but are not required for
+        basic operation.
+      spec_ref: "§7.8.2, Tables 7-92, 7-93"
+      pass_criteria: >-
+        Extended Capability ID = 0018h. Max Snoop and No-Snoop LatencyValue fields are RW (10 bits). LatencyScale
+        fields are RW (3 bits) with encodings 000b (1ns) through 101b (32768ns). Writing values and reading
+        back matches. LTR Messages from the device respect the programmed maximum. Writing a Not Permitted
+        value produces undefined hardware behavior (scale = 110b or 111b).
+      tool: "setpci, protocol analyzer"
       test_method: software_driver
-    - id: CFG-055
+      glean_validated: false
+    - id: "CFG-055"
       title: Power Budgeting Extended Capability Data Readback
-      description: 'Validate the Power Budgeting Extended Capability per §7.8.1. Verify
-        Extended Capability ID is 0004h (Table 7-88). The Data Select Register (offset
-        +04h) is an 8-bit index that selects which DWORD of Power Budgeting Data appears
-        in the Data Register (offset +08h, Table 7-89). Iterate through Data Select
-        values 0 through the maximum supported index and verify the Data Register
-        returns valid Base Power, Data Scale, PM Sub State, PM State, Type, and Power
-        Rail fields. The Power Budget Capability Register (offset +0Ch) indicates
-        system allocation status.
-
-        '
+      description: >-
+        Validate the Power Budgeting Extended Capability per §7.8.1. Verify Extended Capability ID is
+        0004h (Table 7-88). The Data Select Register (offset +04h) is an 8-bit index that selects which
+        DWORD of Power Budgeting Data appears in the Data Register (offset +08h, Table 7-89). Iterate
+        through Data Select values 0 through the maximum supported index and verify the Data Register
+        returns valid Base Power, Data Scale, PM Sub State, PM State, Type, and Power Rail fields. The
+        Power Budget Capability Register (offset +0Ch) indicates system allocation status.
       priority: P3
-      priority_rationale: Power Budgeting is optional and primarily used for hot-plug
-        power allocation.
-      spec_ref: §7.8.1, Tables 7-88 to 7-89, Figure 7-108
-      pass_criteria: 'Extended Capability ID = 0004h. Data Select register is RW (8
-        bits). Data Register returns valid power data for each supported index. Base
-        Power and Data Scale encode a meaningful power value. PM State and Type fields
-        use valid encodings. Selecting an index beyond the reported data returns all
-        zeros. Power Budget Capability register is accessible.
-
-        '
+      priority_rationale: "Power Budgeting is optional and primarily used for hot-plug power allocation."
+      spec_ref: "§7.8.1, Tables 7-88 to 7-89, Figure 7-108"
+      pass_criteria: >-
+        Extended Capability ID = 0004h. Data Select register is RW (8 bits). Data Register returns valid
+        power data for each supported index. Base Power and Data Scale encode a meaningful power value.
+        PM State and Type fields use valid encodings. Selecting an index beyond the reported data returns
+        all zeros. Power Budget Capability register is accessible.
       tool: custom config space parser
       test_method: software_driver
+      glean_validated: false

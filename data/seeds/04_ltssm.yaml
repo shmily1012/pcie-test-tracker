@@ -8,1419 +8,1108 @@ categories:
   subcategories:
   - name: Detect State
     items:
-    - id: LTSSM-001
+    - id: "LTSSM-001"
       title: Detect.Quiet — Receiver Detection Trigger
-      description: 'Verify that the Port enters Detect.Quiet as the initial LTSSM
-        state after Fundamental Reset (cold/warm) or when directed from other states.
-        Confirm that all Transmitters are in Electrical Idle during Detect.Quiet.
-        Measure that the DC common mode voltage is within the VTX-DC-CM specification
-        (Table 8-6). Verify that the transition to Detect.Active occurs after the
-        12 ms timeout or when directed by a higher layer.
-
-        '
+      description: >-
+        Verify that the Port enters Detect.Quiet as the initial LTSSM state after Fundamental Reset (cold/warm)
+        or when directed from other states. Confirm that all Transmitters are in Electrical Idle during
+        Detect.Quiet. Measure that the DC common mode voltage is within the VTX-DC-CM specification (Table
+        8-6). Verify that the transition to Detect.Active occurs after the 12 ms timeout or when directed
+        by a higher layer.
       priority: P0
-      priority_rationale: Detect is the entry point of the entire LTSSM; failure here
-        prevents any link from forming.
-      spec_ref: PCIe 5.0 §4.2.6.1, §4.2.6.1.1, Table 8-6
-      pass_criteria: 'Transmitters enter Electrical Idle within Detect.Quiet. DC common
-        mode voltage meets VTX-DC-CM specification. Transition to Detect.Active occurs
-        within 12 ms (±1 ms tolerance). No spurious exits to other states observed.
-
-        '
+      priority_rationale: >-
+        Detect is the entry point of the entire LTSSM; failure here prevents any link from forming.
+      spec_ref: "PCIe 5.0 §4.2.6.1, §4.2.6.1.1, Table 8-6"
+      pass_criteria: >-
+        Transmitters enter Electrical Idle within Detect.Quiet. DC common mode voltage meets VTX-DC-CM
+        specification. Transition to Detect.Active occurs within 12 ms (±1 ms tolerance). No spurious
+        exits to other states observed.
       tool: Oscilloscope (≥50 GHz BW) + protocol analyzer
       test_method: hardware_lab
-      validation:
-        status: valid
-        validated_at: '2026-03-14'
-        glean_validated: true
-        changes_made:
-        - Validated via Glean MCP - accurate
-    - id: LTSSM-002
+      glean_validated: true
+    - id: "LTSSM-002"
       title: Detect.Active — Receiver Presence Detection
-      description: 'Verify the Receiver Detect mechanism in Detect.Active. The Transmitter
-        charges each Lane and detects the presence of a Receiver by observing the
-        change in common mode voltage caused by the Receiver''s DC impedance (ZRX-DC
-        per Table 8-10). Confirm that all configured Lanes detect Receiver presence
-        simultaneously. Verify that successful detection on at least one Lane causes
-        transition to Polling.Active and that failure to detect after the timeout
-        returns the LTSSM to Detect.Quiet.
-
-        '
+      description: >-
+        Verify the Receiver Detect mechanism in Detect.Active. The Transmitter charges each Lane and detects
+        the presence of a Receiver by observing the change in common mode voltage caused by the Receiver's
+        DC impedance (ZRX-DC per Table 8-10). Confirm that all configured Lanes detect Receiver presence
+        simultaneously. Verify that successful detection on at least one Lane causes transition to Polling.Active
+        and that failure to detect after the timeout returns the LTSSM to Detect.Quiet.
       priority: P0
-      priority_rationale: Receiver detection is the fundamental prerequisite for link
-        establishment.
-      spec_ref: PCIe 5.0 §4.2.6.1.2, §4.2.4.10, Table 8-10, §8.4.5.7
-      pass_criteria: 'Receiver presence detected on all Lanes where a device is connected
-        within the Detect.Active timeout. ZRX-DC impedance measured within specification
-        for 2.5 GT/s (Table 8-10). Transition to Polling.Active on successful detection.
-        Return to Detect.Quiet after timeout when no Receiver present.
-
-        '
+      priority_rationale: Receiver detection is the fundamental prerequisite for link establishment.
+      spec_ref: "PCIe 5.0 §4.2.6.1.2, §4.2.4.10, Table 8-10, §8.4.5.7"
+      pass_criteria: >-
+        Receiver presence detected on all Lanes where a device is connected within the Detect.Active timeout.
+        ZRX-DC impedance measured within specification for 2.5 GT/s (Table 8-10). Transition to Polling.Active
+        on successful detection. Return to Detect.Quiet after timeout when no Receiver present.
       tool: Oscilloscope + CEM test fixture + protocol analyzer
       test_method: hardware_lab
-      validation:
-        status: valid
-        validated_at: '2026-03-14'
-        glean_validated: true
-        changes_made:
-        - Validated via Glean MCP - accurate
-    - id: LTSSM-003
-      title: Detect — Fundamental Reset and Re-entry Behavior
-      description: 'Test all paths into the Detect state: Fundamental Reset (PERST#
-        assertion), timeout from other states, and directed transitions from Disabled,
-        Hot Reset, and Loopback.Exit. Verify that upon entering Detect the link_up
-        variable is cleared to 0b, all internal state variables are re-initialized
-        per §4.2.6, the selected_deemphasis variable is set based on hardware strapping,
-        and the speed_change variable is reset to 0b. Confirm correct behavior for
-        both Upstream and Downstream Ports.
-
-        '
+      glean_validated: true
+    - id: "LTSSM-003"
+      title: "Detect — Fundamental Reset and Re-entry Behavior"
+      description: >-
+        Test all paths into the Detect state: Fundamental Reset (PERST# assertion), timeout from other
+        states, and directed transitions from Disabled, Hot Reset, and Loopback.Exit. Verify that upon
+        entering Detect the link_up variable is cleared to 0b, all internal state variables are re-initialized
+        per §4.2.6, the selected_deemphasis variable is set based on hardware strapping, and the speed_change
+        variable is reset to 0b. Confirm correct behavior for both Upstream and Downstream Ports.
       priority: P1
-      priority_rationale: Proper re-initialization on Detect entry is critical for
-        reliable link recovery after errors.
-      spec_ref: PCIe 5.0 §4.2.6.1, §4.2.6, Figure 4-28 (LTSSM State Machine)
-      pass_criteria: 'LinkUp = 0b upon Detect entry from all source states. All speed/EQ
-        variables reset to default values. Directed_speed_change = 0b. Selected_deemphasis
-        reflects hardware strap value. No residual state from previous link training.
-
-        '
-      tool: Protocol analyzer (LeCroy/Keysight) + GPIO controller for PERST#
+      priority_rationale: >-
+        Proper re-initialization on Detect entry is critical for reliable link recovery after errors.
+      spec_ref: "PCIe 5.0 §4.2.6.1, §4.2.6, Figure 4-28 (LTSSM State Machine)"
+      pass_criteria: >-
+        LinkUp = 0b upon Detect entry from all source states. All speed/EQ variables reset to default
+        values. Directed_speed_change = 0b. Selected_deemphasis reflects hardware strap value. No residual
+        state from previous link training.
+      tool: "Protocol analyzer (LeCroy/Keysight) + GPIO controller for PERST#"
       test_method: hardware_lab
+      glean_validated: false
   - name: Polling State
     items:
-    - id: LTSSM-004
+    - id: "LTSSM-004"
       title: Polling.Active — TS1 Transmission and Bit Lock
-      description: 'Verify that upon entering Polling.Active, the Transmitter sends
-        TS1 Ordered Sets on all detected Lanes using the 2.5 GT/s data rate with compliance
-        receive number and Gen1 data rate identifier. Confirm that the Transmitter
-        sends a minimum of 1024 consecutive TS1s. Verify that the Receiver achieves
-        bit lock and Symbol lock (for 8b/10b encoding at 2.5 GT/s) on incoming TS1s.
-        Verify transition to Polling.Configuration upon receiving 8 consecutive TS1
-        or TS2 Ordered Sets with Link and Lane numbers matching any training pattern.
-
-        '
+      description: >-
+        Verify that upon entering Polling.Active, the Transmitter sends TS1 Ordered Sets on all detected
+        Lanes using the 2.5 GT/s data rate with compliance receive number and Gen1 data rate identifier.
+        Confirm that the Transmitter sends a minimum of 1024 consecutive TS1s. Verify that the Receiver
+        achieves bit lock and Symbol lock (for 8b/10b encoding at 2.5 GT/s) on incoming TS1s. Verify transition
+        to Polling.Configuration upon receiving 8 consecutive TS1 or TS2 Ordered Sets with Link and Lane
+        numbers matching any training pattern.
       priority: P0
-      priority_rationale: Polling.Active establishes the initial TS1 exchange and
-        bit/symbol lock required for all subsequent training.
-      spec_ref: PCIe 5.0 §4.2.6.2.1, §4.2.4.1, Table 4-6 (TS1 Format), §4.2.6.2
-      pass_criteria: 'At least 1024 TS1 Ordered Sets transmitted before exiting Polling.Active.
-        Bit lock and Symbol lock achieved on all Lanes. Transition to Polling.Configuration
-        upon receiving 8 consecutive training sequences. 24 ms timeout to Detect if
-        no valid TS received.
-
-        '
+      priority_rationale: >-
+        Polling.Active establishes the initial TS1 exchange and bit/symbol lock required for all subsequent
+        training.
+      spec_ref: "PCIe 5.0 §4.2.6.2.1, §4.2.4.1, Table 4-6 (TS1 Format), §4.2.6.2"
+      pass_criteria: >-
+        At least 1024 TS1 Ordered Sets transmitted before exiting Polling.Active. Bit lock and Symbol
+        lock achieved on all Lanes. Transition to Polling.Configuration upon receiving 8 consecutive training
+        sequences. 24 ms timeout to Detect if no valid TS received.
       tool: Protocol analyzer + BERT (bit error rate tester)
       test_method: protocol_analyzer
-      validation:
-        status: valid
-        validated_at: '2026-03-14'
-        glean_validated: true
-        changes_made:
-        - Validated via Glean MCP - accurate
-    - id: LTSSM-005
+      glean_validated: true
+    - id: "LTSSM-005"
       title: Polling.Configuration — TS2 Handshake Completion
-      description: 'Verify the TS2 handshake in Polling.Configuration. Once the Transmitter
-        enters this substate, it begins sending TS2 Ordered Sets. The exit condition
-        requires receiving 8 consecutive TS2 Ordered Sets on any detected Lane while
-        also having transmitted at least 16 TS2s. Confirm that Lane polarity inversion
-        is detected and recorded during this phase if the received TS2 patterns show
-        inverted polarity on any Lane. Verify transition to Configuration upon successful
-        handshake.
-
-        '
+      description: >-
+        Verify the TS2 handshake in Polling.Configuration. Once the Transmitter enters this substate,
+        it begins sending TS2 Ordered Sets. The exit condition requires receiving 8 consecutive TS2 Ordered
+        Sets on any detected Lane while also having transmitted at least 16 TS2s. Confirm that Lane polarity
+        inversion is detected and recorded during this phase if the received TS2 patterns show inverted
+        polarity on any Lane. Verify transition to Configuration upon successful handshake.
       priority: P0
-      priority_rationale: TS2 handshake in Polling is the final step before Configuration;
-        failure blocks link training.
-      spec_ref: PCIe 5.0 §4.2.6.2.3, §4.2.4.1, Table 4-7 (TS2 Format)
-      pass_criteria: 'At least 16 TS2 Ordered Sets transmitted. 8 consecutive TS2s
-        received on any detected Lane. Lane polarity inversion correctly detected
-        and latched. Transition to Configuration within 48 ms total Polling timeout.
-        Timeout to Detect if handshake fails.
-
-        '
+      priority_rationale: >-
+        TS2 handshake in Polling is the final step before Configuration; failure blocks link training.
+      spec_ref: "PCIe 5.0 §4.2.6.2.3, §4.2.4.1, Table 4-7 (TS2 Format)"
+      pass_criteria: >-
+        At least 16 TS2 Ordered Sets transmitted. 8 consecutive TS2s received on any detected Lane. Lane
+        polarity inversion correctly detected and latched. Transition to Configuration within 48 ms total
+        Polling timeout. Timeout to Detect if handshake fails.
       tool: Protocol analyzer (LeCroy/Keysight)
       test_method: protocol_analyzer
-      validation:
-        status: valid
-        validated_at: '2026-03-14'
-        glean_validated: true
-        changes_made:
-        - Validated via Glean MCP - accurate
-    - id: LTSSM-006
+      glean_validated: true
+    - id: "LTSSM-006"
       title: Polling.Compliance — Compliance Pattern Generation
-      description: 'Force entry to Polling.Compliance via the Enter Compliance bit
-        in Link Control 2 Register or by the specified entry conditions (Receiver
-        detecting TS1 absence after Polling.Active). Verify that the Transmitter generates
-        the correct compliance pattern: K28.5, D21.5, K28.5, D10.2 repeating sequence
-        for 8b/10b encoding at 2.5/5.0 GT/s (§4.2.8), or the 128b/130b compliance
-        pattern for 8.0 GT/s and above (§4.2.10). Confirm that the delay symbol rotation
-        across Lanes follows the per-Lane offset pattern with every 8th Lane delayed
-        by 4 symbols.
-
-        '
+      description: >-
+        Force entry to Polling.Compliance via the Enter Compliance bit in Link Control 2 Register or by
+        the specified entry conditions (Receiver detecting TS1 absence after Polling.Active). Verify that
+        the Transmitter generates the correct compliance pattern: K28.5, D21.5, K28.5, D10.2 repeating
+        sequence for 8b/10b encoding at 2.5/5.0 GT/s (§4.2.8), or the 128b/130b compliance pattern for
+        8.0 GT/s and above (§4.2.10). Confirm that the delay symbol rotation across Lanes follows the
+        per-Lane offset pattern with every 8th Lane delayed by 4 symbols.
       priority: P1
-      priority_rationale: Compliance mode is required for electrical validation and
-        CEM interoperability testing.
-      spec_ref: PCIe 5.0 §4.2.6.2.4, §4.2.8, §4.2.10, Table 4-24
-      pass_criteria: '8b/10b compliance pattern matches K28.5-/D21.5+/K28.5+/D10.2-
-        sequence. 128b/130b pattern consists of 36-37 block sequence per §4.2.10.
-        Delay symbol rotation correct across all Lanes. Error status symbols transmitted
-        correctly. Exit to Polling.Active upon receiving 8 consecutive TS1 Ordered
+      priority_rationale: >-
+        Compliance mode is required for electrical validation and CEM interoperability testing.
+      spec_ref: "PCIe 5.0 §4.2.6.2.4, §4.2.8, §4.2.10, Table 4-24"
+      pass_criteria: >-
+        8b/10b compliance pattern matches K28.5-/D21.5+/K28.5+/D10.2- sequence. 128b/130b pattern consists
+        of 36-37 block sequence per §4.2.10. Delay symbol rotation correct across all Lanes. Error status
+        symbols transmitted correctly. Exit to Polling.Active upon receiving 8 consecutive TS1 Ordered
         Sets.
-
-        '
       tool: Oscilloscope (≥50 GHz BW) + CEM test fixture
       test_method: hardware_lab
-    - id: LTSSM-007
+      glean_validated: false
+    - id: "LTSSM-007"
       title: Polling.Speed — Speed Negotiation in Polling
-      description: 'Verify Polling.Speed substate behavior when both link partners
-        support data rates higher than 2.5 GT/s. Confirm that the Transmitter sends
-        Modified TS1 Ordered Sets (Table 4-8) advertising supported speeds via the
-        Data Rate Identifier field. Verify that the substate correctly identifies
-        the highest mutually supported data rate. Confirm that the LTSSM transitions
-        to Polling.Configuration at the negotiated speed or falls back to 2.5 GT/s
-        Polling.Active after a failed speed change.
-
-        '
+      description: >-
+        Verify Polling.Speed substate behavior when both link partners support data rates higher than
+        2.5 GT/s. Confirm that the Transmitter sends Modified TS1 Ordered Sets (Table 4-8) advertising
+        supported speeds via the Data Rate Identifier field. Verify that the substate correctly identifies
+        the highest mutually supported data rate. Confirm that the LTSSM transitions to Polling.Configuration
+        at the negotiated speed or falls back to 2.5 GT/s Polling.Active after a failed speed change.
       priority: P1
-      priority_rationale: Polling.Speed enables initial speed negotiation before Configuration,
-        affecting link bandwidth.
-      spec_ref: PCIe 5.0 §4.2.6.2.5, Table 4-8 (Modified TS1), §4.2.4.10
-      pass_criteria: 'Modified TS1 Ordered Sets correctly advertise all supported
-        data rates. Highest common data rate negotiated successfully. Speed change
-        to negotiated rate completes within timeout. Fallback to 2.5 GT/s if negotiation
-        fails.
-
-        '
+      priority_rationale: >-
+        Polling.Speed enables initial speed negotiation before Configuration, affecting link bandwidth.
+      spec_ref: "PCIe 5.0 §4.2.6.2.5, Table 4-8 (Modified TS1), §4.2.4.10"
+      pass_criteria: >-
+        Modified TS1 Ordered Sets correctly advertise all supported data rates. Highest common data rate
+        negotiated successfully. Speed change to negotiated rate completes within timeout. Fallback to
+        2.5 GT/s if negotiation fails.
       tool: Protocol analyzer
       test_method: protocol_analyzer
+      glean_validated: false
   - name: Configuration State
     items:
-    - id: LTSSM-008
+    - id: "LTSSM-008"
       title: Configuration.Linkwidth.Start — Link Width Proposal
-      description: 'Verify that the Downstream Port proposes link width by transmitting
-        TS1 Ordered Sets with non-PAD Link numbers on all detected Lanes. The Downstream
-        Port assigns a Link number and increments it for each possible link partition.
-        Confirm that the proposed widths correspond to valid configurations (x1, x2,
-        x4, x8, x12, x16, x32). Verify that the Upstream Port receives these proposals
-        and responds via Configuration.Linkwidth.Accept. Track the 2 ms timeout for
-        width negotiation.
-
-        '
+      description: >-
+        Verify that the Downstream Port proposes link width by transmitting TS1 Ordered Sets with non-PAD
+        Link numbers on all detected Lanes. The Downstream Port assigns a Link number and increments it
+        for each possible link partition. Confirm that the proposed widths correspond to valid configurations
+        (x1, x2, x4, x8, x12, x16, x32). Verify that the Upstream Port receives these proposals and responds
+        via Configuration.Linkwidth.Accept. Track the 2 ms timeout for width negotiation.
       priority: P0
-      priority_rationale: Link width negotiation determines the available bandwidth;
-        incorrect width reduces throughput.
-      spec_ref: PCIe 5.0 §4.2.6.3.1, §4.2.4.11, Figure 4-29
-      pass_criteria: 'Downstream Port transmits TS1 with valid Link numbers on all
-        detected Lanes. Proposed widths match hardware capabilities. Upstream Port
-        responds within 2 ms. Valid width selected (x1/x2/x4/x8/x12/x16/x32).
-
-        '
+      priority_rationale: >-
+        Link width negotiation determines the available bandwidth; incorrect width reduces throughput.
+      spec_ref: "PCIe 5.0 §4.2.6.3.1, §4.2.4.11, Figure 4-29"
+      pass_criteria: >-
+        Downstream Port transmits TS1 with valid Link numbers on all detected Lanes. Proposed widths match
+        hardware capabilities. Upstream Port responds within 2 ms. Valid width selected (x1/x2/x4/x8/x12/x16/x32).
       tool: Protocol analyzer (LeCroy/Keysight)
       test_method: protocol_analyzer
-      validation:
-        status: valid
-        validated_at: '2026-03-14'
-        glean_validated: true
-        changes_made:
-        - Validated via Glean MCP - accurate
-    - id: LTSSM-009
+      glean_validated: true
+    - id: "LTSSM-009"
       title: Configuration.Linkwidth.Accept — Width Acceptance
-      description: 'Verify Upstream Port behavior in Configuration.Linkwidth.Accept.
-        The Upstream Port receives Link number proposals from the Downstream Port
-        and accepts by echoing the same Link number on the Lanes it wishes to include
-        in the link. Confirm that the Upstream Port selects a contiguous set of Lanes
-        starting from Lane 0 and that unused Lanes are marked with PAD in the Link
-        number field. Verify that the accepted width matches the narrower of the two
-        Port capabilities.
-
-        '
+      description: >-
+        Verify Upstream Port behavior in Configuration.Linkwidth.Accept. The Upstream Port receives Link
+        number proposals from the Downstream Port and accepts by echoing the same Link number on the Lanes
+        it wishes to include in the link. Confirm that the Upstream Port selects a contiguous set of Lanes
+        starting from Lane 0 and that unused Lanes are marked with PAD in the Link number field. Verify
+        that the accepted width matches the narrower of the two Port capabilities.
       priority: P0
-      priority_rationale: Width acceptance must select the correct contiguous Lane
-        set for proper data transfer.
-      spec_ref: PCIe 5.0 §4.2.6.3.2, §4.2.4.11
-      pass_criteria: 'Upstream Port echoes correct Link number on accepted Lanes.
-        Accepted Lanes form a contiguous set starting from Lane 0. Unused Lanes show
-        PAD in Link number. Width matches minimum of both Ports'' capabilities.
-
-        '
+      priority_rationale: >-
+        Width acceptance must select the correct contiguous Lane set for proper data transfer.
+      spec_ref: "PCIe 5.0 §4.2.6.3.2, §4.2.4.11"
+      pass_criteria: >-
+        Upstream Port echoes correct Link number on accepted Lanes. Accepted Lanes form a contiguous set
+        starting from Lane 0. Unused Lanes show PAD in Link number. Width matches minimum of both Ports'
+        capabilities.
       tool: Protocol analyzer
       test_method: protocol_analyzer
-      validation:
-        status: valid
-        validated_at: '2026-03-14'
-        glean_validated: true
-        changes_made:
-        - Validated via Glean MCP - accurate
-    - id: LTSSM-010
+      glean_validated: true
+    - id: "LTSSM-010"
       title: Configuration.Lanenum.Wait — Lane Number Assignment
-      description: 'Verify Lane number assignment in Configuration.Lanenum.Wait. The
-        Downstream Port assigns sequential Lane numbers (0 through N-1) to the accepted
-        Lanes by setting the Lane Number field in TS1 Ordered Sets. Verify that Lane
-        numbers are assigned starting from Lane 0 on the lowest physical Lane and
-        incrementing across the link width. Confirm transition to Configuration.Lanenum.Accept
-        after receiving two consecutive TS1s with matching Link and Lane numbers.
-
-        '
+      description: >-
+        Verify Lane number assignment in Configuration.Lanenum.Wait. The Downstream Port assigns sequential
+        Lane numbers (0 through N-1) to the accepted Lanes by setting the Lane Number field in TS1 Ordered
+        Sets. Verify that Lane numbers are assigned starting from Lane 0 on the lowest physical Lane and
+        incrementing across the link width. Confirm transition to Configuration.Lanenum.Accept after receiving
+        two consecutive TS1s with matching Link and Lane numbers.
       priority: P1
-      priority_rationale: Correct Lane numbering is essential for data striping, de-skew,
-        and 128b/130b scrambling seed selection.
-      spec_ref: PCIe 5.0 §4.2.6.3.3, §4.2.4.11
-      pass_criteria: 'Lane numbers assigned sequentially starting from 0. All configured
-        Lanes carry correct Lane number in TS1 Ordered Sets. Two consecutive TS1s
-        with matching numbers received. Transition to Configuration.Lanenum.Accept
+      priority_rationale: >-
+        Correct Lane numbering is essential for data striping, de-skew, and 128b/130b scrambling seed
+        selection.
+      spec_ref: "PCIe 5.0 §4.2.6.3.3, §4.2.4.11"
+      pass_criteria: >-
+        Lane numbers assigned sequentially starting from 0. All configured Lanes carry correct Lane number
+        in TS1 Ordered Sets. Two consecutive TS1s with matching numbers received. Transition to Configuration.Lanenum.Accept
         within 2 ms timeout.
-
-        '
       tool: Protocol analyzer
       test_method: protocol_analyzer
-    - id: LTSSM-011
+      glean_validated: false
+    - id: "LTSSM-011"
       title: Configuration.Complete — Training Sequence Finalization
-      description: 'Verify Configuration.Complete behavior where both link partners
-        confirm the negotiated link configuration. The Transmitter sends TS2 Ordered
-        Sets with the agreed Link and Lane numbers. The exit condition requires receiving
-        8 consecutive TS2 Ordered Sets with matching Link and Lane numbers on all
-        configured Lanes while having sent at least 16 TS2s. Verify that the data
-        rate, link width, and Lane assignments are all confirmed in the TS2 fields.
-
-        '
+      description: >-
+        Verify Configuration.Complete behavior where both link partners confirm the negotiated link configuration.
+        The Transmitter sends TS2 Ordered Sets with the agreed Link and Lane numbers. The exit condition
+        requires receiving 8 consecutive TS2 Ordered Sets with matching Link and Lane numbers on all configured
+        Lanes while having sent at least 16 TS2s. Verify that the data rate, link width, and Lane assignments
+        are all confirmed in the TS2 fields.
       priority: P0
-      priority_rationale: Configuration.Complete is the final confirmation before
-        entering L0; incorrect completion causes training loops.
-      spec_ref: PCIe 5.0 §4.2.6.3.5, Table 4-7 (TS2 Format)
-      pass_criteria: 'At least 16 TS2 Ordered Sets transmitted with correct Link/Lane
-        numbers. 8 consecutive TS2s received on all configured Lanes with matching
-        numbers. Negotiated speed and width encoded in TS2 fields. Transition to Configuration.Idle
-        within 2 ms.
-
-        '
+      priority_rationale: >-
+        Configuration.Complete is the final confirmation before entering L0; incorrect completion causes
+        training loops.
+      spec_ref: "PCIe 5.0 §4.2.6.3.5, Table 4-7 (TS2 Format)"
+      pass_criteria: >-
+        At least 16 TS2 Ordered Sets transmitted with correct Link/Lane numbers. 8 consecutive TS2s received
+        on all configured Lanes with matching numbers. Negotiated speed and width encoded in TS2 fields.
+        Transition to Configuration.Idle within 2 ms.
       tool: Protocol analyzer (LeCroy/Keysight)
       test_method: protocol_analyzer
-      validation:
-        status: valid
-        validated_at: '2026-03-14'
-        glean_validated: true
-        changes_made:
-        - Validated via Glean MCP - accurate
-    - id: LTSSM-012
+      glean_validated: true
+    - id: "LTSSM-012"
       title: Configuration.Idle — Idle Token Exchange and L0 Entry
-      description: 'Verify Configuration.Idle substate where the Transmitter sends
-        Idle data (logical idle) after the final TS2 exchange. The Transmitter sends
-        Idle data for a minimum of 16 consecutive Symbol Times at 2.5 GT/s. The exit
-        to L0 requires receiving 8 consecutive Idle data symbols on all configured
-        Lanes while Idle has been transmitted. Verify that LinkUp is set to 1b upon
-        successful transition to L0. Confirm the 2 ms timeout to Detect on failure.
-
-        '
+      description: >-
+        Verify Configuration.Idle substate where the Transmitter sends Idle data (logical idle) after
+        the final TS2 exchange. The Transmitter sends Idle data for a minimum of 16 consecutive Symbol
+        Times at 2.5 GT/s. The exit to L0 requires receiving 8 consecutive Idle data symbols on all configured
+        Lanes while Idle has been transmitted. Verify that LinkUp is set to 1b upon successful transition
+        to L0. Confirm the 2 ms timeout to Detect on failure.
       priority: P0
-      priority_rationale: Configuration.Idle is the gateway to L0 normal operation;
-        failure here prevents data transfer.
+      priority_rationale: >-
+        Configuration.Idle is the gateway to L0 normal operation; failure here prevents data transfer.
       spec_ref: PCIe 5.0 §4.2.6.3.6
-      pass_criteria: 'Minimum 16 Idle symbols transmitted. 8 consecutive Idle symbols
-        received on all configured Lanes. LinkUp = 1b upon L0 entry. Transition to
-        L0 within 2 ms. Timeout to Detect if Idle exchange fails.
-
-        '
+      pass_criteria: >-
+        Minimum 16 Idle symbols transmitted. 8 consecutive Idle symbols received on all configured Lanes.
+        LinkUp = 1b upon L0 entry. Transition to L0 within 2 ms. Timeout to Detect if Idle exchange fails.
       tool: Protocol analyzer
       test_method: protocol_analyzer
-      validation:
-        status: corrected
-        validated_at: '2026-03-14'
-        glean_validated: true
-        changes_made:
-        - Use §4.2.6.8 for L2, not §4.2.6.9
+      glean_validated: true
   - name: L0 Normal Operation
     items:
-    - id: LTSSM-013
+    - id: "LTSSM-013"
       title: L0 — Normal Data Transfer State Entry and Stability
-      description: 'Verify the DUT operates correctly in L0 (normal operational state).
-        Confirm that LinkUp = 1b (status is set true) upon L0 entry. Verify that TLP
-        and DLLP traffic flows correctly on all configured Lanes. Monitor that idle_to_rlock_transitioned
-        is reset to 00h upon receipt of STP or SDP symbols. Run sustained traffic
-        (sequential read/write) for 10 minutes and verify no unexpected exits from
+      description: >-
+        Verify the DUT operates correctly in L0 (normal operational state). Confirm that LinkUp = 1b (status
+        is set true) upon L0 entry. Verify that TLP and DLLP traffic flows correctly on all configured
+        Lanes. Monitor that idle_to_rlock_transitioned is reset to 00h upon receipt of STP or SDP symbols.
+        Run sustained traffic (sequential read/write) for 10 minutes and verify no unexpected exits from
         L0.
-
-        '
       priority: P0
-      priority_rationale: L0 is the primary operational state; instability directly
-        impacts data integrity and performance.
+      priority_rationale: >-
+        L0 is the primary operational state; instability directly impacts data integrity and performance.
       spec_ref: PCIe 5.0 §4.2.6.5
-      pass_criteria: 'LinkUp = 1b maintained throughout test. Zero unexpected Recovery
-        or Detect transitions during 10-minute sustained traffic. TLP/DLLP delivery
-        verified on all Lanes. No uncorrectable errors logged.
-
-        '
+      pass_criteria: >-
+        LinkUp = 1b maintained throughout test. Zero unexpected Recovery or Detect transitions during
+        10-minute sustained traffic. TLP/DLLP delivery verified on all Lanes. No uncorrectable errors
+        logged.
       tool: Protocol analyzer + traffic generator + NVMe test tool
       test_method: protocol_analyzer
-      validation:
-        status: corrected
-        validated_at: '2026-03-14'
-        glean_validated: true
-        changes_made:
-        - Hot Reset is §4.2.6.11, not §4.2.6.10 (Loopback)
-    - id: LTSSM-014
+      glean_validated: true
+    - id: "LTSSM-014"
       title: L0 — Directed Speed Change from L0
-      description: 'Verify the directed speed change mechanism from L0. Set the Retrain
-        Link bit and Target Link Speed field in Link Control/Control 2 registers to
-        trigger a speed change. The DUT transitions to Recovery when directed_speed_change
-        = 1b and both sides support speeds > 2.5 GT/s while the Link is in DL_Active.
-        Verify that the Downstream Port checks that the Upstream Port has advertised
-        the target rate in Configuration.Complete or Recovery.RcvrCfg since the last
-        Detect exit before setting directed_speed_change.
-
-        '
+      description: >-
+        Verify the directed speed change mechanism from L0. Set the Retrain Link bit and Target Link Speed
+        field in Link Control/Control 2 registers to trigger a speed change. The DUT transitions to Recovery
+        when directed_speed_change = 1b and both sides support speeds > 2.5 GT/s while the Link is in
+        DL_Active. Verify that the Downstream Port checks that the Upstream Port has advertised the target
+        rate in Configuration.Complete or Recovery.RcvrCfg since the last Detect exit before setting directed_speed_change.
       priority: P0
-      priority_rationale: Speed change from L0 is the primary mechanism for achieving
-        maximum link bandwidth.
-      spec_ref: PCIe 5.0 §4.2.6.5, §4.2.4.10
-      pass_criteria: 'Speed change initiated correctly via Retrain Link bit. Transition
-        to Recovery observed within 1 ms of register write. Link successfully retrains
-        at target speed. Link returns to L0 at new speed within 50 ms. No data corruption
-        during speed change.
-
-        '
+      priority_rationale: >-
+        Speed change from L0 is the primary mechanism for achieving maximum link bandwidth.
+      spec_ref: "PCIe 5.0 §4.2.6.5, §4.2.4.10"
+      pass_criteria: >-
+        Speed change initiated correctly via Retrain Link bit. Transition to Recovery observed within
+        1 ms of register write. Link successfully retrains at target speed. Link returns to L0 at new
+        speed within 50 ms. No data corruption during speed change.
       tool: Protocol analyzer + register access tool (setpci/lspci)
       test_method: software_driver
-      validation:
-        status: corrected
-        validated_at: '2026-03-14'
-        glean_validated: true
-        changes_made:
-        - Disable is §4.2.6.9, not §4.2.6.4 (Recovery)
-    - id: LTSSM-015
+      glean_validated: true
+    - id: "LTSSM-015"
       title: L0 — Directed Link Width Change from L0
-      description: 'Verify link width change from L0 state. The upper layer directs
-        a transition to Recovery to change link width. Confirm that the Port does
-        not direct a width increase if the other Port did not advertise upconfigure_capable
-        during Configuration. Verify that the Port does not reduce width if upconfigure_capable
-        is 0b (except when Hardware Autonomous Width Disable is cleared). Confirm
-        that the width change decision is properly communicated through Recovery and
-        the link returns to L0 at the new width.
-
-        '
+      description: >-
+        Verify link width change from L0 state. The upper layer directs a transition to Recovery to change
+        link width. Confirm that the Port does not direct a width increase if the other Port did not advertise
+        upconfigure_capable during Configuration. Verify that the Port does not reduce width if upconfigure_capable
+        is 0b (except when Hardware Autonomous Width Disable is cleared). Confirm that the width change
+        decision is properly communicated through Recovery and the link returns to L0 at the new width.
       priority: P1
-      priority_rationale: Dynamic width change enables power optimization while maintaining
-        required bandwidth.
-      spec_ref: PCIe 5.0 §4.2.6.5, §4.2.4.11
-      pass_criteria: 'Width upconfigure only attempted when partner advertises upconfigure_capable.
-        Width downconfigure only when permitted by specification. Link retrains at
-        new width through Recovery. No data loss during width transition. Hardware
-        Autonomous Width Disable respected.
-
-        '
+      priority_rationale: >-
+        Dynamic width change enables power optimization while maintaining required bandwidth.
+      spec_ref: "PCIe 5.0 §4.2.6.5, §4.2.4.11"
+      pass_criteria: >-
+        Width upconfigure only attempted when partner advertises upconfigure_capable. Width downconfigure
+        only when permitted by specification. Link retrains at new width through Recovery. No data loss
+        during width transition. Hardware Autonomous Width Disable respected.
       tool: Protocol analyzer + register access tool
       test_method: software_driver
-    - id: LTSSM-016
+      glean_validated: false
+    - id: "LTSSM-016"
       title: L0 — Electrical Idle Inference and Recovery Entry
-      description: 'Verify L0-to-Recovery transition triggered by Electrical Idle
-        inference. Per §4.2.4.4, Electrical Idle is inferred when any of: (i) no Flow
-        Control Update DLLP in any window, (ii) no SKP Ordered Set in any 128 us window
-        on configured Lanes, or (iii) absence of both in any 128 us window. Also verify
-        Recovery entry when TS1/TS2 is received on any configured Lane or EIEOS is
-        received in 128b/130b encoding while in L0.
-
-        '
+      description: >-
+        Verify L0-to-Recovery transition triggered by Electrical Idle inference. Per §4.2.4.4, Electrical
+        Idle is inferred when any of: (i) no Flow Control Update DLLP in any window, (ii) no SKP Ordered
+        Set in any 128 us window on configured Lanes, or (iii) absence of both in any 128 us window. Also
+        verify Recovery entry when TS1/TS2 is received on any configured Lane or EIEOS is received in
+        128b/130b encoding while in L0.
       priority: P1
-      priority_rationale: Electrical Idle inference is the error recovery trigger;
-        missed detection causes silent link failure.
-      spec_ref: PCIe 5.0 §4.2.6.5, §4.2.4.4, Table 4-16
-      pass_criteria: 'Recovery entered within 200 us of Electrical Idle inference.
-        All three inference conditions tested independently. Recovery entry on TS1/TS2
-        or EIEOS reception verified. Link recovers to L0 after Recovery completes.
-
-        '
+      priority_rationale: >-
+        Electrical Idle inference is the error recovery trigger; missed detection causes silent link failure.
+      spec_ref: "PCIe 5.0 §4.2.6.5, §4.2.4.4, Table 4-16"
+      pass_criteria: >-
+        Recovery entered within 200 us of Electrical Idle inference. All three inference conditions tested
+        independently. Recovery entry on TS1/TS2 or EIEOS reception verified. Link recovers to L0 after
+        Recovery completes.
       tool: Protocol analyzer + error injection tool
       test_method: protocol_analyzer
+      glean_validated: false
   - name: Recovery State
     items:
-    - id: LTSSM-017
+    - id: "LTSSM-017"
       title: Recovery.RcvrLock — Receiver Lock Acquisition
-      description: 'Verify Recovery.RcvrLock behavior for link recovery. Upon entering
-        Recovery, the Transmitter sends TS1 Ordered Sets at the current data rate
-        on all configured Lanes. The Receiver must achieve bit lock, Symbol lock (8b/10b),
-        or Block alignment (128b/130b) within the 24 ms timeout. Verify that the idle_to_rlock_transitioned
-        counter is incremented by 1 for 8.0 GT/s and higher, and set to FFh for 5.0
-        GT/s and below. Confirm transition to Recovery.RcvrCfg upon receiving 8 consecutive
+      description: >-
+        Verify Recovery.RcvrLock behavior for link recovery. Upon entering Recovery, the Transmitter sends
+        TS1 Ordered Sets at the current data rate on all configured Lanes. The Receiver must achieve bit
+        lock, Symbol lock (8b/10b), or Block alignment (128b/130b) within the 24 ms timeout. Verify that
+        the idle_to_rlock_transitioned counter is incremented by 1 for 8.0 GT/s and higher, and set to
+        FFh for 5.0 GT/s and below. Confirm transition to Recovery.RcvrCfg upon receiving 8 consecutive
         training sequences.
-
-        '
       priority: P0
-      priority_rationale: Recovery.RcvrLock is the entry point for all link recovery
-        scenarios; lock failure leads to Detect fallback.
-      spec_ref: PCIe 5.0 §4.2.6.4.1, Figure 4-30 (Recovery Substate Machine)
-      pass_criteria: 'Bit lock and Symbol/Block alignment achieved within 24 ms. 8
-        consecutive TS1 or TS2 received on all configured Lanes. idle_to_rlock_transitioned
-        tracked correctly. Timeout to Detect if lock not achieved within 24 ms and
-        idle_to_rlock_transitioned = FFh.
-
-        '
+      priority_rationale: >-
+        Recovery.RcvrLock is the entry point for all link recovery scenarios; lock failure leads to Detect
+        fallback.
+      spec_ref: "PCIe 5.0 §4.2.6.4.1, Figure 4-30 (Recovery Substate Machine)"
+      pass_criteria: >-
+        Bit lock and Symbol/Block alignment achieved within 24 ms. 8 consecutive TS1 or TS2 received on
+        all configured Lanes. idle_to_rlock_transitioned tracked correctly. Timeout to Detect if lock
+        not achieved within 24 ms and idle_to_rlock_transitioned = FFh.
       tool: Protocol analyzer + BERT
       test_method: protocol_analyzer
-      validation:
-        status: corrected
-        validated_at: '2026-03-14'
-        glean_validated: true
-        changes_made:
-        - Add §4.2.4.10 for Link Data Rate Negotiation
-    - id: LTSSM-018
+      glean_validated: true
+    - id: "LTSSM-018"
       title: Recovery.RcvrCfg — Configuration Confirmation in Recovery
-      description: 'Verify Recovery.RcvrCfg substate where both link partners confirm
-        the link configuration after receiver lock. The Transmitter sends TS2 Ordered
-        Sets with the configured Link and Lane numbers. Exit requires receiving 8
-        consecutive TS2 Ordered Sets with matching Link and Lane numbers on all configured
-        Lanes. Verify that speed change and equalization requests are communicated
-        via TS2 fields (speed_change bit, EQ request bit). Confirm the 48 ms timeout
-        to Detect.
-
-        '
+      description: >-
+        Verify Recovery.RcvrCfg substate where both link partners confirm the link configuration after
+        receiver lock. The Transmitter sends TS2 Ordered Sets with the configured Link and Lane numbers.
+        Exit requires receiving 8 consecutive TS2 Ordered Sets with matching Link and Lane numbers on
+        all configured Lanes. Verify that speed change and equalization requests are communicated via
+        TS2 fields (speed_change bit, EQ request bit). Confirm the 48 ms timeout to Detect.
       priority: P0
-      priority_rationale: Recovery.RcvrCfg confirms link integrity before returning
-        to L0; skipping it risks data corruption.
+      priority_rationale: >-
+        Recovery.RcvrCfg confirms link integrity before returning to L0; skipping it risks data corruption.
       spec_ref: PCIe 5.0 §4.2.6.4.4
-      pass_criteria: 'TS2 Ordered Sets with correct Link/Lane numbers on all configured
-        Lanes. 8 consecutive matching TS2s received. Speed change bit correctly reflects
-        negotiation. Transition to Recovery.Idle within timeout. Timeout to Detect
-        after 48 ms on failure.
-
-        '
+      pass_criteria: >-
+        TS2 Ordered Sets with correct Link/Lane numbers on all configured Lanes. 8 consecutive matching
+        TS2s received. Speed change bit correctly reflects negotiation. Transition to Recovery.Idle within
+        timeout. Timeout to Detect after 48 ms on failure.
       tool: Protocol analyzer (LeCroy/Keysight)
       test_method: protocol_analyzer
-      validation:
-        status: valid
-        validated_at: '2026-03-14'
-        glean_validated: true
-        changes_made:
-        - Validated via Glean MCP - accurate
-    - id: LTSSM-019
-      title: Recovery.Idle — Idle Exchange and L0 Re-entry
-      description: 'Verify Recovery.Idle substate where the link prepares to return
-        to L0. The Transmitter sends Idle data after TS2 handshake completion. Exit
-        to L0 requires receiving 8 consecutive Idle symbols on all configured Lanes.
-        Verify that if the speed_change bit was set in both directions during Recovery,
-        the LTSSM transitions to Recovery.Speed instead of L0. Also verify directed
-        transitions to Loopback, Disabled, Hot Reset, or Configuration from Recovery.Idle
-        based on TS1 control bits.
-
-        '
+      glean_validated: true
+    - id: "LTSSM-019"
+      title: "Recovery.Idle — Idle Exchange and L0 Re-entry"
+      description: >-
+        Verify Recovery.Idle substate where the link prepares to return to L0. The Transmitter sends Idle
+        data after TS2 handshake completion. Exit to L0 requires receiving 8 consecutive Idle symbols
+        on all configured Lanes. Verify that if the speed_change bit was set in both directions during
+        Recovery, the LTSSM transitions to Recovery.Speed instead of L0. Also verify directed transitions
+        to Loopback, Disabled, Hot Reset, or Configuration from Recovery.Idle based on TS1 control bits.
       priority: P0
-      priority_rationale: Recovery.Idle is the final recovery step before L0; incorrect
-        exit paths cause training failures.
+      priority_rationale: >-
+        Recovery.Idle is the final recovery step before L0; incorrect exit paths cause training failures.
       spec_ref: PCIe 5.0 §4.2.6.4.5
-      pass_criteria: 'Idle exchange completes within 2 ms. Transition to L0 with LinkUp
-        = 1b when no speed change requested. Transition to Recovery.Speed when speed_change
-        set. Directed transitions to Loopback/Disabled/Hot Reset honored. Timeout
-        to Detect after 2 ms on failure.
-
-        '
+      pass_criteria: >-
+        Idle exchange completes within 2 ms. Transition to L0 with LinkUp = 1b when no speed change requested.
+        Transition to Recovery.Speed when speed_change set. Directed transitions to Loopback/Disabled/Hot
+        Reset honored. Timeout to Detect after 2 ms on failure.
       tool: Protocol analyzer
       test_method: protocol_analyzer
-      validation:
-        status: valid
-        validated_at: '2026-03-14'
-        glean_validated: true
-        changes_made:
-        - Validated via Glean MCP - accurate
-    - id: LTSSM-020
+      glean_validated: true
+    - id: "LTSSM-020"
       title: Recovery.Speed — Data Rate Change Execution
-      description: 'Verify Recovery.Speed substate for executing negotiated data rate
-        changes. After both sides agree on a speed change (via speed_change bit in
-        TS2), the Transmitter sends EIOS/EIEOS and transitions to Electrical Idle
-        for the required duration before switching to the new data rate. Verify that
-        the changed_speed_recovery bit is set to 1b. Confirm transition to Recovery.RcvrLock
-        at the new data rate. Test transitions between all supported rates: 2.5, 5.0,
-        8.0, 16.0, and 32.0 GT/s.
-
-        '
+      description: >-
+        Verify Recovery.Speed substate for executing negotiated data rate changes. After both sides agree
+        on a speed change (via speed_change bit in TS2), the Transmitter sends EIOS/EIEOS and transitions
+        to Electrical Idle for the required duration before switching to the new data rate. Verify that
+        the changed_speed_recovery bit is set to 1b. Confirm transition to Recovery.RcvrLock at the new
+        data rate. Test transitions between all supported rates: 2.5, 5.0, 8.0, 16.0, and 32.0 GT/s.
       priority: P0
-      priority_rationale: Speed change execution directly determines achievable link
-        bandwidth for all PCIe generations.
-      spec_ref: PCIe 5.0 §4.2.6.4.3, §4.2.4.10
-      pass_criteria: 'Speed change completes within specified timeout for each rate
-        transition. EIOS/EIEOS transmitted correctly before rate change. Electrical
-        Idle duration meets specification. New data rate achieved and verified. Link
-        returns to L0 at new speed. All Gen1-Gen5 transitions tested.
-
-        '
+      priority_rationale: >-
+        Speed change execution directly determines achievable link bandwidth for all PCIe generations.
+      spec_ref: "PCIe 5.0 §4.2.6.4.3, §4.2.4.10"
+      pass_criteria: >-
+        Speed change completes within specified timeout for each rate transition. EIOS/EIEOS transmitted
+        correctly before rate change. Electrical Idle duration meets specification. New data rate achieved
+        and verified. Link returns to L0 at new speed. All Gen1-Gen5 transitions tested.
       tool: Protocol analyzer + oscilloscope
       test_method: protocol_analyzer
-      validation:
-        status: valid
-        validated_at: '2026-03-14'
-        glean_validated: true
-        changes_made:
-        - Validated via Glean MCP - accurate
-    - id: LTSSM-021
+      glean_validated: true
+    - id: "LTSSM-021"
       title: Recovery — Link Error Recovery and Retrain
-      description: 'Verify automatic link recovery triggered by errors during L0.
-        Inject errors that cause the link to enter Recovery (e.g., excessive LCRC
-        errors, Receiver errors, Replay Timer timeout). Verify the full Recovery flow:
-        RcvrLock → RcvrCfg → Idle → L0. Measure total recovery time from Recovery
-        entry to L0 re-entry. Test recovery at each supported data rate. Verify that
-        no data is lost during recovery (DLLP Replay mechanism handles in-flight TLPs).
-
-        '
+      description: >-
+        Verify automatic link recovery triggered by errors during L0. Inject errors that cause the link
+        to enter Recovery (e.g., excessive LCRC errors, Receiver errors, Replay Timer timeout). Verify
+        the full Recovery flow: RcvrLock → RcvrCfg → Idle → L0. Measure total recovery time from Recovery
+        entry to L0 re-entry. Test recovery at each supported data rate. Verify that no data is lost during
+        recovery (DLLP Replay mechanism handles in-flight TLPs).
       priority: P0
-      priority_rationale: Link error recovery is the primary reliability mechanism;
-        failure causes link down events.
-      spec_ref: PCIe 5.0 §4.2.6.4, §4.2.4.8, Figure 4-30
-      pass_criteria: 'Recovery completes within 100 ms at all data rates. No TLP data
-        lost (Replay buffer retransmits). Link returns to same speed and width. idle_to_rlock_transitioned
-        counter tracks recovery attempts. Fallback to lower speed if recovery fails
-        at current speed after FFh attempts.
-
-        '
+      priority_rationale: >-
+        Link error recovery is the primary reliability mechanism; failure causes link down events.
+      spec_ref: "PCIe 5.0 §4.2.6.4, §4.2.4.8, Figure 4-30"
+      pass_criteria: >-
+        Recovery completes within 100 ms at all data rates. No TLP data lost (Replay buffer retransmits).
+        Link returns to same speed and width. idle_to_rlock_transitioned counter tracks recovery attempts.
+        Fallback to lower speed if recovery fails at current speed after FFh attempts.
       tool: Protocol analyzer + error injection tool
       test_method: protocol_analyzer
-      validation:
-        status: corrected
-        validated_at: '2026-03-14'
-        glean_validated: true
-        changes_made:
-        - Use §4.2.2, §4.2.3, §4.2.4.10, §4.2.6.4.x, §7.7.6 for 32 GT/s
+      glean_validated: true
   - name: Link Speed Changes
     items:
-    - id: LTSSM-022
+    - id: "LTSSM-022"
       title: Speed Change — Gen1 to Gen2 (2.5 → 5.0 GT/s)
-      description: 'Verify link speed change from Gen1 (2.5 GT/s) to Gen2 (5.0 GT/s).
-        Force the link to train initially at Gen1 by setting Target Link Speed = 0001b,
-        then retrigger training with Target Link Speed = 0010b. Verify the full speed
-        change sequence: L0 → Recovery.RcvrLock → Recovery.RcvrCfg (with speed_change
-        bit set) → Recovery.Speed (rate change) → Recovery.RcvrLock at Gen2 → Recovery.RcvrCfg
+      description: >-
+        Verify link speed change from Gen1 (2.5 GT/s) to Gen2 (5.0 GT/s). Force the link to train initially
+        at Gen1 by setting Target Link Speed = 0001b, then retrigger training with Target Link Speed =
+        0010b. Verify the full speed change sequence: L0 → Recovery.RcvrLock → Recovery.RcvrCfg (with
+        speed_change bit set) → Recovery.Speed (rate change) → Recovery.RcvrLock at Gen2 → Recovery.RcvrCfg
         → Recovery.Idle → L0 at 5.0 GT/s. Both directions use 8b/10b encoding.
-
-        '
       priority: P1
-      priority_rationale: Gen1-to-Gen2 transition validates basic speed change mechanism
-        using 8b/10b encoding.
-      spec_ref: PCIe 5.0 §4.2.6.4.3, §4.2.6.5, §4.2.4.10
-      pass_criteria: 'Link successfully transitions from 2.5 GT/s to 5.0 GT/s. Encoding
-        remains 8b/10b at both speeds. Speed change completed within 50 ms. No data
-        errors after speed change. Link Status Register reports correct speed.
-
-        '
+      priority_rationale: >-
+        Gen1-to-Gen2 transition validates basic speed change mechanism using 8b/10b encoding.
+      spec_ref: "PCIe 5.0 §4.2.6.4.3, §4.2.6.5, §4.2.4.10"
+      pass_criteria: >-
+        Link successfully transitions from 2.5 GT/s to 5.0 GT/s. Encoding remains 8b/10b at both speeds.
+        Speed change completed within 50 ms. No data errors after speed change. Link Status Register reports
+        correct speed.
       tool: Protocol analyzer + register access tool
       test_method: protocol_analyzer
-    - id: LTSSM-023
-      title: Speed Change — Gen2 to Gen3 (5.0 → 8.0 GT/s, Encoding Change)
-      description: 'Verify the critical Gen2-to-Gen3 speed change that involves switching
-        from 8b/10b to 128b/130b encoding. This transition requires an encoding scheme
-        change in addition to the data rate change. Verify that the Transmitter sends
-        EIOS (8b/10b format) before the rate change, transitions through Electrical
-        Idle, then begins transmitting at 8.0 GT/s with 128b/130b encoding using EIEOS
-        for block alignment. Verify that scrambling is initialized with the correct
-        LFSR seed based on Lane number.
-
-        '
+      glean_validated: false
+    - id: "LTSSM-023"
+      title: "Speed Change — Gen2 to Gen3 (5.0 → 8.0 GT/s, Encoding Change)"
+      description: >-
+        Verify the critical Gen2-to-Gen3 speed change that involves switching from 8b/10b to 128b/130b
+        encoding. This transition requires an encoding scheme change in addition to the data rate change.
+        Verify that the Transmitter sends EIOS (8b/10b format) before the rate change, transitions through
+        Electrical Idle, then begins transmitting at 8.0 GT/s with 128b/130b encoding using EIEOS for
+        block alignment. Verify that scrambling is initialized with the correct LFSR seed based on Lane
+        number.
       priority: P0
-      priority_rationale: Gen2-to-Gen3 involves both rate and encoding change; this
-        is the most complex basic speed transition.
-      spec_ref: PCIe 5.0 §4.2.6.4.3, §4.2.2.3, §4.2.2.4
-      pass_criteria: 'Encoding changes from 8b/10b to 128b/130b at Gen3. EIEOS transmitted
-        for block alignment at 8.0 GT/s. Scrambling LFSR seed matches Lane number.
-        Link achieves L0 at 8.0 GT/s within 100 ms. No block alignment errors.
-
-        '
+      priority_rationale: >-
+        Gen2-to-Gen3 involves both rate and encoding change; this is the most complex basic speed transition.
+      spec_ref: "PCIe 5.0 §4.2.6.4.3, §4.2.2.3, §4.2.2.4"
+      pass_criteria: >-
+        Encoding changes from 8b/10b to 128b/130b at Gen3. EIEOS transmitted for block alignment at 8.0
+        GT/s. Scrambling LFSR seed matches Lane number. Link achieves L0 at 8.0 GT/s within 100 ms. No
+        block alignment errors.
       tool: Protocol analyzer + oscilloscope
       test_method: protocol_analyzer
-      validation:
-        status: valid
-        validated_at: '2026-03-14'
-        glean_validated: true
-        changes_made:
-        - Validated via Glean MCP - accurate
-    - id: LTSSM-024
+      glean_validated: true
+    - id: "LTSSM-024"
       title: Speed Change — Gen3 to Gen4 to Gen5 (8.0 → 16.0 → 32.0 GT/s)
-      description: 'Verify sequential speed changes from Gen3 through Gen4 to Gen5.
-        All three rates use 128b/130b encoding. Gen5 at 32.0 GT/s additionally requires
-        precoding per §4.2.2.5. Verify that the EQ process is triggered at each speed
-        (Recovery.Equalization) and that the link successfully completes equalization
-        at each rate. Test both step-by-step (Gen3→Gen4→Gen5) and direct (Gen3→Gen5)
-        speed changes. Verify that the equalization bypass to highest rate mechanism
-        works when all presets are pre-configured.
-
-        '
+      description: >-
+        Verify sequential speed changes from Gen3 through Gen4 to Gen5. All three rates use 128b/130b
+        encoding. Gen5 at 32.0 GT/s additionally requires precoding per §4.2.2.5. Verify that the EQ process
+        is triggered at each speed (Recovery.Equalization) and that the link successfully completes equalization
+        at each rate. Test both step-by-step (Gen3→Gen4→Gen5) and direct (Gen3→Gen5) speed changes. Verify
+        that the equalization bypass to highest rate mechanism works when all presets are pre-configured.
       priority: P0
-      priority_rationale: Gen4/Gen5 speed changes are critical for NVMe SSD maximum
-        throughput (up to 128 GB/s x16).
-      spec_ref: PCIe 5.0 §4.2.6.4.3, §4.2.6.4.2, §4.2.2.5, §4.2.3
-      pass_criteria: 'Link achieves 16.0 GT/s (Gen4) and 32.0 GT/s (Gen5) data rates.
-        Precoding active at 32.0 GT/s. Equalization completes at each rate. Speed
-        changes complete within 200 ms. Link Status Register reports correct speed.
-        No uncorrectable errors at any rate.
-
-        '
+      priority_rationale: >-
+        Gen4/Gen5 speed changes are critical for NVMe SSD maximum throughput (up to 128 GB/s x16).
+      spec_ref: "PCIe 5.0 §4.2.6.4.3, §4.2.6.4.2, §4.2.2.5, §4.2.3"
+      pass_criteria: >-
+        Link achieves 16.0 GT/s (Gen4) and 32.0 GT/s (Gen5) data rates. Precoding active at 32.0 GT/s.
+        Equalization completes at each rate. Speed changes complete within 200 ms. Link Status Register
+        reports correct speed. No uncorrectable errors at any rate.
       tool: Protocol analyzer + oscilloscope (≥50 GHz BW)
       test_method: protocol_analyzer
-      validation:
-        status: valid
-        validated_at: '2026-03-14'
-        glean_validated: true
-        changes_made:
-        - Validated via Glean MCP - accurate
-    - id: LTSSM-025
+      glean_validated: true
+    - id: "LTSSM-025"
       title: Speed Downgrade — Fallback on Training Failure
-      description: 'Verify automatic speed downgrade when the link fails to train
-        at the current data rate. After Recovery fails (idle_to_rlock_transitioned
-        = FFh), the link should fall back to Detect and retrain at a lower speed.
-        Test by degrading signal quality at Gen5 until training fails, then verify
-        the link successfully retrains at Gen4 or lower. Verify the changed_speed_recovery
-        mechanism and that the link tries all supported speeds in descending order
-        before settling at a stable rate.
-
-        '
+      description: >-
+        Verify automatic speed downgrade when the link fails to train at the current data rate. After
+        Recovery fails (idle_to_rlock_transitioned = FFh), the link should fall back to Detect and retrain
+        at a lower speed. Test by degrading signal quality at Gen5 until training fails, then verify the
+        link successfully retrains at Gen4 or lower. Verify the changed_speed_recovery mechanism and that
+        the link tries all supported speeds in descending order before settling at a stable rate.
       priority: P1
-      priority_rationale: Speed downgrade ensures link availability even when signal
-        integrity is marginal at higher speeds.
-      spec_ref: PCIe 5.0 §4.2.6.4.1, §4.2.6.4.3, §4.2.6.1
-      pass_criteria: 'Link falls back to lower speed after FFh failed recovery attempts.
-        Each lower speed tried in sequence. Link stabilizes at highest achievable
-        speed. No permanent link down. Speed downgrade visible in Link Status Register.
-
-        '
+      priority_rationale: >-
+        Speed downgrade ensures link availability even when signal integrity is marginal at higher speeds.
+      spec_ref: "PCIe 5.0 §4.2.6.4.1, §4.2.6.4.3, §4.2.6.1"
+      pass_criteria: >-
+        Link falls back to lower speed after FFh failed recovery attempts. Each lower speed tried in sequence.
+        Link stabilizes at highest achievable speed. No permanent link down. Speed downgrade visible in
+        Link Status Register.
       tool: Protocol analyzer + signal degradation tool (attenuators)
       test_method: hardware_lab
+      glean_validated: false
   - name: Equalization (Gen3/Gen4/Gen5)
     items:
-    - id: LTSSM-026
+    - id: "LTSSM-026"
       title: EQ Phase 0 — Downstream Port Preset Broadcast (8.0 GT/s+)
-      description: 'Verify Equalization Phase 0 for Downstream Lanes at 8.0 GT/s and
-        higher. The Downstream Port selects initial TX presets (P0-P10) and transmits
-        TS1 Ordered Sets with the selected preset value in the EC field (set to 00b
-        for Phase 0). Phase 0 operates on Downstream Lanes only. The Downstream Port
-        must transmit at least 1 million UI (500,000 TS1s at 8.0 GT/s) of EQ TS1s.
-        Verify that the Upstream Port applies the requested preset to its Transmitter
-        within 500 ns.
-
-        '
+      description: >-
+        Verify Equalization Phase 0 for Downstream Lanes at 8.0 GT/s and higher. The Downstream Port selects
+        initial TX presets (P0-P10) and transmits TS1 Ordered Sets with the selected preset value in the
+        EC field (set to 00b for Phase 0). Phase 0 operates on Downstream Lanes only. The Downstream Port
+        must transmit at least 1 million UI (500,000 TS1s at 8.0 GT/s) of EQ TS1s. Verify that the Upstream
+        Port applies the requested preset to its Transmitter within 500 ns.
       priority: P0
-      priority_rationale: EQ Phase 0 sets the initial TX presets required for all
-        subsequent equalization phases.
-      spec_ref: PCIe 5.0 §4.2.6.4.2 (Phase 0 — Downstream Lanes), §4.2.3, Table 4-6
-      pass_criteria: 'Downstream Port transmits EQ TS1 with EC = 00b and valid preset
-        (P0-P10). Minimum 1M UI of Phase 0 TS1s transmitted. Upstream Port applies
-        preset within 500 ns. Transition to Phase 1 after minimum duration.
-
-        '
+      priority_rationale: >-
+        EQ Phase 0 sets the initial TX presets required for all subsequent equalization phases.
+      spec_ref: "PCIe 5.0 §4.2.6.4.2 (Phase 0 — Downstream Lanes), §4.2.3, Table 4-6"
+      pass_criteria: >-
+        Downstream Port transmits EQ TS1 with EC = 00b and valid preset (P0-P10). Minimum 1M UI of Phase
+        0 TS1s transmitted. Upstream Port applies preset within 500 ns. Transition to Phase 1 after minimum
+        duration.
       tool: Protocol analyzer + oscilloscope
       test_method: protocol_analyzer
-      validation:
-        status: valid
-        validated_at: '2026-03-14'
-        glean_validated: true
-        changes_made:
-        - Validated via Glean MCP - accurate
-    - id: LTSSM-027
+      glean_validated: true
+    - id: "LTSSM-027"
       title: EQ Phase 1 — Downstream Port Coefficient Evaluation
-      description: 'Verify Equalization Phase 1 for Downstream Lanes. The Upstream
-        Port (as the evaluating side) sends EQ TS1 Ordered Sets with EC = 01b and
-        the desired TX coefficient requests (preset or cursor values) to the Downstream
-        Port Transmitter. The Downstream Port must evaluate the request and respond
-        by applying the coefficients or rejecting them. Verify that the Downstream
-        Port advertises its coefficient capability in the TS1 EQ field. Phase 1 has
-        a 24 ms timeout.
-
-        '
+      description: >-
+        Verify Equalization Phase 1 for Downstream Lanes. The Upstream Port (as the evaluating side) sends
+        EQ TS1 Ordered Sets with EC = 01b and the desired TX coefficient requests (preset or cursor values)
+        to the Downstream Port Transmitter. The Downstream Port must evaluate the request and respond
+        by applying the coefficients or rejecting them. Verify that the Downstream Port advertises its
+        coefficient capability in the TS1 EQ field. Phase 1 has a 24 ms timeout.
       priority: P0
-      priority_rationale: Phase 1 enables fine-grained TX coefficient tuning critical
-        for achieving Gen3/Gen4/Gen5 signal quality.
-      spec_ref: PCIe 5.0 §4.2.6.4.2 (Phase 1 — Downstream Lanes), §4.2.3.2
-      pass_criteria: 'EQ TS1 with EC = 01b transmitted by evaluating Port. Coefficient
-        requests correctly encoded. Downstream Port responds with applied coefficients.
-        Rejection signaled via Reject bit when request is out of range. Phase 1 completes
-        within 24 ms timeout.
-
-        '
+      priority_rationale: >-
+        Phase 1 enables fine-grained TX coefficient tuning critical for achieving Gen3/Gen4/Gen5 signal
+        quality.
+      spec_ref: "PCIe 5.0 §4.2.6.4.2 (Phase 1 — Downstream Lanes), §4.2.3.2"
+      pass_criteria: >-
+        EQ TS1 with EC = 01b transmitted by evaluating Port. Coefficient requests correctly encoded. Downstream
+        Port responds with applied coefficients. Rejection signaled via Reject bit when request is out
+        of range. Phase 1 completes within 24 ms timeout.
       tool: Protocol analyzer + oscilloscope
       test_method: protocol_analyzer
-      validation:
-        status: corrected
-        validated_at: '2026-03-14'
-        glean_validated: true
-        changes_made:
-        - Beacon is §4.2.5, not §4.2.6.1
-    - id: LTSSM-028
+      glean_validated: true
+    - id: "LTSSM-028"
       title: EQ Phase 2 — Upstream Port Preset Request
-      description: 'Verify Equalization Phase 2 for Upstream Lanes. The Downstream
-        Port (as the evaluating side for Upstream Lanes) sends EQ TS1 Ordered Sets
-        with EC = 10b requesting specific TX presets or coefficient adjustments from
-        the Upstream Port Transmitter. The Upstream Port must apply the requested
-        settings and confirm via TS1 response. Phase 2 has a 32 ms timeout. Verify
-        that the Upstream Port correctly handles preset requests and coefficient adjustment
-        requests.
-
-        '
+      description: >-
+        Verify Equalization Phase 2 for Upstream Lanes. The Downstream Port (as the evaluating side for
+        Upstream Lanes) sends EQ TS1 Ordered Sets with EC = 10b requesting specific TX presets or coefficient
+        adjustments from the Upstream Port Transmitter. The Upstream Port must apply the requested settings
+        and confirm via TS1 response. Phase 2 has a 32 ms timeout. Verify that the Upstream Port correctly
+        handles preset requests and coefficient adjustment requests.
       priority: P0
-      priority_rationale: Phase 2 optimizes Upstream TX settings critical for Receiver
-        equalization at high data rates.
-      spec_ref: PCIe 5.0 §4.2.6.4.2 (Phase 2 — Upstream Lanes), §4.2.3.2
-      pass_criteria: 'EQ TS1 with EC = 10b transmitted by Downstream Port. Upstream
-        Port applies requested preset within 500 ns. Coefficient values within ±10%
-        of target. Phase 2 completes within 32 ms. Transition to Phase 3 when evaluation
-        complete.
-
-        '
+      priority_rationale: >-
+        Phase 2 optimizes Upstream TX settings critical for Receiver equalization at high data rates.
+      spec_ref: "PCIe 5.0 §4.2.6.4.2 (Phase 2 — Upstream Lanes), §4.2.3.2"
+      pass_criteria: >-
+        EQ TS1 with EC = 10b transmitted by Downstream Port. Upstream Port applies requested preset within
+        500 ns. Coefficient values within ±10% of target. Phase 2 completes within 32 ms. Transition to
+        Phase 3 when evaluation complete.
       tool: Protocol analyzer + oscilloscope
       test_method: protocol_analyzer
-      validation:
-        status: corrected
-        validated_at: '2026-03-14'
-        glean_validated: true
-        changes_made:
-        - EIOS/EIEOS in §4.2.2.2-3, not §4.2.3
-    - id: LTSSM-029
-      title: EQ Phase 3 — Upstream Port Coefficient Fine-Tuning
-      description: 'Verify Equalization Phase 3 for Upstream Lanes. The Downstream
-        Port continues coefficient evaluation with EC = 11b, performing fine-tuning
-        of the Upstream Port Transmitter coefficients. This phase allows iterative
-        adjustment of c-1, c0, c+1 values. The Upstream Port must track and apply
-        each coefficient change request. Phase 3 has a 32 ms timeout. Verify that
-        the converged coefficients provide acceptable signal quality at the Downstream
-        Receiver.
-
-        '
+      glean_validated: true
+    - id: "LTSSM-029"
+      title: "EQ Phase 3 — Upstream Port Coefficient Fine-Tuning"
+      description: >-
+        Verify Equalization Phase 3 for Upstream Lanes. The Downstream Port continues coefficient evaluation
+        with EC = 11b, performing fine-tuning of the Upstream Port Transmitter coefficients. This phase
+        allows iterative adjustment of c-1, c0, c+1 values. The Upstream Port must track and apply each
+        coefficient change request. Phase 3 has a 32 ms timeout. Verify that the converged coefficients
+        provide acceptable signal quality at the Downstream Receiver.
       priority: P0
-      priority_rationale: Phase 3 fine-tuning determines final link margin; inadequate
-        tuning causes bit errors at Gen3+.
-      spec_ref: PCIe 5.0 §4.2.6.4.2 (Phase 3 — Upstream Lanes), §4.2.3.2
-      pass_criteria: 'EQ TS1 with EC = 11b transmitted. Iterative coefficient adjustments
-        applied correctly. Convergence achieved within 32 ms. Final coefficients produce
-        acceptable eye opening. Transition to Recovery.RcvrLock after Phase 3 completion.
-
-        '
+      priority_rationale: >-
+        Phase 3 fine-tuning determines final link margin; inadequate tuning causes bit errors at Gen3+.
+      spec_ref: "PCIe 5.0 §4.2.6.4.2 (Phase 3 — Upstream Lanes), §4.2.3.2"
+      pass_criteria: >-
+        EQ TS1 with EC = 11b transmitted. Iterative coefficient adjustments applied correctly. Convergence
+        achieved within 32 ms. Final coefficients produce acceptable eye opening. Transition to Recovery.RcvrLock
+        after Phase 3 completion.
       tool: Protocol analyzer + oscilloscope (≥50 GHz BW)
       test_method: protocol_analyzer
-      validation:
-        status: valid
-        validated_at: '2026-03-14'
-        glean_validated: true
-        changes_made:
-        - Validated via Glean MCP - accurate
-    - id: LTSSM-030
+      glean_validated: true
+    - id: "LTSSM-030"
       title: EQ — Gen5 (32 GT/s) Equalization with Precoding
-      description: 'Verify equalization at 32.0 GT/s where precoding per §4.2.2.5
-        is mandatory. The precoding operation transforms the transmitted data to reduce
-        error propagation in the Receiver''s DFE (Decision Feedback Equalizer). Verify
-        that precoding is applied after scrambling and before transmission. Confirm
-        that equalization Phases 0-3 operate correctly with precoded data. Verify
-        that the EQ TS1 Ordered Sets at 32.0 GT/s include the correct precoding indication
-        bits.
-
-        '
+      description: >-
+        Verify equalization at 32.0 GT/s where precoding per §4.2.2.5 is mandatory. The precoding operation
+        transforms the transmitted data to reduce error propagation in the Receiver's DFE (Decision Feedback
+        Equalizer). Verify that precoding is applied after scrambling and before transmission. Confirm
+        that equalization Phases 0-3 operate correctly with precoded data. Verify that the EQ TS1 Ordered
+        Sets at 32.0 GT/s include the correct precoding indication bits.
       priority: P0
-      priority_rationale: Gen5 equalization with precoding is the most challenging
-        training sequence; failure limits bandwidth to 16 GT/s.
-      spec_ref: PCIe 5.0 §4.2.6.4.2, §4.2.2.5, §4.2.3
-      pass_criteria: 'Precoding active at 32.0 GT/s on all configured Lanes. EQ Phases
-        0-3 complete successfully. Equalized eye opening meets specification. Link
-        achieves L0 at 32.0 GT/s. BER < 1e-12 on all Lanes post-EQ.
-
-        '
+      priority_rationale: >-
+        Gen5 equalization with precoding is the most challenging training sequence; failure limits bandwidth
+        to 16 GT/s.
+      spec_ref: "PCIe 5.0 §4.2.6.4.2, §4.2.2.5, §4.2.3"
+      pass_criteria: >-
+        Precoding active at 32.0 GT/s on all configured Lanes. EQ Phases 0-3 complete successfully. Equalized
+        eye opening meets specification. Link achieves L0 at 32.0 GT/s. BER < 1e-12 on all Lanes post-EQ.
       tool: Protocol analyzer + oscilloscope (≥50 GHz BW) + BERT
       test_method: hardware_lab
-      validation:
-        status: corrected
-        validated_at: '2026-03-14'
-        glean_validated: true
-        changes_made:
-        - SKP OS in §4.2.7.2, not §4.2.3
-    - id: LTSSM-031
+      glean_validated: true
+    - id: "LTSSM-031"
       title: EQ — Equalization Bypass to Highest Rate
-      description: 'Verify the equalization bypass mechanism that allows skipping
-        intermediate speed equalization when stored EQ settings are available from
-        previous training. When the DUT has valid EQ presets stored for Gen4 and Gen5,
-        confirm that the link can transition directly from a lower speed to the highest
-        supported speed without performing full equalization at each intermediate
-        rate. Verify that the bypass is correctly indicated in the TS1/TS2 speed change
-        fields and that the stored presets are applied.
-
-        '
+      description: >-
+        Verify the equalization bypass mechanism that allows skipping intermediate speed equalization
+        when stored EQ settings are available from previous training. When the DUT has valid EQ presets
+        stored for Gen4 and Gen5, confirm that the link can transition directly from a lower speed to
+        the highest supported speed without performing full equalization at each intermediate rate. Verify
+        that the bypass is correctly indicated in the TS1/TS2 speed change fields and that the stored
+        presets are applied.
       priority: P1
-      priority_rationale: EQ bypass reduces link training time from seconds to milliseconds,
-        important for fast link recovery.
-      spec_ref: PCIe 5.0 §4.2.6.4.2, §4.2.6.4.3
-      pass_criteria: 'Link transitions to highest rate without intermediate EQ phases.
-        Stored presets applied correctly. Link achieves L0 at target speed within
-        50 ms (vs. several hundred ms with full EQ). BER < 1e-12 with bypassed EQ
-        settings.
-
-        '
+      priority_rationale: >-
+        EQ bypass reduces link training time from seconds to milliseconds, important for fast link recovery.
+      spec_ref: "PCIe 5.0 §4.2.6.4.2, §4.2.6.4.3"
+      pass_criteria: >-
+        Link transitions to highest rate without intermediate EQ phases. Stored presets applied correctly.
+        Link achieves L0 at target speed within 50 ms (vs. several hundred ms with full EQ). BER < 1e-12
+        with bypassed EQ settings.
       tool: Protocol analyzer + register access tool
       test_method: protocol_analyzer
-    - id: LTSSM-032
+      glean_validated: false
+    - id: "LTSSM-032"
       title: EQ — Phase Timeout and Fallback Behavior
-      description: 'Verify equalization timeout handling for each phase. Phase 0/1
-        timeout is 24 ms for Downstream Lanes; Phase 2/3 timeout is 32 ms for Upstream
-        Lanes. When a phase times out, verify the correct fallback behavior: the link
-        should attempt to continue with the last good coefficients or fall back to
-        a lower speed. Test by delaying or corrupting EQ TS1 responses to trigger
-        timeouts in each phase independently.
-
-        '
+      description: >-
+        Verify equalization timeout handling for each phase. Phase 0/1 timeout is 24 ms for Downstream
+        Lanes; Phase 2/3 timeout is 32 ms for Upstream Lanes. When a phase times out, verify the correct
+        fallback behavior: the link should attempt to continue with the last good coefficients or fall
+        back to a lower speed. Test by delaying or corrupting EQ TS1 responses to trigger timeouts in
+        each phase independently.
       priority: P1
-      priority_rationale: EQ timeout handling ensures the link does not hang indefinitely
-        during equalization failures.
+      priority_rationale: >-
+        EQ timeout handling ensures the link does not hang indefinitely during equalization failures.
       spec_ref: PCIe 5.0 §4.2.6.4.2
-      pass_criteria: 'Each phase correctly times out at the specified duration (24/32
-        ms). Link falls back gracefully on timeout. No LTSSM hang or infinite loop.
-        Last good coefficients retained when possible. Speed downgrade occurs if equalization
-        cannot converge.
-
-        '
+      pass_criteria: >-
+        Each phase correctly times out at the specified duration (24/32 ms). Link falls back gracefully
+        on timeout. No LTSSM hang or infinite loop. Last good coefficients retained when possible. Speed
+        downgrade occurs if equalization cannot converge.
       tool: Protocol analyzer + error injection tool
       test_method: protocol_analyzer
+      glean_validated: false
   - name: L0s Low Power State
     items:
-    - id: LTSSM-033
+    - id: "LTSSM-033"
       title: L0s — Transmitter Entry and Electrical Idle
-      description: 'Verify L0s Transmitter-side (Tx_L0s) entry and exit behavior.
-        When ASPM L0s is enabled in the Link Capabilities Register and directed by
-        the higher layer, the Transmitter enters Tx_L0s.Entry by sending an EIOSQ
-        and transitioning to Electrical Idle. Verify that the DC common mode voltage
-        meets VTX-IDLE-SET-TO-IDLE specification during Tx_L0s.Entry. After TTX-IDLE-MIN
-        timeout (Table 8-7), the Transmitter enters Tx_L0s.Idle. Confirm correct Tx_L0s.FTS
-        exit sequence with N_FTS Fast Training Sequences.
-
-        '
+      description: >-
+        Verify L0s Transmitter-side (Tx_L0s) entry and exit behavior. When ASPM L0s is enabled in the
+        Link Capabilities Register and directed by the higher layer, the Transmitter enters Tx_L0s.Entry
+        by sending an EIOSQ and transitioning to Electrical Idle. Verify that the DC common mode voltage
+        meets VTX-IDLE-SET-TO-IDLE specification during Tx_L0s.Entry. After TTX-IDLE-MIN timeout (Table
+        8-7), the Transmitter enters Tx_L0s.Idle. Confirm correct Tx_L0s.FTS exit sequence with N_FTS
+        Fast Training Sequences.
       priority: P1
-      priority_rationale: L0s Transmitter path reduces idle power consumption for
-        NVMe SSDs with bursty workloads.
-      spec_ref: PCIe 5.0 §4.2.6.6.2, §4.2.6.6.2.1, §4.2.6.6.2.2, §4.2.6.6.2.3, Table
-        8-7, Figure 4-31
-      pass_criteria: 'EIOSQ transmitted on entry. Electrical Idle condition met within
-        TTX-IDLE-SET-TO-IDLE. TTX-IDLE-MIN timeout observed. Tx_L0s.FTS sends correct
-        N_FTS count with EIE symbols. SKP or SDS sent after FTS per encoding. Link
-        returns to L0 after FTS completion.
-
-        '
+      priority_rationale: >-
+        L0s Transmitter path reduces idle power consumption for NVMe SSDs with bursty workloads.
+      spec_ref: >-
+        PCIe 5.0 §4.2.6.6.2, §4.2.6.6.2.1, §4.2.6.6.2.2, §4.2.6.6.2.3, Table 8-7, Figure 4-31
+      pass_criteria: >-
+        EIOSQ transmitted on entry. Electrical Idle condition met within TTX-IDLE-SET-TO-IDLE. TTX-IDLE-MIN
+        timeout observed. Tx_L0s.FTS sends correct N_FTS count with EIE symbols. SKP or SDS sent after
+        FTS per encoding. Link returns to L0 after FTS completion.
       tool: Protocol analyzer + oscilloscope
       test_method: protocol_analyzer
-    - id: LTSSM-034
+      glean_validated: false
+    - id: "LTSSM-034"
       title: L0s — Receiver Entry and Exit with FTS Recovery
-      description: 'Verify L0s Receiver-side (Rx_L0s) entry and exit behavior. The
-        Receiver enters Rx_L0s.Entry when Electrical Idle is detected (EIOS received)
-        and the Port supports L0s. After TTX-IDLE-MIN timeout, the Receiver enters
-        Rx_L0s.Idle where it waits for exit from Electrical Idle. Upon detecting Electrical
-        Idle exit, the Receiver transitions to Rx_L0s.FTS and must achieve bit lock
-        via the incoming Fast Training Sequences. Verify return to L0 when SKP (8b/10b)
-        or SDS (128b/130b) is received, and Lane-to-Lane de-skew must complete before
-        exiting Rx_L0s.FTS.
-
-        '
+      description: >-
+        Verify L0s Receiver-side (Rx_L0s) entry and exit behavior. The Receiver enters Rx_L0s.Entry when
+        Electrical Idle is detected (EIOS received) and the Port supports L0s. After TTX-IDLE-MIN timeout,
+        the Receiver enters Rx_L0s.Idle where it waits for exit from Electrical Idle. Upon detecting Electrical
+        Idle exit, the Receiver transitions to Rx_L0s.FTS and must achieve bit lock via the incoming Fast
+        Training Sequences. Verify return to L0 when SKP (8b/10b) or SDS (128b/130b) is received, and
+        Lane-to-Lane de-skew must complete before exiting Rx_L0s.FTS.
       priority: P1
-      priority_rationale: L0s Receiver exit latency directly impacts NVMe SSD I/O
-        latency for bursty workloads.
-      spec_ref: PCIe 5.0 §4.2.6.6.1, §4.2.6.6.1.1, §4.2.6.6.1.2, §4.2.6.6.1.3
-      pass_criteria: 'Rx_L0s.Entry transitions to Rx_L0s.Idle after TTX-IDLE-MIN.
-        Receiver detects Electrical Idle exit correctly. Bit lock achieved via FTS.
-        Lane-to-Lane de-skew completed. Return to L0 upon SKP/SDS receipt. N_FTS timeout
-        to Recovery if FTS not received.
-
-        '
+      priority_rationale: >-
+        L0s Receiver exit latency directly impacts NVMe SSD I/O latency for bursty workloads.
+      spec_ref: "PCIe 5.0 §4.2.6.6.1, §4.2.6.6.1.1, §4.2.6.6.1.2, §4.2.6.6.1.3"
+      pass_criteria: >-
+        Rx_L0s.Entry transitions to Rx_L0s.Idle after TTX-IDLE-MIN. Receiver detects Electrical Idle exit
+        correctly. Bit lock achieved via FTS. Lane-to-Lane de-skew completed. Return to L0 upon SKP/SDS
+        receipt. N_FTS timeout to Recovery if FTS not received.
       tool: Protocol analyzer + oscilloscope
       test_method: protocol_analyzer
-    - id: LTSSM-035
+      glean_validated: false
+    - id: "LTSSM-035"
       title: L0s — Exit Latency Measurement at All Data Rates
-      description: 'Measure L0s exit latency (time from first FTS symbol to L0 data
-        transfer) at each supported data rate. At 2.5/5.0 GT/s with 8b/10b encoding,
-        the N_FTS timeout uses 40*[N_FTS+3]*40 UI formula. At 8.0/16.0 GT/s with 128b/130b
-        encoding, the timeout uses 130*[N_FTS+5+12+Floor(N_FTS/32)] UI formula. At
-        32.0 GT/s, the formula is 130*[N_FTS+10+12+2*Floor(N_FTS/32)] UI. Compare
-        measured latency against the L0s Exit Latency reported in Link Capabilities
-        Register.
-
-        '
+      description: >-
+        Measure L0s exit latency (time from first FTS symbol to L0 data transfer) at each supported data
+        rate. At 2.5/5.0 GT/s with 8b/10b encoding, the N_FTS timeout uses 40*[N_FTS+3]*40 UI formula.
+        At 8.0/16.0 GT/s with 128b/130b encoding, the timeout uses 130*[N_FTS+5+12+Floor(N_FTS/32)] UI
+        formula. At 32.0 GT/s, the formula is 130*[N_FTS+10+12+2*Floor(N_FTS/32)] UI. Compare measured
+        latency against the L0s Exit Latency reported in Link Capabilities Register.
       priority: P2
-      priority_rationale: L0s exit latency affects system performance; excessive latency
-        negates power savings benefits.
-      spec_ref: PCIe 5.0 §4.2.6.6.1.3, §4.2.6.6.2.3
-      pass_criteria: 'Measured L0s exit latency matches or is less than the value
-        reported in Link Capabilities Register for each data rate. N_FTS count sufficient
-        for lock recovery. No Recovery entry during normal L0s exit. Exit latency
-        < 4 us typical for Gen3+.
-
-        '
+      priority_rationale: >-
+        L0s exit latency affects system performance; excessive latency negates power savings benefits.
+      spec_ref: "PCIe 5.0 §4.2.6.6.1.3, §4.2.6.6.2.3"
+      pass_criteria: >-
+        Measured L0s exit latency matches or is less than the value reported in Link Capabilities Register
+        for each data rate. N_FTS count sufficient for lock recovery. No Recovery entry during normal
+        L0s exit. Exit latency < 4 us typical for Gen3+.
       tool: Protocol analyzer + latency measurement tool
       test_method: protocol_analyzer
+      glean_validated: false
   - name: L1 Low Power State
     items:
-    - id: LTSSM-036
+    - id: "LTSSM-036"
       title: L1 — Entry via ASPM or PM Software
-      description: 'Verify L1 entry through both ASPM (Active State Power Management)
-        and PCI-PM software-initiated paths. For ASPM L1, verify the protocol defined
-        in §5.4.1.2.1 where both link partners agree to enter L1. For PM-initiated
-        L1, verify the PM DLLP exchange per §5.3.2.1. Upon agreement, both sides transmit
-        EIOS on all Lanes, transition to Electrical Idle, and enter L1.Entry. Verify
-        TTX-IDLE-MIN timeout before L1.Idle. Confirm that L1 PM Substates (L1.0, L1.1,
-        L1.2) are entered when conditions in §5.5 are satisfied.
-
-        '
+      description: >-
+        Verify L1 entry through both ASPM (Active State Power Management) and PCI-PM software-initiated
+        paths. For ASPM L1, verify the protocol defined in §5.4.1.2.1 where both link partners agree to
+        enter L1. For PM-initiated L1, verify the PM DLLP exchange per §5.3.2.1. Upon agreement, both
+        sides transmit EIOS on all Lanes, transition to Electrical Idle, and enter L1.Entry. Verify TTX-IDLE-MIN
+        timeout before L1.Idle. Confirm that L1 PM Substates (L1.0, L1.1, L1.2) are entered when conditions
+        in §5.5 are satisfied.
       priority: P1
-      priority_rationale: L1 is the primary deep power saving state for NVMe SSDs;
-        proper entry prevents unnecessary power consumption.
-      spec_ref: PCIe 5.0 §4.2.6.7, §4.2.6.7.1, §4.2.6.7.2, §5.4.1.2.1, §5.3.2.1, Figure
-        4-32
-      pass_criteria: 'L1 entry via ASPM completes within specification. L1 entry via
-        PM software completes after DLLP exchange. EIOS transmitted on all Lanes.
-        Electrical Idle condition met. TTX-IDLE-MIN timeout observed in L1.Entry.
-        L1.Idle entered successfully. L1 PM Substates entered when applicable.
-
-        '
+      priority_rationale: >-
+        L1 is the primary deep power saving state for NVMe SSDs; proper entry prevents unnecessary power
+        consumption.
+      spec_ref: "PCIe 5.0 §4.2.6.7, §4.2.6.7.1, §4.2.6.7.2, §5.4.1.2.1, §5.3.2.1, Figure 4-32"
+      pass_criteria: >-
+        L1 entry via ASPM completes within specification. L1 entry via PM software completes after DLLP
+        exchange. EIOS transmitted on all Lanes. Electrical Idle condition met. TTX-IDLE-MIN timeout observed
+        in L1.Entry. L1.Idle entered successfully. L1 PM Substates entered when applicable.
       tool: Protocol analyzer + power analyzer + register access tool
       test_method: software_driver
-    - id: LTSSM-037
+      glean_validated: false
+    - id: "LTSSM-037"
       title: L1 — Exit to Recovery and Link Retrain
-      description: 'Verify L1 exit behavior. Exit from L1.Idle occurs when Electrical
-        Idle exit is detected on any Lane of the configured Link, or when directed
-        by a higher layer. The minimum stay in L1 is 40 ns for speeds > 2.5 GT/s to
-        allow arming of Electrical Idle detection circuitry. Verify that the link
-        transitions to Recovery upon L1 exit and successfully retrains to L0. Also
-        verify directed speed change from L1 (Port sets directed_speed_change in L0,
-        goes through Recovery back to L0, then from L0 to Recovery for the speed change).
-
-        '
+      description: >-
+        Verify L1 exit behavior. Exit from L1.Idle occurs when Electrical Idle exit is detected on any
+        Lane of the configured Link, or when directed by a higher layer. The minimum stay in L1 is 40
+        ns for speeds > 2.5 GT/s to allow arming of Electrical Idle detection circuitry. Verify that the
+        link transitions to Recovery upon L1 exit and successfully retrains to L0. Also verify directed
+        speed change from L1 (Port sets directed_speed_change in L0, goes through Recovery back to L0,
+        then from L0 to Recovery for the speed change).
       priority: P1
-      priority_rationale: L1 exit latency is visible to NVMe driver as I/O latency;
-        incorrect exit causes timeouts.
-      spec_ref: PCIe 5.0 §4.2.6.7.2, §4.2.6.7
-      pass_criteria: 'L1 exit detected within 10 us of wake trigger. Minimum 40 ns
-        stay in L1 observed for speeds > 2.5 GT/s. Recovery entered and completed
-        successfully. Link returns to L0 at same speed and width. L1 exit latency
-        matches Link Capabilities Register value.
-
-        '
+      priority_rationale: >-
+        L1 exit latency is visible to NVMe driver as I/O latency; incorrect exit causes timeouts.
+      spec_ref: "PCIe 5.0 §4.2.6.7.2, §4.2.6.7"
+      pass_criteria: >-
+        L1 exit detected within 10 us of wake trigger. Minimum 40 ns stay in L1 observed for speeds >
+        2.5 GT/s. Recovery entered and completed successfully. Link returns to L0 at same speed and width.
+        L1 exit latency matches Link Capabilities Register value.
       tool: Protocol analyzer + power analyzer
       test_method: protocol_analyzer
-    - id: LTSSM-038
+      glean_validated: false
+    - id: "LTSSM-038"
       title: L1 — 100 ms Recovery Timeout at 8.0 GT/s and Higher
-      description: 'Verify the 100 ms timeout mechanism in L1.Idle for data rates
-        of 8.0 GT/s and higher. If the Receivers do not meet the ZRX-DC specification
-        for 2.5 GT/s while in L1.Idle, the link must transition to Recovery after
-        100 ms. All Ports are permitted (but not encouraged) to implement this timeout
-        when the data rate is 8.0 GT/s or higher. Verify that the timeout is not affected
-        by L1 PM Substates mechanism. Confirm that Ports meeting ZRX-DC specification
-        for 2.5 GT/s are not required to implement this timeout.
-
-        '
+      description: >-
+        Verify the 100 ms timeout mechanism in L1.Idle for data rates of 8.0 GT/s and higher. If the Receivers
+        do not meet the ZRX-DC specification for 2.5 GT/s while in L1.Idle, the link must transition to
+        Recovery after 100 ms. All Ports are permitted (but not encouraged) to implement this timeout
+        when the data rate is 8.0 GT/s or higher. Verify that the timeout is not affected by L1 PM Substates
+        mechanism. Confirm that Ports meeting ZRX-DC specification for 2.5 GT/s are not required to implement
+        this timeout.
       priority: P2
-      priority_rationale: The 100 ms timeout prevents indefinite L1 stay that could
-        cause link reliability issues at high speeds.
+      priority_rationale: >-
+        The 100 ms timeout prevents indefinite L1 stay that could cause link reliability issues at high
+        speeds.
       spec_ref: PCIe 5.0 §4.2.6.7.2
-      pass_criteria: 'Recovery entered after 100 ms if ZRX-DC not met at 8.0 GT/s+.
-        Timeout does not fire if ZRX-DC specification met. L1 PM Substates do not
-        interfere with timeout. Link successfully retrains after timeout.
-
-        '
+      pass_criteria: >-
+        Recovery entered after 100 ms if ZRX-DC not met at 8.0 GT/s+. Timeout does not fire if ZRX-DC
+        specification met. L1 PM Substates do not interfere with timeout. Link successfully retrains after
+        timeout.
       tool: Protocol analyzer + impedance measurement tool
       test_method: hardware_lab
+      glean_validated: false
   - name: L2/L3 Low Power States
     items:
-    - id: LTSSM-039
-      title: L2 — Entry and Beacon-Based Wake
-      description: 'Verify L2 state entry and exit. L2 is entered when directed by
-        the PM layer (D3cold preparation). Upon entry to L2.Idle, all Receivers must
-        meet ZRX-DC specification for 2.5 GT/s within 1 ms, and all Transmitters remain
-        in Electrical Idle for TTX-IDLE-MIN. For Downstream Ports, the next state
-        is Detect when a Beacon is received on Lane 0 or when directed. For Upstream
-        Ports, Detect is entered when Electrical Idle exit is detected. Verify L2.TransmitWake
-        substate where Upstream Ports transmit Beacon on Lane 0 to request wake.
-
-        '
+    - id: "LTSSM-039"
+      title: "L2 — Entry and Beacon-Based Wake"
+      description: >-
+        Verify L2 state entry and exit. L2 is entered when directed by the PM layer (D3cold preparation).
+        Upon entry to L2.Idle, all Receivers must meet ZRX-DC specification for 2.5 GT/s within 1 ms,
+        and all Transmitters remain in Electrical Idle for TTX-IDLE-MIN. For Downstream Ports, the next
+        state is Detect when a Beacon is received on Lane 0 or when directed. For Upstream Ports, Detect
+        is entered when Electrical Idle exit is detected. Verify L2.TransmitWake substate where Upstream
+        Ports transmit Beacon on Lane 0 to request wake.
       priority: P1
-      priority_rationale: L2 is required for D3cold power state; improper L2 handling
-        blocks system sleep/wake cycles.
-      spec_ref: PCIe 5.0 §4.2.6.8, §4.2.6.8.1, §4.2.6.8.2, Figure 4-33
-      pass_criteria: 'L2.Idle entered correctly. ZRX-DC met within 1 ms for all Receivers.
-        Transmitters in Electrical Idle for TTX-IDLE-MIN. Beacon transmitted by Upstream
-        Port in L2.TransmitWake. Downstream Port exits to Detect on Beacon receipt.
-        Main power restored before Detect entry.
-
-        '
+      priority_rationale: >-
+        L2 is required for D3cold power state; improper L2 handling blocks system sleep/wake cycles.
+      spec_ref: "PCIe 5.0 §4.2.6.8, §4.2.6.8.1, §4.2.6.8.2, Figure 4-33"
+      pass_criteria: >-
+        L2.Idle entered correctly. ZRX-DC met within 1 ms for all Receivers. Transmitters in Electrical
+        Idle for TTX-IDLE-MIN. Beacon transmitted by Upstream Port in L2.TransmitWake. Downstream Port
+        exits to Detect on Beacon receipt. Main power restored before Detect entry.
       tool: Protocol analyzer + power analyzer + GPIO controller
       test_method: hardware_lab
-    - id: LTSSM-040
+      glean_validated: false
+    - id: "LTSSM-040"
       title: L2 — Power Removal and Restoration Sequence
-      description: 'Verify the complete L2 power cycle sequence for NVMe SSDs. After
-        L2 entry, main power (3.3V/12V) may be removed. Verify that the Upstream Port
-        (NVMe SSD) correctly initiates wake by transmitting Beacon when power is restored
-        to the Upstream Port but before main power is fully restored to the Downstream
-        Port side. Confirm that Beacon transmission occurs on at least Lane 0. Verify
-        that the Downstream Port detects Electrical Idle exit from the Beacon and
-        transitions to Detect, initiating full link retraining.
-
-        '
+      description: >-
+        Verify the complete L2 power cycle sequence for NVMe SSDs. After L2 entry, main power (3.3V/12V)
+        may be removed. Verify that the Upstream Port (NVMe SSD) correctly initiates wake by transmitting
+        Beacon when power is restored to the Upstream Port but before main power is fully restored to
+        the Downstream Port side. Confirm that Beacon transmission occurs on at least Lane 0. Verify that
+        the Downstream Port detects Electrical Idle exit from the Beacon and transitions to Detect, initiating
+        full link retraining.
       priority: P2
-      priority_rationale: L2 power cycling is the NVMe SSD suspend/resume path; failure
-        causes boot hangs or device loss.
-      spec_ref: PCIe 5.0 §4.2.6.8.1, §4.2.6.8.2
-      pass_criteria: 'Power removal and restoration sequence completes without error.
-        Beacon detected on Lane 0 by Downstream Port. Link retrains from Detect through
-        full training sequence. NVMe device enumerated after wake. Total wake time
-        < 100 ms from power restore.
-
-        '
+      priority_rationale: >-
+        L2 power cycling is the NVMe SSD suspend/resume path; failure causes boot hangs or device loss.
+      spec_ref: "PCIe 5.0 §4.2.6.8.1, §4.2.6.8.2"
+      pass_criteria: >-
+        Power removal and restoration sequence completes without error. Beacon detected on Lane 0 by Downstream
+        Port. Link retrains from Detect through full training sequence. NVMe device enumerated after wake.
+        Total wake time < 100 ms from power restore.
       tool: Protocol analyzer + power supply controller + oscilloscope
       test_method: hardware_lab
+      glean_validated: false
   - name: Hot Reset
     items:
-    - id: LTSSM-041
+    - id: "LTSSM-041"
       title: Hot Reset — Downstream Port Initiated
-      description: 'Verify Hot Reset initiated by the Downstream Port (Root Complex
-        or Switch Downstream Port). When directed by a higher layer, all Lanes in
-        the configured Link transmit TS1 Ordered Sets with the Hot Reset bit asserted
-        and the configured Link and Lane numbers. Verify that LinkUp = 0b after receiving
-        two consecutive TS1 Ordered Sets with Hot Reset asserted. Confirm that the
-        state remains in Hot Reset while the higher layer continues to direct it,
-        and transitions to Detect either when directed or after a 2 ms timeout with
-        no EIOS received.
-
-        '
+      description: >-
+        Verify Hot Reset initiated by the Downstream Port (Root Complex or Switch Downstream Port). When
+        directed by a higher layer, all Lanes in the configured Link transmit TS1 Ordered Sets with the
+        Hot Reset bit asserted and the configured Link and Lane numbers. Verify that LinkUp = 0b after
+        receiving two consecutive TS1 Ordered Sets with Hot Reset asserted. Confirm that the state remains
+        in Hot Reset while the higher layer continues to direct it, and transitions to Detect either when
+        directed or after a 2 ms timeout with no EIOS received.
       priority: P1
-      priority_rationale: Hot Reset is the standard in-band reset mechanism for PCIe
-        devices; failure prevents device recovery.
+      priority_rationale: >-
+        Hot Reset is the standard in-band reset mechanism for PCIe devices; failure prevents device recovery.
       spec_ref: PCIe 5.0 §4.2.6.11
-      pass_criteria: 'TS1 with Hot Reset bit transmitted on all configured Lanes.
-        LinkUp = 0b after two consecutive Hot Reset TS1s received. State maintained
-        while directed. Transition to Detect when released or after 2 ms timeout.
-        Device re-enumerates after Hot Reset.
-
-        '
+      pass_criteria: >-
+        TS1 with Hot Reset bit transmitted on all configured Lanes. LinkUp = 0b after two consecutive
+        Hot Reset TS1s received. State maintained while directed. Transition to Detect when released or
+        after 2 ms timeout. Device re-enumerates after Hot Reset.
       tool: Protocol analyzer + register access tool (setpci)
       test_method: software_driver
-    - id: LTSSM-042
+      glean_validated: false
+    - id: "LTSSM-042"
       title: Hot Reset — Upstream Port Response
-      description: 'Verify Upstream Port behavior upon receiving Hot Reset. When the
-        Upstream Port receives two consecutive TS1 Ordered Sets with the Hot Reset
-        bit asserted on any configured Lane, it must set LinkUp = 0b and begin transmitting
-        TS1 with Hot Reset bit on all configured Lanes. For Switches, if any Lane
-        of an Upstream Port receives Hot Reset TS1s, all configured Downstream Ports
-        must transition to Hot Reset as soon as possible. Verify the 2 ms timer reset
-        upon receiving matching Hot Reset TS1s with correct Link and Lane numbers.
-
-        '
+      description: >-
+        Verify Upstream Port behavior upon receiving Hot Reset. When the Upstream Port receives two consecutive
+        TS1 Ordered Sets with the Hot Reset bit asserted on any configured Lane, it must set LinkUp =
+        0b and begin transmitting TS1 with Hot Reset bit on all configured Lanes. For Switches, if any
+        Lane of an Upstream Port receives Hot Reset TS1s, all configured Downstream Ports must transition
+        to Hot Reset as soon as possible. Verify the 2 ms timer reset upon receiving matching Hot Reset
+        TS1s with correct Link and Lane numbers.
       priority: P1
-      priority_rationale: Upstream Port Hot Reset response ensures device state is
-        properly cleared during reset sequences.
+      priority_rationale: >-
+        Upstream Port Hot Reset response ensures device state is properly cleared during reset sequences.
       spec_ref: PCIe 5.0 §4.2.6.11
-      pass_criteria: 'Upstream Port detects Hot Reset within 2 TS1s. LinkUp = 0b asserted.
-        Hot Reset TS1 retransmitted on all Lanes. Switch propagates to all Downstream
-        Ports. 2 ms timer resets on valid Hot Reset TS1. Transition to Detect after
-        timeout.
-
-        '
+      pass_criteria: >-
+        Upstream Port detects Hot Reset within 2 TS1s. LinkUp = 0b asserted. Hot Reset TS1 retransmitted
+        on all Lanes. Switch propagates to all Downstream Ports. 2 ms timer resets on valid Hot Reset
+        TS1. Transition to Detect after timeout.
       tool: Protocol analyzer
       test_method: protocol_analyzer
+      glean_validated: false
   - name: Loopback State
     items:
-    - id: LTSSM-043
+    - id: "LTSSM-043"
       title: Loopback.Entry — Master and Slave Configuration
-      description: 'Verify Loopback entry for both Master and Slave roles. The Loopback
-        Master initiates Loopback by transmitting TS1 Ordered Sets with the Loopback
-        bit asserted. If entered from Configuration.Linkwidth.Start, the Master determines
-        the highest common data rate. Verify that the Master transmits 16 consecutive
-        TS1s with Loopback bit, followed by EIOSQ, then enters Electrical Idle for
-        1 ms during any data rate change. Verify that the Slave detects the Loopback
-        request and enters Loopback mode, setting LinkUp = 0b.
-
-        '
+      description: >-
+        Verify Loopback entry for both Master and Slave roles. The Loopback Master initiates Loopback
+        by transmitting TS1 Ordered Sets with the Loopback bit asserted. If entered from Configuration.Linkwidth.Start,
+        the Master determines the highest common data rate. Verify that the Master transmits 16 consecutive
+        TS1s with Loopback bit, followed by EIOSQ, then enters Electrical Idle for 1 ms during any data
+        rate change. Verify that the Slave detects the Loopback request and enters Loopback mode, setting
+        LinkUp = 0b.
       priority: P2
-      priority_rationale: Loopback is used for manufacturing test and compliance validation
-        of the physical layer.
-      spec_ref: PCIe 5.0 §4.2.6.10.1, Figure 4-34
-      pass_criteria: 'Loopback Master transmits 16 TS1s with Loopback bit. Slave detects
-        and enters Loopback. Data rate negotiated to highest common rate. Electrical
-        Idle for 1 ms during rate change. LinkUp = 0b on Slave. Transition to Loopback.Active.
-
-        '
+      priority_rationale: >-
+        Loopback is used for manufacturing test and compliance validation of the physical layer.
+      spec_ref: "PCIe 5.0 §4.2.6.10.1, Figure 4-34"
+      pass_criteria: >-
+        Loopback Master transmits 16 TS1s with Loopback bit. Slave detects and enters Loopback. Data rate
+        negotiated to highest common rate. Electrical Idle for 1 ms during rate change. LinkUp = 0b on
+        Slave. Transition to Loopback.Active.
       tool: Protocol analyzer + loopback test fixture
       test_method: hardware_lab
-    - id: LTSSM-044
+      glean_validated: false
+    - id: "LTSSM-044"
       title: Loopback.Active — Data Retransmission Verification
-      description: 'Verify Loopback.Active data retransmission by the Loopback Slave.
-        The Slave must retransmit the received encoded data with polarity inversion
-        determined in Polling applied, while performing clock tolerance compensation
-        (SKP insertion/deletion per §4.2.7). The Master sends valid encoded data and
-        verifies that the Slave returns it correctly. Verify SKP handling: for 8b/10b,
-        SKP symbols are added/deleted per-Lane; for 128b/130b, four SKP symbols are
-        added/deleted. The Slave must not modify data (except polarity and SKP compensation).
-
-        '
+      description: >-
+        Verify Loopback.Active data retransmission by the Loopback Slave. The Slave must retransmit the
+        received encoded data with polarity inversion determined in Polling applied, while performing
+        clock tolerance compensation (SKP insertion/deletion per §4.2.7). The Master sends valid encoded
+        data and verifies that the Slave returns it correctly. Verify SKP handling: for 8b/10b, SKP symbols
+        are added/deleted per-Lane; for 128b/130b, four SKP symbols are added/deleted. The Slave must
+        not modify data (except polarity and SKP compensation).
       priority: P2
-      priority_rationale: Loopback.Active data integrity validates the physical layer's
-        transmit and receive paths end-to-end.
-      spec_ref: PCIe 5.0 §4.2.6.10.2, §4.2.7
-      pass_criteria: 'Slave retransmits data with correct polarity inversion. SKP
-        compensation operates correctly. No data corruption in retransmitted stream.
-        BER measurement < 1e-12 in Loopback. Master receives correct data pattern.
-
-        '
+      priority_rationale: >-
+        Loopback.Active data integrity validates the physical layer's transmit and receive paths end-to-end.
+      spec_ref: "PCIe 5.0 §4.2.6.10.2, §4.2.7"
+      pass_criteria: >-
+        Slave retransmits data with correct polarity inversion. SKP compensation operates correctly. No
+        data corruption in retransmitted stream. BER measurement < 1e-12 in Loopback. Master receives
+        correct data pattern.
       tool: Protocol analyzer + BERT + loopback fixture
       test_method: hardware_lab
-    - id: LTSSM-045
+      glean_validated: false
+    - id: "LTSSM-045"
       title: Loopback.Exit — Ordered Exit Sequence
-      description: 'Verify Loopback.Exit for both Master and Slave. The Master exits
-        by sending EIOS (one for 2.5 GT/s, eight consecutive for > 2.5 GT/s) and entering
-        Electrical Idle for 2 ms. The Slave exits when it receives four consecutive
-        EIOSs on any Lane (or EIOS + Electrical Idle inference at 2.5 GT/s). The Slave
-        must enter Electrical Idle on all Lanes for 2 ms. Both Master and Slave transition
-        to Detect after Loopback.Exit. Verify the TTX-IDLE-SET-TO-IDLE timing requirement
-        for the Master.
-
-        '
+      description: >-
+        Verify Loopback.Exit for both Master and Slave. The Master exits by sending EIOS (one for 2.5
+        GT/s, eight consecutive for > 2.5 GT/s) and entering Electrical Idle for 2 ms. The Slave exits
+        when it receives four consecutive EIOSs on any Lane (or EIOS + Electrical Idle inference at 2.5
+        GT/s). The Slave must enter Electrical Idle on all Lanes for 2 ms. Both Master and Slave transition
+        to Detect after Loopback.Exit. Verify the TTX-IDLE-SET-TO-IDLE timing requirement for the Master.
       priority: P2
-      priority_rationale: Clean Loopback exit prevents the link from being stuck in
-        Loopback mode.
+      priority_rationale: Clean Loopback exit prevents the link from being stuck in Loopback mode.
       spec_ref: PCIe 5.0 §4.2.6.10.3
-      pass_criteria: 'Master sends correct EIOS count for current data rate. Master
-        enters Electrical Idle for 2 ms. Slave detects four consecutive EIOS. Slave
-        enters Electrical Idle for 2 ms. Both transition to Detect. No residual Loopback
-        state after exit.
-
-        '
+      pass_criteria: >-
+        Master sends correct EIOS count for current data rate. Master enters Electrical Idle for 2 ms.
+        Slave detects four consecutive EIOS. Slave enters Electrical Idle for 2 ms. Both transition to
+        Detect. No residual Loopback state after exit.
       tool: Protocol analyzer + loopback fixture
       test_method: hardware_lab
-    - id: LTSSM-046
+      glean_validated: false
+    - id: "LTSSM-046"
       title: Loopback — 32 GT/s Equalization in Loopback
-      description: 'Verify the optional 32.0 GT/s equalization procedure during Loopback.
-        When the highest common data rate is 32.0 GT/s and equalization_done_32GT_data_rate
-        is 0b, the Loopback Master may direct a 32.0 GT/s equalization procedure on
-        the Lane under test before entering Loopback.Active. The Master sets Enhanced
-        Link Behavior Control bits to 01b in the TS1 Ordered Sets. Verify that Recovery.Equalization
+      description: >-
+        Verify the optional 32.0 GT/s equalization procedure during Loopback. When the highest common
+        data rate is 32.0 GT/s and equalization_done_32GT_data_rate is 0b, the Loopback Master may direct
+        a 32.0 GT/s equalization procedure on the Lane under test before entering Loopback.Active. The
+        Master sets Enhanced Link Behavior Control bits to 01b in the TS1 Ordered Sets. Verify that Recovery.Equalization
         is entered from Loopback.Entry when these conditions are met, and the perform_equalization_for_loopback
         variable is set to 1b.
-
-        '
       priority: P2
-      priority_rationale: Gen5 Loopback equalization ensures valid signal quality
-        for 32 GT/s compliance testing.
+      priority_rationale: >-
+        Gen5 Loopback equalization ensures valid signal quality for 32 GT/s compliance testing.
       spec_ref: PCIe 5.0 §4.2.6.10.1
-      pass_criteria: 'Enhanced Link Behavior Control = 01b in TS1 for 32 GT/s EQ request.
-        Recovery.Equalization entered from Loopback.Entry. Equalization completes
-        on Lane under test. Loopback.Active entered at 32 GT/s with equalized link.
-        BER < 1e-12 in Loopback at 32 GT/s.
-
-        '
+      pass_criteria: >-
+        Enhanced Link Behavior Control = 01b in TS1 for 32 GT/s EQ request. Recovery.Equalization entered
+        from Loopback.Entry. Equalization completes on Lane under test. Loopback.Active entered at 32
+        GT/s with equalized link. BER < 1e-12 in Loopback at 32 GT/s.
       tool: Protocol analyzer + oscilloscope (≥50 GHz BW) + BERT
       test_method: hardware_lab
+      glean_validated: false
   - name: Disabled State
     items:
-    - id: LTSSM-047
+    - id: "LTSSM-047"
       title: Disabled — Entry and Exit Behavior
-      description: 'Verify Disabled state entry and exit. The link enters Disabled
-        when directed from Recovery.Idle (via TS1 with Disable Link bit asserted).
-        Upon entry, LinkUp should be cleared without waiting for EIOSQ transmission/reception.
-        All Lanes transmit 16-32 TS1 Ordered Sets with the Disable Link bit asserted,
-        then transition to Electrical Idle. Verify EIOSQ is sent prior to Electrical
-        Idle. For Downstream Ports, exit to Detect occurs when directed (Link Disable
-        bit reset to 0b by software). For Upstream Ports, exit to Detect occurs on
-        Electrical Idle exit detection or after 2 ms timeout with no EIOS received.
-
-        '
+      description: >-
+        Verify Disabled state entry and exit. The link enters Disabled when directed from Recovery.Idle
+        (via TS1 with Disable Link bit asserted). Upon entry, LinkUp should be cleared without waiting
+        for EIOSQ transmission/reception. All Lanes transmit 16-32 TS1 Ordered Sets with the Disable Link
+        bit asserted, then transition to Electrical Idle. Verify EIOSQ is sent prior to Electrical Idle.
+        For Downstream Ports, exit to Detect occurs when directed (Link Disable bit reset to 0b by software).
+        For Upstream Ports, exit to Detect occurs on Electrical Idle exit detection or after 2 ms timeout
+        with no EIOS received.
       priority: P1
-      priority_rationale: Disabled state is used for link management; incorrect behavior
-        prevents controlled shutdown/restart.
-      spec_ref: PCIe 5.0 §4.2.6.9, §4.2.6.4.5
-      pass_criteria: 'LinkUp cleared on Disabled entry. 16-32 TS1 with Disable Link
-        bit transmitted. EIOSQ sent before Electrical Idle. Downstream Port exits
-        on software direction. Upstream Port exits on EI exit or 2 ms timeout. ZRX-DC
-        met for Upstream Ports within 1 ms in Disabled.
-
-        '
+      priority_rationale: >-
+        Disabled state is used for link management; incorrect behavior prevents controlled shutdown/restart.
+      spec_ref: "PCIe 5.0 §4.2.6.9, §4.2.6.4.5"
+      pass_criteria: >-
+        LinkUp cleared on Disabled entry. 16-32 TS1 with Disable Link bit transmitted. EIOSQ sent before
+        Electrical Idle. Downstream Port exits on software direction. Upstream Port exits on EI exit or
+        2 ms timeout. ZRX-DC met for Upstream Ports within 1 ms in Disabled.
       tool: Protocol analyzer + register access tool
       test_method: software_driver
+      glean_validated: false
   - name: Link Width Negotiation
     items:
-    - id: LTSSM-048
+    - id: "LTSSM-048"
       title: Link Width Downgrade — Dynamic Width Reduction
-      description: 'Verify dynamic link width reduction from the maximum configured
-        width. Trigger a width downgrade by setting the Target Link Width or via hardware
-        autonomous width change (when Hardware Autonomous Width Disable is 0b). Verify
-        the link transitions through Recovery to renegotiate width in Configuration.
-        Confirm that the reduced width uses the correct subset of Lanes (contiguous
-        from Lane 0). Verify that upconfigure_capable is checked before allowing width
-        reduction (width reduction not allowed when upconfigure_capable = 0b except
-        to 0b).
-
-        '
+      description: >-
+        Verify dynamic link width reduction from the maximum configured width. Trigger a width downgrade
+        by setting the Target Link Width or via hardware autonomous width change (when Hardware Autonomous
+        Width Disable is 0b). Verify the link transitions through Recovery to renegotiate width in Configuration.
+        Confirm that the reduced width uses the correct subset of Lanes (contiguous from Lane 0). Verify
+        that upconfigure_capable is checked before allowing width reduction (width reduction not allowed
+        when upconfigure_capable = 0b except to 0b).
       priority: P1
-      priority_rationale: Width downgrade enables power optimization for NVMe SSDs
-        during low-bandwidth periods.
-      spec_ref: PCIe 5.0 §4.2.6.5, §4.2.4.11, §4.2.6.3
-      pass_criteria: 'Width reduction negotiated through Recovery → Configuration.
-        Reduced width uses contiguous Lanes from Lane 0. upconfigure_capable properly
-        checked. Link stable at reduced width. Data transfer verified at reduced width.
-        Hardware Autonomous Width Disable respected.
-
-        '
+      priority_rationale: >-
+        Width downgrade enables power optimization for NVMe SSDs during low-bandwidth periods.
+      spec_ref: "PCIe 5.0 §4.2.6.5, §4.2.4.11, §4.2.6.3"
+      pass_criteria: >-
+        Width reduction negotiated through Recovery → Configuration. Reduced width uses contiguous Lanes
+        from Lane 0. upconfigure_capable properly checked. Link stable at reduced width. Data transfer
+        verified at reduced width. Hardware Autonomous Width Disable respected.
       tool: Protocol analyzer + register access tool
       test_method: software_driver
-    - id: LTSSM-049
+      glean_validated: false
+    - id: "LTSSM-049"
       title: Link Width Upgrade — Dynamic Width Restoration
-      description: 'Verify dynamic link width restoration (upconfigure) from a reduced
-        width back to the maximum supported width. The Port must verify that the other
-        Port advertised upconfigure_capable during Configuration before attempting
-        width increase. Verify the renegotiation through Recovery → Configuration
-        where additional Lanes are activated. Confirm that the restored width matches
-        the original maximum and that all restored Lanes pass training and de-skew.
-
-        '
+      description: >-
+        Verify dynamic link width restoration (upconfigure) from a reduced width back to the maximum supported
+        width. The Port must verify that the other Port advertised upconfigure_capable during Configuration
+        before attempting width increase. Verify the renegotiation through Recovery → Configuration where
+        additional Lanes are activated. Confirm that the restored width matches the original maximum and
+        that all restored Lanes pass training and de-skew.
       priority: P1
-      priority_rationale: Width upgrade restores full bandwidth after a downgrade
-        period; failure leaves the link bandwidth-limited.
-      spec_ref: PCIe 5.0 §4.2.6.5, §4.2.4.11
-      pass_criteria: 'Width increase only attempted when partner advertised upconfigure_capable.
-        All Lanes retrained successfully at restored width. Lane-to-Lane de-skew completed
-        on all restored Lanes. Link bandwidth verified at full width. No uncorrectable
-        errors during or after width change.
-
-        '
+      priority_rationale: >-
+        Width upgrade restores full bandwidth after a downgrade period; failure leaves the link bandwidth-limited.
+      spec_ref: "PCIe 5.0 §4.2.6.5, §4.2.4.11"
+      pass_criteria: >-
+        Width increase only attempted when partner advertised upconfigure_capable. All Lanes retrained
+        successfully at restored width. Lane-to-Lane de-skew completed on all restored Lanes. Link bandwidth
+        verified at full width. No uncorrectable errors during or after width change.
       tool: Protocol analyzer + register access tool
       test_method: software_driver
+      glean_validated: false
   - name: Training Sequences and Ordered Sets
     items:
-    - id: LTSSM-050
+    - id: "LTSSM-050"
       title: TS1/TS2 Ordered Set Field Validation
-      description: 'Verify correct encoding of all fields in TS1 (Table 4-6) and TS2
-        (Table 4-7) Ordered Sets during link training. Check Link Number, Lane Number,
-        N_FTS, Data Rate Identifier, Training Control (Hot Reset, Disable Link, Loopback,
-        Reset EQ Settings), EQ Control (EQ Phase, Preset/Coefficient), and Speed Change
-        bits. Capture TS1/TS2 at each LTSSM state transition and verify fields match
-        the expected values per the current training phase. Test both 8b/10b (COM+9
-        symbols) and 128b/130b (16 symbol) TS formats.
-
-        '
+      description: >-
+        Verify correct encoding of all fields in TS1 (Table 4-6) and TS2 (Table 4-7) Ordered Sets during
+        link training. Check Link Number, Lane Number, N_FTS, Data Rate Identifier, Training Control (Hot
+        Reset, Disable Link, Loopback, Reset EQ Settings), EQ Control (EQ Phase, Preset/Coefficient),
+        and Speed Change bits. Capture TS1/TS2 at each LTSSM state transition and verify fields match
+        the expected values per the current training phase. Test both 8b/10b (COM+9 symbols) and 128b/130b
+        (16 symbol) TS formats.
       priority: P0
-      priority_rationale: TS1/TS2 field correctness is fundamental to all link training
-        operations.
-      spec_ref: PCIe 5.0 §4.2.4.1, Table 4-6, Table 4-7, Table 4-8
-      pass_criteria: 'All TS1/TS2 fields match specification for each LTSSM state.
-        Link/Lane numbers correct. Data Rate Identifier matches current rate. Training
-        Control bits reflect current state. EQ fields valid during equalization. Both
-        8b/10b and 128b/130b formats validated.
-
-        '
+      priority_rationale: TS1/TS2 field correctness is fundamental to all link training operations.
+      spec_ref: "PCIe 5.0 §4.2.4.1, Table 4-6, Table 4-7, Table 4-8"
+      pass_criteria: >-
+        All TS1/TS2 fields match specification for each LTSSM state. Link/Lane numbers correct. Data Rate
+        Identifier matches current rate. Training Control bits reflect current state. EQ fields valid
+        during equalization. Both 8b/10b and 128b/130b formats validated.
       tool: Protocol analyzer (LeCroy/Keysight)
       test_method: protocol_analyzer
-      validation:
-        status: valid
-        validated_at: '2026-03-14'
-        glean_validated: true
-        changes_made:
-        - Validated via Glean MCP - accurate
-    - id: LTSSM-051
+      glean_validated: true
+    - id: "LTSSM-051"
       title: EIOS and EIEOS Ordered Set Transmission
-      description: 'Verify correct EIOS (Electrical Idle Ordered Set) and EIEOS (Electrical
-        Idle Exit Ordered Set) transmission at each data rate. For 8b/10b encoding
-        (2.5/5.0 GT/s), EIOS is COM + 3 IDL symbols per §4.2.4.3. For 128b/130b encoding,
-        EIOS format changes per data rate. EIEOS at 8.0 GT/s is defined in §4.2.4.5
-        as a specific pattern for block alignment. Verify EIEOS pattern varies by
-        data rate: 8.0 GT/s, 16.0 GT/s, and 32.0 GT/s each have distinct EIEOS definitions.
-        Confirm EIOS/EIEOS at each L0→L0s, L0→L1, L0→L2 transition.
-
-        '
+      description: >-
+        Verify correct EIOS (Electrical Idle Ordered Set) and EIEOS (Electrical Idle Exit Ordered Set)
+        transmission at each data rate. For 8b/10b encoding (2.5/5.0 GT/s), EIOS is COM + 3 IDL symbols
+        per §4.2.4.3. For 128b/130b encoding, EIOS format changes per data rate. EIEOS at 8.0 GT/s is
+        defined in §4.2.4.5 as a specific pattern for block alignment. Verify EIEOS pattern varies by
+        data rate: 8.0 GT/s, 16.0 GT/s, and 32.0 GT/s each have distinct EIEOS definitions. Confirm EIOS/EIEOS
+        at each L0→L0s, L0→L1, L0→L2 transition.
       priority: P1
-      priority_rationale: EIOS/EIEOS are the signaling mechanism for all power state
-        transitions and block alignment.
-      spec_ref: PCIe 5.0 §4.2.4.3, §4.2.4.5
-      pass_criteria: 'EIOS format correct for each encoding scheme. EIEOS pattern
-        matches specification for each data rate. Electrical Idle entered within TTX-IDLE-SET-TO-IDLE
-        after EIOS. EIEOS enables block alignment recovery. Correct ordered sets used
-        at each state transition.
-
-        '
+      priority_rationale: >-
+        EIOS/EIEOS are the signaling mechanism for all power state transitions and block alignment.
+      spec_ref: "PCIe 5.0 §4.2.4.3, §4.2.4.5"
+      pass_criteria: >-
+        EIOS format correct for each encoding scheme. EIEOS pattern matches specification for each data
+        rate. Electrical Idle entered within TTX-IDLE-SET-TO-IDLE after EIOS. EIEOS enables block alignment
+        recovery. Correct ordered sets used at each state transition.
       tool: Protocol analyzer + oscilloscope
       test_method: protocol_analyzer
-    - id: LTSSM-052
+      glean_validated: false
+    - id: "LTSSM-052"
       title: SKP Ordered Set — Clock Tolerance Compensation
-      description: 'Verify SKP Ordered Set transmission and reception for clock tolerance
-        compensation in L0. For 8b/10b encoding, SKP is COM + 3 SKP symbols (§4.2.7.1).
-        For 128b/130b encoding, transmitted SKP is 16 symbols (§4.2.7.2, Table 4-22).
-        Verify scheduling intervals: 1180-1538 Symbol Times for 8b/10b in SRNS/non-SRIS,
-        < 154 Symbol Times in SRIS. For 128b/130b: 370-375 blocks in SRNS, < 38 blocks
-        in SRIS. Verify Control SKP Ordered Set (Table 4-23) is used at 16.0 GT/s
-        and higher alternating with Standard SKP.
-
-        '
+      description: >-
+        Verify SKP Ordered Set transmission and reception for clock tolerance compensation in L0. For
+        8b/10b encoding, SKP is COM + 3 SKP symbols (§4.2.7.1). For 128b/130b encoding, transmitted SKP
+        is 16 symbols (§4.2.7.2, Table 4-22). Verify scheduling intervals: 1180-1538 Symbol Times for
+        8b/10b in SRNS/non-SRIS, < 154 Symbol Times in SRIS. For 128b/130b: 370-375 blocks in SRNS, <
+        38 blocks in SRIS. Verify Control SKP Ordered Set (Table 4-23) is used at 16.0 GT/s and higher
+        alternating with Standard SKP.
       priority: P1
-      priority_rationale: SKP compensation prevents elastic buffer overflow/underflow
-        that would cause link errors.
-      spec_ref: PCIe 5.0 §4.2.7, §4.2.7.1, §4.2.7.2, §4.2.7.3, Table 4-22, Table 4-23
-      pass_criteria: 'SKP interval within specification for each encoding and clocking
-        mode. Standard SKP format correct per Table 4-22. Control SKP format correct
-        per Table 4-23 at 16.0 GT/s+. Data Parity bits computed correctly. No elastic
-        buffer errors during sustained traffic.
-
-        '
+      priority_rationale: >-
+        SKP compensation prevents elastic buffer overflow/underflow that would cause link errors.
+      spec_ref: "PCIe 5.0 §4.2.7, §4.2.7.1, §4.2.7.2, §4.2.7.3, Table 4-22, Table 4-23"
+      pass_criteria: >-
+        SKP interval within specification for each encoding and clocking mode. Standard SKP format correct
+        per Table 4-22. Control SKP format correct per Table 4-23 at 16.0 GT/s+. Data Parity bits computed
+        correctly. No elastic buffer errors during sustained traffic.
       tool: Protocol analyzer
       test_method: protocol_analyzer
-    - id: LTSSM-053
+      glean_validated: false
+    - id: "LTSSM-053"
       title: FTS and SDS Ordered Sets — Fast Training and Stream Start
-      description: 'Verify Fast Training Sequence (FTS) and Start of Data Stream (SDS)
-        Ordered Sets. FTS is used for L0s exit to quickly re-establish bit lock (§4.2.4.6).
-        SDS marks the beginning of a Data Stream in 128b/130b encoding (§4.2.4.7).
-        Verify that N_FTS count in TS1/TS2 correctly reflects the number of FTS needed
-        by the Receiver. Verify SDS is sent on Lane 0 to mark the first Symbol of
-        Data Stream after Ordered Set block. Confirm FTS includes EIE symbols (4-8)
-        before the fast training sequences at 5.0 GT/s and 128b/130b encoding rates.
-
-        '
+      description: >-
+        Verify Fast Training Sequence (FTS) and Start of Data Stream (SDS) Ordered Sets. FTS is used for
+        L0s exit to quickly re-establish bit lock (§4.2.4.6). SDS marks the beginning of a Data Stream
+        in 128b/130b encoding (§4.2.4.7). Verify that N_FTS count in TS1/TS2 correctly reflects the number
+        of FTS needed by the Receiver. Verify SDS is sent on Lane 0 to mark the first Symbol of Data Stream
+        after Ordered Set block. Confirm FTS includes EIE symbols (4-8) before the fast training sequences
+        at 5.0 GT/s and 128b/130b encoding rates.
       priority: P1
-      priority_rationale: FTS and SDS are essential for L0s exit and data stream framing
-        in 128b/130b encoding.
-      spec_ref: PCIe 5.0 §4.2.4.6, §4.2.4.7
-      pass_criteria: 'N_FTS count matches advertised value. FTS enables bit lock recovery
-        within specified timeout. SDS correctly marks Data Stream start. EIE symbols
-        (4-8) precede FTS at applicable rates. Receiver accepts data immediately after
-        SKP (8b/10b) or SDS (128b/130b).
-
-        '
+      priority_rationale: >-
+        FTS and SDS are essential for L0s exit and data stream framing in 128b/130b encoding.
+      spec_ref: "PCIe 5.0 §4.2.4.6, §4.2.4.7"
+      pass_criteria: >-
+        N_FTS count matches advertised value. FTS enables bit lock recovery within specified timeout.
+        SDS correctly marks Data Stream start. EIE symbols (4-8) precede FTS at applicable rates. Receiver
+        accepts data immediately after SKP (8b/10b) or SDS (128b/130b).
       tool: Protocol analyzer
       test_method: protocol_analyzer
+      glean_validated: false
   - name: Lane Margining
     items:
-    - id: LTSSM-054
+    - id: "LTSSM-054"
       title: Lane Margining at Receiver — Timing Margin
-      description: 'Verify Lane Margining at Receiver for timing margin at 16.0 GT/s
-        and higher data rates. Lane Margining is mandatory for all Ports supporting
-        16.0 GT/s or higher (§4.2.13). Issue Margin Commands via the Margining Lane
-        Control Register in the Downstream Port. Verify the Step Margin to timing
-        offset command moves the sampling point left/right from the default position.
-        Read margin results from the Margining Lane Status Register. Verify that the
-        Receiver reports capabilities (MIndLeftRightTiming, MNumTimingSteps, MMaxTimingOffset)
-        correctly. Ensure link remains in L0 during margining.
-
-        '
+      description: >-
+        Verify Lane Margining at Receiver for timing margin at 16.0 GT/s and higher data rates. Lane Margining
+        is mandatory for all Ports supporting 16.0 GT/s or higher (§4.2.13). Issue Margin Commands via
+        the Margining Lane Control Register in the Downstream Port. Verify the Step Margin to timing offset
+        command moves the sampling point left/right from the default position. Read margin results from
+        the Margining Lane Status Register. Verify that the Receiver reports capabilities (MIndLeftRightTiming,
+        MNumTimingSteps, MMaxTimingOffset) correctly. Ensure link remains in L0 during margining.
       priority: P1
-      priority_rationale: Timing margin measurement validates receiver signal integrity
-        margin at Gen4/Gen5 data rates.
-      spec_ref: PCIe 5.0 §4.2.13, §4.2.13.1, §4.2.13.3, Table 4-25, Table 4-26
-      pass_criteria: 'Margin Commands issued and acknowledged within 1 ms. Timing
-        margin measured on all Lanes. Error count reported correctly via MErrorCount.
-        Sufficient timing margin (> 0.1 UI) at Gen4/Gen5. Go to Normal Settings restores
-        default sampling. Link stable during margining.
-
-        '
+      priority_rationale: >-
+        Timing margin measurement validates receiver signal integrity margin at Gen4/Gen5 data rates.
+      spec_ref: "PCIe 5.0 §4.2.13, §4.2.13.1, §4.2.13.3, Table 4-25, Table 4-26"
+      pass_criteria: >-
+        Margin Commands issued and acknowledged within 1 ms. Timing margin measured on all Lanes. Error
+        count reported correctly via MErrorCount. Sufficient timing margin (> 0.1 UI) at Gen4/Gen5. Go
+        to Normal Settings restores default sampling. Link stable during margining.
       tool: Protocol analyzer + register access tool + margin analysis software
       test_method: software_driver
-    - id: LTSSM-055
+      glean_validated: false
+    - id: "LTSSM-055"
       title: Lane Margining at Receiver — Voltage Margin
-      description: 'Verify Lane Margining at Receiver for voltage margin. Voltage
-        margining support is optional at 16.0 GT/s and required at 32.0 GT/s and higher
-        (MVoltageSupported capability bit). Issue Step Margin to voltage offset commands
-        to move the sampling point up/down from the default voltage position. Verify
-        MIndUpDownVoltage, MNumVoltageSteps, and MMaxVoltageOffset capability reporting.
-        Ensure that software does not attempt to margin both timing and voltage simultaneously.
-        Verify margin results are consistent across multiple measurement runs.
-
-        '
+      description: >-
+        Verify Lane Margining at Receiver for voltage margin. Voltage margining support is optional at
+        16.0 GT/s and required at 32.0 GT/s and higher (MVoltageSupported capability bit). Issue Step
+        Margin to voltage offset commands to move the sampling point up/down from the default voltage
+        position. Verify MIndUpDownVoltage, MNumVoltageSteps, and MMaxVoltageOffset capability reporting.
+        Ensure that software does not attempt to margin both timing and voltage simultaneously. Verify
+        margin results are consistent across multiple measurement runs.
       priority: P1
-      priority_rationale: Voltage margin measurement is critical for Gen5 signal integrity
-        validation at 32 GT/s.
-      spec_ref: PCIe 5.0 §4.2.13, §4.2.13.1, §4.2.13.3, Table 4-26
-      pass_criteria: 'Voltage margin capability correctly reported. Step Margin voltage
-        commands executed. Error count tracks accurately. Sufficient voltage margin
-        (> 15 mV) at Gen5. No simultaneous timing+voltage margining. Repeatable results
-        across runs. Link stable during margining.
-
-        '
+      priority_rationale: >-
+        Voltage margin measurement is critical for Gen5 signal integrity validation at 32 GT/s.
+      spec_ref: "PCIe 5.0 §4.2.13, §4.2.13.1, §4.2.13.3, Table 4-26"
+      pass_criteria: >-
+        Voltage margin capability correctly reported. Step Margin voltage commands executed. Error count
+        tracks accurately. Sufficient voltage margin (> 15 mV) at Gen5. No simultaneous timing+voltage
+        margining. Repeatable results across runs. Link stable during margining.
       tool: Protocol analyzer + register access tool + margin analysis software
       test_method: software_driver
+      glean_validated: false
