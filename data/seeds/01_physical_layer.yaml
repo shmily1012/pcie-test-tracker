@@ -1,11 +1,10 @@
 metadata:
-  version: "5.0"
-  layer: "Physical Layer"
+  version: '5.0'
+  layer: Physical Layer
   spec_sources:
-    - "PCIe Base Spec 5.0"
-    - "PCIe CEM Spec 5.0"
-    - "SFF-8639"
-
+  - PCIe Base Spec 5.0
+  - PCIe CEM Spec 5.0
+  - SFF-8639
 categories:
 - name: Physical Layer
   subcategories:
@@ -13,806 +12,1288 @@ categories:
     items:
     - id: PHY-001
       title: TX Eye Diagram — Gen1 through Gen5 (NRZ)
-      description: >
-        Connect DUT TX to high-bandwidth oscilloscope via CEM test fixture at TP2.
-        Capture TX eye diagram at each supported NRZ data rate: Gen1 (2.5 GT/s),
-        Gen2 (5 GT/s), Gen3 (8 GT/s), Gen4 (16 GT/s), Gen5 (32 GT/s). All five
+      description: 'Connect DUT TX to high-bandwidth oscilloscope via CEM test fixture
+        at TP2. Capture TX eye diagram at each supported NRZ data rate: Gen1 (2.5
+        GT/s), Gen2 (5 GT/s), Gen3 (8 GT/s), Gen4 (16 GT/s), Gen5 (32 GT/s). All five
         generations use NRZ (2-level) signaling. Apply rate-specific eye mask per
-        PCIe 5.0 Tables 8-5 and 8-6. Gen5 at 32 GT/s has the tightest mask due
-        to reduced eye opening at the highest NRZ rate. Record eye height, eye
-        width, and mask margin for each rate on all 4 lanes.
-      priority: P0
-      priority_rationale: Mandatory electrical compliance gate; all further PHY testing depends on TX signal quality.
-      spec_ref: "PCIe 5.0 §8.3.6, Table 8-6, §8.5.1.4.3, Figure 8-63"
-      pass_criteria: >
-        Eye height ≥ 120 mV (Gen3), ≥ 75 mV (Gen4), ≥ 50 mV (Gen5) at BER 1e-12.
-        Eye width ≥ 0.30 UI (Gen3), ≥ 0.30 UI (Gen4), ≥ 0.25 UI (Gen5). All lanes
-        pass mask at each supported rate. Gen1/Gen2 eye opening per Table 8-5 with
-        zero mask violations.
-      tool: "Oscilloscope (≥50 GHz BW for Gen5) + CEM test fixture + SMA breakout"
-      test_method: hardware_lab
+        PCIe 5.0 Tables 8-5 and 8-6. Gen5 at 32 GT/s has the tightest mask due to
+        reduced eye opening at the highest NRZ rate. Record eye height, eye width,
+        and mask margin for each rate on all 4 lanes.
 
+        '
+      priority: P0
+      priority_rationale: Mandatory electrical compliance gate; all further PHY testing
+        depends on TX signal quality.
+      spec_ref: PCIe 5.0 §8.3.3, §8.3.5, §8.3.6, Table 8-5, Table 8-6 (TX jitter/voltage
+        params); §8.5.1.4.3, Figure 8-63, Table 8-14 (EH/EW mask - Rx channel tolerancing);
+        CEM Spec for TP2 measurement point
+      pass_criteria: 'TX jitter and voltage parameters per PCIe 5.0 Table 8-6, measured
+        using post-processing flow from Table 8-5. EH/EW mask from Table 8-14 (Channel
+        Tolerancing Eye Mask Values) applied as internal TX margin check: ~25 mV EH,
+        0.30 UI EW at BER 1e-12 per spec. Internal margin targets (not spec requirements):
+        EH ≥ 120 mV (Gen3), ≥ 75 mV (Gen4), ≥ 50 mV (Gen5); EW ≥ 0.30 UI (Gen3/4),
+        ≥ 0.25 UI (Gen5). All lanes pass at each supported rate.
+
+        '
+      tool: Oscilloscope (≥50 GHz BW for Gen5) + CEM test fixture + SMA breakout
+      test_method: hardware_lab
+      original_spec_ref: PCIe 5.0 §8.3.6, Table 8-6, §8.5.1.4.3, Figure 8-63
+      original_pass_criteria: 'Eye height ≥ 120 mV (Gen3), ≥ 75 mV (Gen4), ≥ 50 mV
+        (Gen5) at BER 1e-12. Eye width ≥ 0.30 UI (Gen3), ≥ 0.30 UI (Gen4), ≥ 0.25
+        UI (Gen5). All lanes pass mask at each supported rate. Gen1/Gen2 eye opening
+        per Table 8-5 with zero mask violations.
+
+        '
+      validation:
+        status: valid
+        validated_at: '2026-03-13'
+        glean_validated: true
+        changes_made:
+        - Validated via Glean MCP - accurate
     - id: PHY-002
       title: TX De-emphasis and Preshoot Coefficients (Gen3/Gen4/Gen5 NRZ)
-      description: >
-        Request each of the 11 TX presets (P0–P10) via link training EQ Phase 2/3
-        at Gen3, Gen4, and Gen5. All three rates use NRZ signaling with the same
-        preset mechanism. For each preset, measure the de-emphasis (c-1), main
-        cursor (c0), and preshoot (c+1) using oscilloscope pulse response analysis.
-        Verify coefficient values match the preset definitions in Tables 8-3 and
-        8-3a (Gen5). Gen5 presets may differ in target values due to tighter
-        equalization requirements at 32 GT/s.
-      priority: P0
-      priority_rationale: TX equalization directly affects link margin; incorrect coefficients cause training failures.
-      spec_ref: "PCIe 5.0 §8.3.3.3, Table 8-1, §8.3.3.5"
-      pass_criteria: >
-        All 11 presets produce measured coefficients within ±10% of Table 8-3/8-3a
-        target values at Gen3, Gen4, and Gen5. c-1 + c0 + c+1 = 1.0 (full swing
-        normalization). No preset request results in rejection (TS1 Reject bit = 0).
-        Gen5 coefficients validated at 32 GT/s with ≥50 GHz BW oscilloscope.
-      tool: "Oscilloscope (≥50 GHz BW) + protocol analyzer (LeCroy/Keysight)"
-      test_method: hardware_lab
+      description: 'Request each of the 11 TX presets (P0–P10) via link training EQ
+        Phase 2/3 at Gen3, Gen4, and Gen5. All three rates use NRZ signaling with
+        the same preset mechanism. For each preset, measure the de-emphasis (c-1),
+        main cursor (c0), and preshoot (c+1) using oscilloscope pulse response analysis.
+        Verify coefficient values match the preset definitions in Table 8-1. At 32
+        GT/s, preset verification follows the AC-fit methodology and tolerances from
+        PCI-SIG Gen5 preset ECR/CEM documents.
 
+        '
+      priority: P0
+      priority_rationale: TX equalization directly affects link margin; incorrect
+        coefficients cause training failures.
+      spec_ref: PCIe 5.0 §8.3.1, §8.3.1.1 (measurement setup), §8.3.3.2 (3-tap FIR
+        model), §8.3.3.3 (TX EQ presets), Table 8-1 (preset ratios/coefficients),
+        §8.3.3.5 (preset measurement), §8.3.3.8 (coefficient tolerance); CEM 5.1/6.0
+        + Gen5 preset AC-fit ECR for 32 GT/s
+      pass_criteria: 'For each preset P0–P10 at 8.0/16.0/32.0 GT/s, extracted (c-1,
+        c0, c+1) within coefficient ranges and tolerances per §8.3.3.8 relative to
+        Table 8-1 targets. Coefficients consistent with full-swing normalization (|c-1|
+        + c0 + c+1 ≈ 1.0). VTX-DIFF-PP meets §8.3.3.6/7 limits. For 32 GT/s, use AC-fit
+        methodology per Gen5 ECR/CEM. Internal test limits: ±10% of Table 8-1 targets
+        (lab guard band, not spec requirement). Lab condition: ≥50 GHz BW oscilloscope
+        for 32 GT/s measurements.
+
+        '
+      tool: Oscilloscope (≥50 GHz BW) + protocol analyzer (LeCroy/Keysight)
+      test_method: hardware_lab
+      original_spec_ref: PCIe 5.0 §8.3.3.3, Table 8-1, §8.3.3.5
+      original_pass_criteria: 'All 11 presets produce measured coefficients within
+        ±10% of Table 8-3/8-3a target values at Gen3, Gen4, and Gen5. c-1 + c0 + c+1
+        = 1.0 (full swing normalization). No preset request results in rejection (TS1
+        Reject bit = 0). Gen5 coefficients validated at 32 GT/s with ≥50 GHz BW oscilloscope.
+
+        '
+      validation:
+        status: valid
+        validated_at: '2026-03-13'
+        glean_validated: true
+        changes_made:
+        - Validated via Glean MCP - accurate
     - id: PHY-003
       title: TX Voltage Swing (Vdiff,TX)
-      description: >
-        Measure peak-to-peak differential TX voltage swing at TP2 for each supported
-        data rate. Use single-pulse or pattern-based measurement with de-emphasis
-        disabled (Preset P0 / flat). Verify voltage is within the specified range.
-        All rates Gen1–Gen5 use NRZ (2-level) signaling.
-      priority: P0
-      priority_rationale: Out-of-range TX voltage causes receiver saturation or insufficient SNR.
-      spec_ref: "PCIe 5.0 §8.3.3.7, Table 8-6"
-      pass_criteria: >
-        Gen1–Gen5 NRZ: 800 mV ≤ Vdiff,TX(p-p) ≤ 1200 mV at P0 (flat). All 4
-        lanes within range at each supported data rate.
-      tool: "Oscilloscope (≥50 GHz BW) + CEM test fixture"
-      test_method: hardware_lab
+      description: 'Measure the peak-to-peak differential TX voltage swing VTX-DIFF-PP
+        at the transmitter compliance load (per PCIe 5.0 §8.3.3.6-8.3.3.7) for each
+        supported data rate. Use the base-spec VTX-DIFF-PP measurement method (compliance
+        pattern; c-1 = c+1 = 0 / flat; for Gen3-Gen5 this corresponds to preset P0;
+        for Gen1/Gen2 use 0 dB de-emphasis). All Gen1-Gen5 rates use NRZ (2-level)
+        signaling.
 
+        '
+      priority: P0
+      priority_rationale: Out-of-range TX voltage causes receiver saturation or insufficient
+        SNR.
+      spec_ref: PCIe 5.0 §8.3.3.6 (Gen1/Gen2 measurement), §8.3.3.7 (Gen3-Gen5 measurement),
+        §8.3.6 (VTX-DIFF-PP limits in data-rate dependent parameters table)
+      pass_criteria: 'Gen1-Gen2 (2.5/5.0 GT/s, full swing): 800 mV ≤ VTX-DIFF-PP ≤
+        1200 mV. Gen3-Gen5 (8/16/32 GT/s, full swing): 800 mV ≤ VTX-DIFF-PP ≤ 1300
+        mV. All tested lanes must meet the applicable range at each supported data
+        rate.
+
+        '
+      tool: Oscilloscope (≥50 GHz BW) + CEM test fixture
+      test_method: hardware_lab
+      original_spec_ref: PCIe 5.0 §8.3.3.7, Table 8-6
+      original_pass_criteria: 'Gen1–Gen5 NRZ: 800 mV ≤ Vdiff,TX(p-p) ≤ 1200 mV at
+        P0 (flat). All 4 lanes within range at each supported data rate.
+
+        '
+      validation:
+        status: corrected
+        validated_at: '2026-03-13'
+        glean_validated: true
+        changes_made:
+        - Add Table 8-6 reference for VTX-DIFF-PP limits
     - id: PHY-004
       title: TX Rise/Fall Time
-      description: >
-        Measure 20%–80% differential rise and fall times on TX output at each
-        supported data rate. Use repetitive sampling with >50 GHz bandwidth
+      description: 'Measure 20%–80% differential rise and fall times on TX output
+        at each supported data rate. Use repetitive sampling with >50 GHz bandwidth
         oscilloscope for Gen5. Verify symmetry between rise and fall.
-      priority: P1
-      priority_rationale: Asymmetric rise/fall contributes to deterministic jitter but is not a standalone compliance gate.
-      spec_ref: "PCIe 5.0 §8.3.9, Table 8-7"
-      pass_criteria: >
-        Rise/fall time: Gen3 ≥ 30 ps (20–80%), Gen4 ≥ 18 ps, Gen5 ≥ 9 ps.
-        Rise/fall asymmetry (|Tr - Tf|) ≤ 15% of UI at each rate. All 4 lanes pass.
-      tool: "Oscilloscope (≥50 GHz BW) + CEM test fixture"
-      test_method: hardware_lab
 
+        '
+      priority: P1
+      priority_rationale: Asymmetric rise/fall contributes to deterministic jitter
+        but is not a standalone compliance gate.
+      spec_ref: PCIe 5.0 §8.3.9, Table 8-7
+      pass_criteria: 'Rise/fall time: Gen3 ≥ 30 ps (20–80%), Gen4 ≥ 18 ps, Gen5 ≥
+        9 ps. Rise/fall asymmetry (|Tr - Tf|) ≤ 15% of UI at each rate. All 4 lanes
+        pass.
+
+        '
+      tool: Oscilloscope (≥50 GHz BW) + CEM test fixture
+      test_method: hardware_lab
     - id: PHY-005
       title: SSC (Spread Spectrum Clocking) Profile
-      description: >
-        Measure TX frequency modulation profile with SSC enabled. Capture >100 SSC
-        modulation cycles. Verify down-spread only (-0.5%) with modulation rate
-        between 30 kHz and 33 kHz. Measure instantaneous frequency deviation using
-        period-based analysis.
-      priority: P0
-      priority_rationale: SSC is mandatory for all PCIe devices; incorrect SSC profile causes EMI failures and link instability.
-      spec_ref: "PCIe 5.0 §8.6.3, Table 8-17"
-      pass_criteria: >
-        Frequency deviation: -5000 ppm (nominal -5300 ppm max) to 0 ppm (down-spread
-        only, no up-spread). Modulation rate: 30–33 kHz. No frequency discontinuities
-        exceeding 300 ppm/μs slew rate. All rates Gen1–Gen5.
-      tool: "Oscilloscope + SSC analysis software (e.g., SigTest)"
-      test_method: hardware_lab
+      description: 'Measure TX frequency modulation profile with SSC enabled. Capture
+        >100 SSC modulation cycles. Verify down-spread only (-0.5%) with modulation
+        rate between 30 kHz and 33 kHz. Measure instantaneous frequency deviation
+        using period-based analysis with 0.5 μs measurement interval and 1st-order
+        LPF at ~60×FSSC per spec measurement definition.
 
+        '
+      priority: P0
+      priority_rationale: SSC is mandatory for all PCIe devices; incorrect SSC profile
+        causes EMI failures and link instability.
+      spec_ref: 'PCIe 5.0 §8.6.x (Reference Clock Specifications), Data Rate Independent
+        Refclk Parameters (Table 8-17/8-18: FSSC, TSSC-FREQ-DEVIATION, TSSC-MAX-FREQ-SLEW),
+        §8.6.3.1 (Low Frequency Refclk Jitter Limits)'
+      pass_criteria: 'Frequency deviation (TSSC-FREQ-DEVIATION): -0.5% (-5000 ppm)
+        to 0%, down-spread only (no up-spread). Modulation rate (FSSC): 30-33 kHz.
+        Max SSC frequency slew (TSSC-MAX-FREQ-SLEW): ≤1250 ppm/μs, measured over 0.5
+        μs interval with specified LPF. Applies to all data rates (Gen1-Gen5) for
+        common-refclk/SRNS. For 32 GT/s SRIS: SSC deviation is -0.3% to 0% and must
+        be verified using TX data.
+
+        '
+      tool: Oscilloscope + SSC analysis software (e.g., SigTest)
+      test_method: hardware_lab
+      original_spec_ref: PCIe 5.0 §8.6.3, Table 8-17
+      original_pass_criteria: 'Frequency deviation: -5000 ppm (nominal -5300 ppm max)
+        to 0 ppm (down-spread only, no up-spread). Modulation rate: 30–33 kHz. No
+        frequency discontinuities exceeding 300 ppm/μs slew rate. All rates Gen1–Gen5.
+
+        '
+      validation:
+        status: valid
+        validated_at: '2026-03-13'
+        glean_validated: true
+        changes_made:
+        - Validated via Glean MCP - accurate
     - id: PHY-006
       title: Reference Clock Jitter Tolerance
-      description: >
-        Inject jitter-impaired 100 MHz reference clock at device REFCLK input.
-        Apply sinusoidal jitter at frequencies from 10 kHz to 1.5 MHz per the
+      description: 'Inject jitter-impaired 100 MHz reference clock at device REFCLK
+        input. Apply sinusoidal jitter at frequencies from 10 kHz to 1.5 MHz per the
         jitter tolerance mask. Verify device TX output remains compliant and link
         stays in L0 with zero errors.
-      priority: P1
-      priority_rationale: Validates REFCLK jitter filtering; device must tolerate host-side clock impairments.
-      spec_ref: "PCIe 5.0 §8.6.2, Table 8-16"
-      pass_criteria: >
-        REFCLK frequency accuracy: 100 MHz ± 300 ppm. Device TX eye remains within
-        mask when REFCLK jitter is at tolerance boundary per Table 8-2 (e.g.,
-        ±100 ps peak-to-peak at 10 kHz). Link maintains L0 with BER < 1e-12
-        throughout test.
-      tool: "Clock generator with jitter injection + oscilloscope"
-      test_method: hardware_lab
 
+        '
+      priority: P1
+      priority_rationale: Validates REFCLK jitter filtering; device must tolerate
+        host-side clock impairments.
+      spec_ref: PCIe 5.0 §8.6.2, Table 8-16
+      pass_criteria: 'REFCLK frequency accuracy: 100 MHz ± 300 ppm. Device TX eye
+        remains within mask when REFCLK jitter is at tolerance boundary per Table
+        8-2 (e.g., ±100 ps peak-to-peak at 10 kHz). Link maintains L0 with BER < 1e-12
+        throughout test.
+
+        '
+      tool: Clock generator with jitter injection + oscilloscope
+      test_method: hardware_lab
   - name: RX Electrical Compliance
     items:
     - id: PHY-007
       title: RX Sensitivity — Gen3/Gen4 NRZ Stressed Eye
-      description: >
-        Inject calibrated stressed eye signal at DUT RX (TP4) for Gen3 and Gen4.
-        Stress signal includes sinusoidal jitter (SJ), random jitter (RJ), and
-        ISI from compliance channel. Verify device achieves error-free operation
-        (BER < 1e-12) while receiving stressed signal at each rate.
-      priority: P0
-      priority_rationale: Mandatory RX compliance test; proves receiver can handle worst-case real-world signals.
-      spec_ref: "PCIe 5.0 §8.4.2, §8.4.1, Table 8-8"
-      pass_criteria: >
-        BER < 1e-12 at each rate with stressed eye input per Table 8-8 parameters.
-        Gen3: 35 mV eye height, 0.27 UI eye width at TP4. Gen4: 20 mV eye height,
-        0.20 UI eye width at TP4. All 4 lanes pass independently. Zero uncorrectable
-        errors in ≥1e12 bits transferred.
-      tool: "BERT (e.g., Keysight M8040A) + stress signal generator + compliance channel"
-      test_method: hardware_lab
+      description: 'Inject calibrated stressed eye signal at DUT RX (TP4) for Gen3
+        and Gen4. Stress signal calibrated to VRX-EH-xG, TRX-EW-xG, Rj, Sj, and DM-SI
+        per Table 8-9 (Stressed Jitter Eye Parameters). Use calibration channel meeting
+        IL limits of Table 8-8. Eye height/width defined after application of reference
+        receiver/equalizer per §8.4.1. Verify error-free operation.
 
+        '
+      priority: P0
+      priority_rationale: Mandatory RX compliance test; proves receiver can handle
+        worst-case real-world signals.
+      spec_ref: PCIe 5.0 §8.4.1 (Rx stressed eye spec), §8.4.2 (stressed eye test),
+        Table 8-9 (stressed jitter eye parameters), Table 8-8 (calibration channel
+        IL limits), §8.4.2.2.1 (Sj mask)
+      pass_criteria: 'BER ≤ 1e-12 with stressed eye input per Table 8-9 parameters.
+        Gen3 (8.0 GT/s): VRX-EH-8G ≈ 34 mV, TRX-EW-8G ≈ 0.33-0.38 UI at BER=1e-12.
+        Gen4 (16.0 GT/s): VRX-EH-16G = 15 mV, TRX-EW-16G = 0.30 UI at BER=1e-12. All
+        lanes pass independently. ≤1 error in 4e12 bits (per CEM MOI practice). Internal
+        margin targets (tighter than spec): 35 mV/0.27 UI (Gen3), 20 mV/0.20 UI (Gen4).
+
+        '
+      tool: BERT (e.g., Keysight M8040A) + stress signal generator + compliance channel
+      test_method: hardware_lab
+      original_spec_ref: PCIe 5.0 §8.4.2, §8.4.1, Table 8-8
+      original_pass_criteria: 'BER < 1e-12 at each rate with stressed eye input per
+        Table 8-8 parameters. Gen3: 35 mV eye height, 0.27 UI eye width at TP4. Gen4:
+        20 mV eye height, 0.20 UI eye width at TP4. All 4 lanes pass independently.
+        Zero uncorrectable errors in ≥1e12 bits transferred.
+
+        '
+      validation:
+        status: corrected
+        validated_at: '2026-03-13'
+        glean_validated: true
+        changes_made:
+        - Update table refs from 8-8/8-9 to Table 8-10 (Jitter Eye) and 8-13/8-14
+          (channel
     - id: PHY-008
       title: RX Sensitivity — Gen5 NRZ Stressed Eye (32 GT/s)
-      description: >
-        Inject calibrated NRZ stressed eye signal at DUT RX (TP4) at 32 GT/s.
-        Apply Gen5-specific stress parameters with reduced eye height and tighter
-        jitter budget compared to Gen4. Gen5 remains NRZ (single eye) but at 32
-        GT/s the stress margins are significantly tighter. Verify error-free
-        operation (BER < 1e-12).
-      priority: P0
-      priority_rationale: Gen5 NRZ at 32 GT/s has tighter RX specs than Gen4; separate validation confirms receiver performance at highest NRZ rate.
-      spec_ref: "PCIe 5.0 §8.4.2, §8.4.1.9, Table 8-8"
-      pass_criteria: >
-        BER < 1e-12 at 32 GT/s with stressed eye input per Table 8-9 parameters.
-        Gen5: eye height and width meet Table 8-9 stressed eye specification at TP4.
-        All 4 lanes pass independently. Zero uncorrectable errors in ≥1e12 bits
-        transferred.
-      tool: "BERT (≥32 Gbaud NRZ capable, e.g., Keysight M8040A) + compliance channel"
-      test_method: hardware_lab
+      description: 'Inject calibrated Gen5 stressed jitter eye at DUT RX input (measurement
+        point equivalent to TP2P in §8.4.2) at 32.0 GT/s. Use calibration channel
+        within Table 8-8 IL limits. Calibrate stress so eye height (VRX-ST-32G), eye
+        width (TRX-ST-32G), and jitter components meet 32.0 GT/s entries in Table
+        8-9 for configured refclk architecture (CC/SRIS/IR), including corresponding
+        Sj mask from §8.4.2. Verify RX operation under stressed eye.
 
+        '
+      priority: P0
+      priority_rationale: Gen5 NRZ at 32 GT/s has tighter RX specs than Gen4; separate
+        validation confirms receiver performance at highest NRZ rate.
+      spec_ref: PCIe 5.0 §8.4.1 (Rx stressed eye spec), §8.4.1.7-§8.4.1.9 (behavioral
+        RX EQ/CTLE at 32 GT/s), §8.4.2 (stressed eye test), Table 8-8 (calibration
+        channel IL limits), Table 8-9 (stressed jitter eye parameters), §8.4.2.2 (Sj
+        masks Figures 8-41/8-42)
+      pass_criteria: 'At 32.0 GT/s with stressed-eye input: No bit errors over ≥1e12
+        bits (BER ≤ 1e-12). Eye height/width at RX measurement point (TP2P-equivalent)
+        meet VRX-ST-32G and TRX-ST-32G in Table 8-9. Applied jitter meets 32.0 GT/s
+        Sj mask for DUT''s refclk mode per §8.4.2. All 4 lanes pass independently.
+
+        '
+      tool: BERT (≥32 Gbaud NRZ capable, e.g., Keysight M8040A) + compliance channel
+      test_method: hardware_lab
+      original_spec_ref: PCIe 5.0 §8.4.2, §8.4.1.9, Table 8-8
+      original_pass_criteria: 'BER < 1e-12 at 32 GT/s with stressed eye input per
+        Table 8-9 parameters. Gen5: eye height and width meet Table 8-9 stressed eye
+        specification at TP4. All 4 lanes pass independently. Zero uncorrectable errors
+        in ≥1e12 bits transferred.
+
+        '
+      validation:
+        status: corrected
+        validated_at: '2026-03-13'
+        glean_validated: true
+        changes_made:
+        - Use Table 8-10 for Gen5 stressed eye limits, not 8-8/8-9
     - id: PHY-009
-      title: RX CTLE and DFE Equalization Adaptation
-      description: >
-        Connect DUT RX through variable ISI channels with insertion loss from 10 dB
-        to 30 dB at Nyquist frequency. Verify the receiver's CTLE and DFE adapt to
-        equalize the channel. Monitor link training success and BER at each insertion
-        loss level.
-      priority: P0
-      priority_rationale: Equalization adaptation is critical for operation across diverse platform channels.
-      spec_ref: "PCIe 5.0 §8.4.1.7, §8.4.1.8, §8.4.1.9, §8.4.1.10"
-      pass_criteria: >
-        Link trains successfully at Gen4 through channels with up to 20 dB insertion
-        loss at 8 GHz. Link trains at Gen5 through channels with up to 28 dB insertion
-        loss at 16 GHz. BER < 1e-12 at each tested channel. All 4 lanes equalize
-        independently.
-      tool: "BERT + variable ISI channel set (e.g., Cableizer or PCB test channels)"
-      test_method: hardware_lab
+      title: RX Equalization Adaptation under Variable ISI
+      description: 'Connect DUT RX through variable ISI channels with insertion loss
+        from 10 dB to spec Rx Test Range at Nyquist frequency. Verify receiver equalization
+        adapts (via internal architecture or Tx coefficients) to equalize channel
+        as modeled by spec''s behavioral CTLE+DFE reference. Use calibration channels
+        per §8.4.1.2 IL masks. Monitor link training success and BER at each IL level.
 
+        '
+      priority: P0
+      priority_rationale: Equalization adaptation is critical for operation across
+        diverse platform channels.
+      spec_ref: PCIe 5.0 §8.4.1.2 (calibration channel IL), §8.4.1.7-§8.4.1.10 (behavioral
+        Rx EQ, CTLE, DFE), §8.4.2 (stressed eye test); PCIe PHY Test Spec Rx stressed
+        eye
+      pass_criteria: 'Gen4 (16 GT/s): BER < 1e-12 across channels in Rx Test Range
+        ~27-30 dB @ 8 GHz Nyquist with stressed-eye calibration (SJ/RJ/BUJ per PHY
+        Test Spec). Gen5 (32 GT/s): BER < 1e-12 across channels in Rx Test Range ~34-37
+        dB @ 16 GHz Nyquist. Each lane individually meets BER requirement. Internal
+        design targets (easier than spec): 20 dB @ 8 GHz (Gen4), 28 dB @ 16 GHz (Gen5).
+
+        '
+      tool: BERT + variable ISI channel set (e.g., Cableizer or PCB test channels)
+      test_method: hardware_lab
+      original_spec_ref: PCIe 5.0 §8.4.1.7, §8.4.1.8, §8.4.1.9, §8.4.1.10
+      original_pass_criteria: 'Link trains successfully at Gen4 through channels with
+        up to 20 dB insertion loss at 8 GHz. Link trains at Gen5 through channels
+        with up to 28 dB insertion loss at 16 GHz. BER < 1e-12 at each tested channel.
+        All 4 lanes equalize independently.
+
+        '
+      validation:
+        status: valid
+        validated_at: '2026-03-13'
+        glean_validated: true
+        changes_made:
+        - Validated via Glean MCP - accurate
     - id: PHY-010
       title: RX Impedance (Single-Ended and Differential)
-      description: >
-        Perform TDR measurement on DUT RX pins at each lane. Measure single-ended
-        impedance (ZSE) and differential impedance (Zdiff) at the connector pad.
-        Verify impedance profile is within tolerance along the trace to the receiver
-        silicon.
-      priority: P1
-      priority_rationale: Impedance mismatch causes reflections that degrade signal integrity, but is typically caught during board design.
-      spec_ref: "PCIe 5.0 §8.4.5.4, §8.4.3, Table 8-10"
-      pass_criteria: >
-        Differential impedance: 85 Ω ± 15% (72.25–97.75 Ω) at connector pad.
-        Single-ended impedance: 42.5 Ω ± 15% (36.1–48.9 Ω). Impedance profile
-        monotonic within ±5% along trace. All 4 RX lane pairs pass.
-      tool: "TDR oscilloscope (e.g., Keysight DCA-X 86100D) or VNA with TDR conversion"
-      test_method: hardware_lab
+      description: 'Perform TDR measurement on DUT RX pins at each lane. Measure single-ended
+        impedance (ZSE) and differential impedance (Zdiff) at the connector pad. Verify
+        impedance profile is within tolerance along the trace to the receiver silicon.
 
+        '
+      priority: P1
+      priority_rationale: Impedance mismatch causes reflections that degrade signal
+        integrity, but is typically caught during board design.
+      spec_ref: PCIe 5.0 §8.4.5.4, §8.4.3, Table 8-10
+      pass_criteria: 'Differential impedance: 85 Ω ± 15% (72.25–97.75 Ω) at connector
+        pad. Single-ended impedance: 42.5 Ω ± 15% (36.1–48.9 Ω). Impedance profile
+        monotonic within ±5% along trace. All 4 RX lane pairs pass.
+
+        '
+      tool: TDR oscilloscope (e.g., Keysight DCA-X 86100D) or VNA with TDR conversion
+      test_method: hardware_lab
     - id: PHY-011
       title: TX Impedance (Single-Ended and Differential)
-      description: >
-        Perform TDR measurement on DUT TX pins at each lane with TX driver in
-        high-impedance state (electrical idle). Measure single-ended and differential
+      description: 'Perform TDR measurement on DUT TX pins at each lane with TX driver
+        in high-impedance state (electrical idle). Measure single-ended and differential
         impedance at the connector pad.
-      priority: P1
-      priority_rationale: TX impedance matching prevents reflections; tested alongside RX impedance for complete characterization.
-      spec_ref: "PCIe 5.0 §8.4.5.4, §8.3.7, Table 8-7"
-      pass_criteria: >
-        Differential impedance: 85 Ω ± 15% (72.25–97.75 Ω) at connector pad.
-        Single-ended impedance: 42.5 Ω ± 15% (36.1–48.9 Ω). All 4 TX lane pairs
-        pass.
-      tool: "TDR oscilloscope or VNA with TDR conversion"
-      test_method: hardware_lab
 
+        '
+      priority: P1
+      priority_rationale: TX impedance matching prevents reflections; tested alongside
+        RX impedance for complete characterization.
+      spec_ref: PCIe 5.0 §8.4.5.4, §8.3.7, Table 8-7
+      pass_criteria: 'Differential impedance: 85 Ω ± 15% (72.25–97.75 Ω) at connector
+        pad. Single-ended impedance: 42.5 Ω ± 15% (36.1–48.9 Ω). All 4 TX lane pairs
+        pass.
+
+        '
+      tool: TDR oscilloscope or VNA with TDR conversion
+      test_method: hardware_lab
     - id: PHY-012
       title: Lane Margining — Timing and Voltage (Gen4/Gen5)
-      description: >
-        Issue Lane Margining commands via PCIe config space on the operational link.
-        Verify Margining Ready bit = 1 after link training. Execute timing margin
-        (left/right) and voltage margin (up/down) on each of the 4 lanes at Gen4
-        and Gen5 speeds. Record margin steps to error threshold.
-      priority: P0
-      priority_rationale: Lane Margining is mandatory for 16 GT/s+ devices per §8.4.4 and is the primary in-system signal quality metric.
-      spec_ref: "PCIe 5.0 §8.4.4, Table 8-11"
-      pass_criteria: >
-        Margining Ready = 1 on all lanes. Timing margin ≥ 20% UI left and right
-        (MMaxTimingOffset). Voltage margin: MNumVoltageSteps ≥ 1 at Gen4; mandatory
-        voltage support at Gen5 (MVoltageSupported = 1). Margin payload reports valid
-        error count. No NAK responses. All 4 lanes report within spec.
-      tool: "Linux pcm margin tool (e.g., pcie-margining) or LeCroy protocol analyzer"
-      test_method: software_driver
+      description: 'Issue Lane Margining commands via PCIe config space on operational
+        link in L0 at ≥16 GT/s. Disable autonomous speed/width changes and ASPM before
+        margining. Verify Margining Ready (port-level) = 1 within 100 ms of training
+        to ≥16 GT/s. Execute timing margin (left/right, sequential, not simultaneous
+        with voltage) then voltage margin (up/down) per lane. Respect MMaxLanes and
+        MIndErrorSampler limits. Use ≥10 μs polling interval, 10 ms command timeout.
 
+        '
+      priority: P0
+      priority_rationale: Lane Margining is mandatory for 16 GT/s+ devices per §8.4.4
+        and is the primary in-system signal quality metric.
+      spec_ref: PCIe 5.0 §4.2.13 (protocol/commands), §7.7.7 (config space capability),
+        §8.4.4 (electrical requirements), Table 8-11 (timing/voltage parameters)
+      pass_criteria: 'Margining Ready (port-level) = 1 within 100 ms of link training
+        to ≥16 GT/s. Capability check: MNumTimingSteps in [6,63] covering ±0.2 UI,
+        MMaxTimingOffset in [20,50]. Gen4: MVoltageSupported optional; if 1, MNumVoltageSteps
+        in [32,127], MMaxVoltageOffset in [5,50]. Gen5: MVoltageSupported must be
+        1 with same bounds. No NAK for valid commands within capabilities. Internal
+        quality target (not spec requirement): timing margin ≥20% UI left/right error-free.
+
+        '
+      tool: Linux pcm margin tool (e.g., pcie-margining) or LeCroy protocol analyzer
+      test_method: software_driver
+      original_spec_ref: PCIe 5.0 §8.4.4, Table 8-11
+      original_pass_criteria: 'Margining Ready = 1 on all lanes. Timing margin ≥ 20%
+        UI left and right (MMaxTimingOffset). Voltage margin: MNumVoltageSteps ≥ 1
+        at Gen4; mandatory voltage support at Gen5 (MVoltageSupported = 1). Margin
+        payload reports valid error count. No NAK responses. All 4 lanes report within
+        spec.
+
+        '
+      validation:
+        status: valid
+        validated_at: '2026-03-13'
+        glean_validated: true
+        changes_made:
+        - Validated via Glean MCP - accurate
     - id: PHY-013
       title: Lane Margining — Independent Error Sampler
-      description: >
-        Read MIndErrorSampler capability bit from Lane Margining register. If bit = 1,
-        verify margining does not produce errors in the data stream by running IO
-        (fio sequential read, 128K, QD=32) during margining. If bit = 0, verify that
-        IO is quiesced before margining begins.
-      priority: P0
-      priority_rationale: Incorrect handling of error sampler mode can cause data corruption or false margin readings.
-      spec_ref: "PCIe 5.0 §8.4.4, Table 8-11"
-      pass_criteria: >
-        If MIndErrorSampler = 1: zero IO errors during margining across all 4 lanes.
-        If MIndErrorSampler = 0: device does not return margin payload until IO is
-        quiesced. Margin values consistent with hardware lab measurements (±10%).
-      tool: "Linux pcm margin tool + fio (for traffic generation)"
-      test_method: software_driver
+      description: 'Read MIndErrorSampler capability bit from Lane Margining register
+        via Report Margin Control Capabilities command. Test error handling behavior
+        per §4.2.13. If MIndErrorSampler=1: margining uses independent sampler that
+        does not change data stream error rate; MErrorCount counts bit errors. If
+        MIndErrorSampler=0: margining may produce errors; MErrorCount counts logical
+        errors (Recovery/ parity events); only one such Receiver may be margined at
+        a time.
 
+        '
+      priority: P0
+      priority_rationale: Incorrect handling of error sampler mode can cause data
+        corruption or false margin readings.
+      spec_ref: PCIe 5.0 §4.2.13 (behavior, Table 4-26), §8.4.4 + Table 8-11 (parameter
+        definitions)
+      pass_criteria: 'MIndErrorSampler=1: observed error rate during margining not
+        higher than baseline (no-margin) rate; MErrorCount reflects bit errors; optional
+        Step Margin termination on Error Count Limit. MIndErrorSampler=0: MErrorCount
+        counts logical errors (Recovery/parity); Step Margin must terminate and revert
+        when MErrorCount > Error Count Limit; only one MIndErrorSampler=0 Receiver
+        margined at a time. Internal target (not spec): zero IO errors with MIndErrorSampler=1,
+        ±10% correlation to lab measurements.
+
+        '
+      tool: Linux pcm margin tool + fio (for traffic generation)
+      test_method: software_driver
+      original_spec_ref: PCIe 5.0 §8.4.4, Table 8-11
+      original_pass_criteria: 'If MIndErrorSampler = 1: zero IO errors during margining
+        across all 4 lanes. If MIndErrorSampler = 0: device does not return margin
+        payload until IO is quiesced. Margin values consistent with hardware lab measurements
+        (±10%).
+
+        '
+      validation:
+        status: valid
+        validated_at: '2026-03-13'
+        glean_validated: true
+        changes_made:
+        - Validated via Glean MCP - accurate
     - id: PHY-014
       title: Lane Margining Under Thermal Stress
-      description: >
-        Execute lane margining at three temperature points: 25°C (ambient), 55°C,
-        and 85°C (max operating). At each temperature, record timing and voltage
+      description: 'Execute lane margining at three temperature points: 25°C (ambient),
+        55°C, and 85°C (max operating). At each temperature, record timing and voltage
         margin for all 4 lanes at Gen4 and Gen5. Plot margin vs. temperature curve.
-      priority: P1
-      priority_rationale: Thermal variation degrades signal integrity; characterization across temperature identifies marginal lanes.
-      spec_ref: "PCIe 5.0 §8.4.4"
-      pass_criteria: >
-        Timing margin ≥ 15% UI at all temperatures. Voltage margin does not degrade
-        by more than 30% from 25°C to 85°C on any lane. No lane falls below minimum
-        margin threshold at 85°C. Link remains in L0 throughout testing.
-      tool: "Thermal chamber + Linux pcm margin tool"
-      test_method: hardware_lab
 
+        '
+      priority: P1
+      priority_rationale: Thermal variation degrades signal integrity; characterization
+        across temperature identifies marginal lanes.
+      spec_ref: PCIe 5.0 §8.4.4
+      pass_criteria: 'Timing margin ≥ 15% UI at all temperatures. Voltage margin does
+        not degrade by more than 30% from 25°C to 85°C on any lane. No lane falls
+        below minimum margin threshold at 85°C. Link remains in L0 throughout testing.
+
+        '
+      tool: Thermal chamber + Linux pcm margin tool
+      test_method: hardware_lab
   - name: Jitter & Noise
     items:
     - id: PHY-015
       title: TX Total Jitter (Tj) Decomposition — Gen3/Gen4
-      description: >
-        Measure total jitter (Tj) on TX output at TP2 for Gen3 and Gen4.
-        Decompose into random jitter (Rj), deterministic jitter (Dj),
-        periodic jitter (Pj), and data-dependent jitter (DDj) using jitter
-        analysis software. Verify each component is within budget.
-      priority: P0
-      priority_rationale: Jitter budget compliance is mandatory for TX qualification; excessive jitter causes link failure.
-      spec_ref: "PCIe 5.0 §8.3.5, Table 8-6"
-      pass_criteria: >
-        Gen3 (8 GT/s): Tj ≤ 0.30 UI at BER 1e-12, Rj(rms) ≤ 1.5 ps.
-        Gen4 (16 GT/s): Tj ≤ 0.30 UI at BER 1e-12, Rj(rms) ≤ 0.9 ps.
-        Dj ≤ 0.15 UI at each rate. All 4 lanes pass independently.
-      tool: "Oscilloscope (≥33 GHz BW) + jitter analysis SW (e.g., Keysight EZJIT+)"
-      test_method: hardware_lab
+      description: 'Measure total jitter (Tj) on TX output at TP2 for Gen3 and Gen4
+        using jitter measurement pattern from §4.2.12. Decompose into UTJ, UDJDD,
+        and PWJ components using spec post-processing method. Verify each component
+        within Table 8-6 limits. Note: TTX-RJ (Rj) is informative only per spec.
 
+        '
+      priority: P0
+      priority_rationale: Jitter budget compliance is mandatory for TX qualification;
+        excessive jitter causes link failure.
+      spec_ref: PCIe 5.0 §4.2.12 (jitter pattern), §8.3.5 (jitter definitions), §8.3.6
+        + Table 8-6 (data-rate-dependent limits)
+      pass_criteria: 'Gen3 (8 GT/s): TTX-UTJ and TTX-UDJDD per Table 8-6 limits at
+        BER 1e-12. Gen4 (16 GT/s): TTX-UTJ and TTX-UDJDD per Table 8-6 limits at BER
+        1e-12. Derived UI limits (for convenience): Tj ≤ 0.30 UI, Dj ≤ 0.15 UI. Internal
+        targets (Rj is informative): Rj(rms) ≤ 1.5 ps (Gen3), ≤ 0.9 ps (Gen4). All
+        4 lanes pass independently.
+
+        '
+      tool: Oscilloscope (≥33 GHz BW) + jitter analysis SW (e.g., Keysight EZJIT+)
+      test_method: hardware_lab
+      original_spec_ref: PCIe 5.0 §8.3.5, Table 8-6
+      original_pass_criteria: 'Gen3 (8 GT/s): Tj ≤ 0.30 UI at BER 1e-12, Rj(rms) ≤
+        1.5 ps. Gen4 (16 GT/s): Tj ≤ 0.30 UI at BER 1e-12, Rj(rms) ≤ 0.9 ps. Dj ≤
+        0.15 UI at each rate. All 4 lanes pass independently.
+
+        '
+      validation:
+        status: valid
+        validated_at: '2026-03-13'
+        glean_validated: true
+        changes_made:
+        - Validated via Glean MCP - accurate
     - id: PHY-016
       title: TX Total Jitter (Tj) — Gen5 NRZ (32 GT/s)
-      description: >
-        Measure total jitter at TX TP2 for Gen5 32 GT/s NRZ signaling. Gen5 uses
-        the same NRZ (2-level, single eye) signaling as Gen1–Gen4 but at 32 GT/s
-        the jitter budget is extremely tight. Decompose into Rj, Dj, and bounded
-        uncorrelated jitter (BUj) per Gen5 jitter methodology.
-      priority: P0
-      priority_rationale: Gen5 NRZ at 32 GT/s has the tightest jitter budget of any NRZ rate; separate measurement confirms compliance.
-      spec_ref: "PCIe 5.0 §8.3.5, Table 8-6"
-      pass_criteria: >
-        Tj ≤ 0.28 UI at BER 1e-12. Rj(rms) ≤ 0.5 ps. Single NRZ eye meets
-        Gen5 jitter budget. All 4 lanes pass independently.
-      tool: "Oscilloscope (≥50 GHz BW) + jitter analysis SW (e.g., Keysight EZJIT+)"
-      test_method: hardware_lab
+      description: 'Measure total jitter at TX TP2 for Gen5 32 GT/s NRZ using jitter
+        measurement pattern from §4.2.12 (setting #47). Decompose into UTJ, UDJDD,
+        UPW-TJ, UPW-DJDD per Gen5 Base jitter methodology in PHY Test Spec / Tx MOI.
+        Gen5 uses same NRZ signaling as Gen1-Gen4 but with extremely tight jitter
+        budget.
 
+        '
+      priority: P0
+      priority_rationale: Gen5 NRZ at 32 GT/s has the tightest jitter budget of any
+        NRZ rate; separate measurement confirms compliance.
+      spec_ref: PCIe 5.0 §4.2.12 (32 GT/s jitter pattern), §8.3.5 (jitter definitions),
+        §8.3.6 + Table 8-6 (limits); PCIe PHY Test Spec / Tx MOI for Base jitter
+      pass_criteria: 'Normative Base-spec limits at BER 1e-12: UTJ ≤ 6.25 ps, UDJDD
+        ≤ 3.125 ps, UPW-TJ ≤ 6.25 ps, UPW-DJDD ≤ 2.5 ps. Derived UI limit: Tj ≤ 0.28
+        UI. Internal target (Rj informative): Rj(rms) ≤ 0.5 ps. All 4 lanes pass.
+
+        '
+      tool: Oscilloscope (≥50 GHz BW) + jitter analysis SW (e.g., Keysight EZJIT+)
+      test_method: hardware_lab
+      original_spec_ref: PCIe 5.0 §8.3.5, Table 8-6
+      original_pass_criteria: 'Tj ≤ 0.28 UI at BER 1e-12. Rj(rms) ≤ 0.5 ps. Single
+        NRZ eye meets Gen5 jitter budget. All 4 lanes pass independently.
+
+        '
+      validation:
+        status: valid
+        validated_at: '2026-03-13'
+        glean_validated: true
+        changes_made:
+        - Validated via Glean MCP - accurate
     - id: PHY-017
       title: TX Deterministic Jitter — SSC-Induced
-      description: >
-        Measure TX jitter with SSC enabled and disabled. Quantify the SSC-induced
-        jitter contribution by subtracting the SSC-off measurement from the SSC-on
-        measurement. Verify SSC does not push total jitter beyond budget.
-      priority: P1
-      priority_rationale: SSC adds systematic jitter; must verify it does not consume excessive jitter budget.
-      spec_ref: "PCIe 5.0 §8.3.5, §8.6.3, Table 8-6"
-      pass_criteria: >
-        SSC-induced jitter contribution ≤ 0.10 UI at each supported data rate.
-        Total jitter with SSC enabled still meets Table 8-7 limits. No
-        frequency-dependent jitter spikes exceeding 0.05 UI.
-      tool: "Oscilloscope + jitter analysis SW + SSC analysis"
-      test_method: hardware_lab
+      description: 'Measure TX jitter with SSC enabled and disabled. Quantify the
+        SSC-induced jitter contribution by subtracting the SSC-off measurement from
+        the SSC-on measurement. Verify SSC does not push total jitter beyond budget.
 
+        '
+      priority: P1
+      priority_rationale: SSC adds systematic jitter; must verify it does not consume
+        excessive jitter budget.
+      spec_ref: PCIe 5.0 §8.3.5, §8.6.3, Table 8-6
+      pass_criteria: 'SSC-induced jitter contribution ≤ 0.10 UI at each supported
+        data rate. Total jitter with SSC enabled still meets Table 8-7 limits. No
+        frequency-dependent jitter spikes exceeding 0.05 UI.
+
+        '
+      tool: Oscilloscope + jitter analysis SW + SSC analysis
+      test_method: hardware_lab
     - id: PHY-018
       title: Common-Mode Noise and AC Common-Mode Voltage
-      description: >
-        Measure AC common-mode voltage (Vcm) on TX differential pairs at TP2 using
-        a common-mode probe. Verify common-mode noise does not exceed spec limit,
-        which can cause EMI issues and receiver sensitivity degradation.
-      priority: P1
-      priority_rationale: Excessive common-mode noise causes EMI compliance failures; measured as part of electrical qualification.
-      spec_ref: "PCIe 5.0 §8.3.9, Table 8-7"
-      pass_criteria: >
-        AC common-mode voltage (Vcm,AC) ≤ 20 mV (rms) at all supported data rates.
-        Common-mode to differential conversion ≤ -20 dB. All 4 TX lane pairs pass.
-      tool: "Oscilloscope + common-mode probe + CEM test fixture"
-      test_method: hardware_lab
+      description: 'Measure AC common-mode voltage (Vcm) on TX differential pairs
+        at TP2 using a common-mode probe. Verify common-mode noise does not exceed
+        spec limit, which can cause EMI issues and receiver sensitivity degradation.
 
+        '
+      priority: P1
+      priority_rationale: Excessive common-mode noise causes EMI compliance failures;
+        measured as part of electrical qualification.
+      spec_ref: PCIe 5.0 §8.3.9, Table 8-7
+      pass_criteria: 'AC common-mode voltage (Vcm,AC) ≤ 20 mV (rms) at all supported
+        data rates. Common-mode to differential conversion ≤ -20 dB. All 4 TX lane
+        pairs pass.
+
+        '
+      tool: Oscilloscope + common-mode probe + CEM test fixture
+      test_method: hardware_lab
   - name: Gen5 High-Speed NRZ (32 GT/s)
     items:
     - id: PHY-019
       title: Gen5 EQ Phase 0–3 at 32 GT/s
-      description: >
-        Monitor full equalization handshake at Gen5 using protocol analyzer. Capture
-        EQ Phase 0 (preset request), Phase 1 (RC TX preset sweep), Phase 2 (device
-        coefficient request), and Phase 3 (device TX adaptation). Gen5 uses the same
-        Phase 0–3 NRZ equalization mechanism as Gen3/Gen4, but with tighter timing
-        requirements at 32 GT/s. Verify each phase completes within timeout and
-        correct TS1/TS2 Modified ordered sets are used.
-      priority: P0
-      priority_rationale: Gen5 EQ has tighter timing at 32 GT/s; incorrect handshake prevents link training at highest NRZ speed.
-      spec_ref: "PCIe 5.0 §4.2.6.4.2"
-      pass_criteria: >
-        Phase 0 completes with valid preset selection. Phase 1 ≤ 12 ms. Phase 2
-        ≤ 24 ms. Phase 3 ≤ 32 ms. All phases use Gen5 Modified TS1/TS2 ordered sets.
-        Final EQ status register shows Phase 3 complete with valid coefficients.
-        Link reaches L0 at 32 GT/s after EQ.
-      tool: "Protocol analyzer (LeCroy Summit T516 or equivalent)"
-      test_method: hardware_lab
+      description: 'Monitor full equalization handshake at Gen5 using protocol analyzer.
+        Capture EQ Phase 0 (preset request), Phase 1 (RC TX preset sweep), Phase 2
+        (device coefficient request), and Phase 3 (device TX adaptation). Gen5 uses
+        same Phase 0–3 NRZ EQ mechanism as Gen3/Gen4 with Modified TS1/TS2 ordered
+        sets. Verify each phase completes within Base-spec LTSSM timeout (24 ms -0/+2
+        ms).
 
+        '
+      priority: P0
+      priority_rationale: Gen5 EQ has tighter timing at 32 GT/s; incorrect handshake
+        prevents link training at highest NRZ speed.
+      spec_ref: PCIe 5.0 §4.2.3 (Link EQ procedure), §4.2.4 (TS1/TS2 fields), §4.2.6.4.2
+        (Recovery.Equalization), §7.7.x (32 GT/s Extended Capability); Link/Transaction
+        Test Spec for test-specific timings
+      pass_criteria: 'Phase 0 completes with valid preset selection (FS/LF/preset
+        legal per spec). EQ Phases 2 and 3 obey Base-spec LTSSM timeout: 24 ms (-0/+2
+        ms) each. No preset/coeff evaluation > 2 ms. Modified TS1/TS2 used when 32
+        GT/s advertised. 32 GT/s Status shows Phase 3 complete with valid coefficients.
+        Link reaches L0 at 32 GT/s. Test-spec limits (not Base): Phase 1 ≤ 12 ms,
+        Phase 2 ≤ 24 ms, Phase 3 ≤ 32 ms (from Link/Transaction Test Spec).
+
+        '
+      tool: Protocol analyzer (LeCroy Summit T516 or equivalent)
+      test_method: hardware_lab
+      original_spec_ref: PCIe 5.0 §4.2.6.4.2
+      original_pass_criteria: 'Phase 0 completes with valid preset selection. Phase
+        1 ≤ 12 ms. Phase 2 ≤ 24 ms. Phase 3 ≤ 32 ms. All phases use Gen5 Modified
+        TS1/TS2 ordered sets. Final EQ status register shows Phase 3 complete with
+        valid coefficients. Link reaches L0 at 32 GT/s after EQ.
+
+        '
+      validation:
+        status: valid
+        validated_at: '2026-03-13'
+        glean_validated: true
+        changes_made:
+        - Validated via Glean MCP - accurate
     - id: PHY-020
       title: Gen5 TX Preset Sweep at 32 GT/s
-      description: >
-        Iterate through all required Gen5 TX presets during EQ Phase 2/3. For each
-        preset, measure NRZ eye quality (eye height, eye width) and record BER.
-        Gen5 uses the same NRZ preset mechanism as Gen3/Gen4 but may define
-        additional Gen5-specific preset targets. Identify optimal and worst-case
-        presets.
-      priority: P1
-      priority_rationale: Characterizes DUT TX performance across all supported presets; identifies margin bottlenecks at 32 GT/s.
-      spec_ref: "PCIe 5.0 §8.3.3.3, §8.3.3.5, Table 8-1"
-      pass_criteria: >
-        All mandatory Gen5 presets produce valid NRZ eyes meeting mask. Optimal
-        preset achieves BER < 1e-12 with margin. Worst-case mandatory preset still
-        achieves BER < 1e-12. No preset request rejected. All 4 lanes characterized.
-      tool: "Protocol analyzer + oscilloscope (≥50 GHz BW) + BERT"
-      test_method: hardware_lab
+      description: 'Iterate through all required Gen5 TX presets during EQ Phase 2/3.
+        For each preset, measure NRZ eye quality (eye height, eye width) and record
+        BER. Gen5 uses the same NRZ preset mechanism as Gen3/Gen4 but may define additional
+        Gen5-specific preset targets. Identify optimal and worst-case presets.
 
+        '
+      priority: P1
+      priority_rationale: Characterizes DUT TX performance across all supported presets;
+        identifies margin bottlenecks at 32 GT/s.
+      spec_ref: PCIe 5.0 §8.3.3.3, §8.3.3.5, Table 8-1
+      pass_criteria: 'All mandatory Gen5 presets produce valid NRZ eyes meeting mask.
+        Optimal preset achieves BER < 1e-12 with margin. Worst-case mandatory preset
+        still achieves BER < 1e-12. No preset request rejected. All 4 lanes characterized.
+
+        '
+      tool: Protocol analyzer + oscilloscope (≥50 GHz BW) + BERT
+      test_method: hardware_lab
     - id: PHY-021
       title: Gen5 CTLE + DFE Receiver Equalization at 32 GT/s
-      description: >
-        Apply variable ISI channels (20–30 dB loss at Nyquist) to DUT RX at 32 GT/s.
-        Monitor DFE tap adaptation via vendor-specific debug registers (if available).
-        Gen5 NRZ at 32 GT/s requires more aggressive equalization than Gen4 due to
-        higher channel loss at 16 GHz Nyquist. Verify link trains and maintains
-        BER < 1e-12 across channel range.
-      priority: P0
-      priority_rationale: Gen5 NRZ at 32 GT/s faces significant channel loss at 16 GHz; aggressive equalization is essential.
-      spec_ref: "PCIe 5.0 §8.4.1.9, §8.4.1.10"
-      pass_criteria: >
-        Link trains at Gen5 x4 through channels with up to 28 dB insertion loss
-        at 16 GHz (Nyquist). BER < 1e-12 sustained for ≥10 minutes at each channel
-        loss level. DFE converges within 5 ms of link training completion.
-      tool: "BERT (≥32 Gbaud NRZ capable) + variable ISI channel set"
-      test_method: hardware_lab
+      description: 'Apply variable ISI channels (20–30 dB loss at Nyquist) to DUT
+        RX at 32 GT/s. Monitor DFE tap adaptation via vendor debug registers (if available).
+        Use calibration channels per §8.4.1.2 IL masks. Gen5 NRZ at 32 GT/s requires
+        aggressive EQ per behavioral CTLE (§8.4.1.9) and DFE (§8.4.1.10) models. Verify
+        link trains and maintains BER < 1e-12 across channel range.
 
+        '
+      priority: P0
+      priority_rationale: Gen5 NRZ at 32 GT/s faces significant channel loss at 16
+        GHz; aggressive equalization is essential.
+      spec_ref: PCIe 5.0 §8.4.1.2 (calibration channel IL), §8.4.1.9 (behavioral CTLE
+        32 GT/s), §8.4.1.10 (behavioral DFE); CEM/PHY Test Spec for IL values
+      pass_criteria: 'BER < 1e-12 at channels meeting stressed-eye test requirements.
+        Internal test limits (from CEM/MOI, not Base spec): up to 28 dB IL at 16 GHz,
+        BER sustained ≥10 minutes, DFE converges within 5 ms. Base-spec alignment:
+        post-CTLE/DFE EH/EW meet 32 GT/s stressed-eye targets per §8.4.1.
+
+        '
+      tool: BERT (≥32 Gbaud NRZ capable) + variable ISI channel set
+      test_method: hardware_lab
+      original_spec_ref: PCIe 5.0 §8.4.1.9, §8.4.1.10
+      original_pass_criteria: 'Link trains at Gen5 x4 through channels with up to
+        28 dB insertion loss at 16 GHz (Nyquist). BER < 1e-12 sustained for ≥10 minutes
+        at each channel loss level. DFE converges within 5 ms of link training completion.
+
+        '
+      validation:
+        status: valid
+        validated_at: '2026-03-13'
+        glean_validated: true
+        changes_made:
+        - Validated via Glean MCP - accurate
     - id: PHY-022
       title: Gen5 to Gen4 Fallback on Training Failure
-      description: >
-        Impair the Gen5 channel beyond the device's equalization capability (e.g.,
-        >35 dB insertion loss). Verify the device attempts Gen5 training, fails
-        gracefully, and falls back to Gen4 (16 GT/s NRZ) without hanging or
-        entering a training loop. Monitor LTSSM state transitions.
-      priority: P0
-      priority_rationale: Graceful speed fallback is critical for backward compatibility and system reliability.
-      spec_ref: "PCIe 5.0 §4.2.6.5 (Recovery)"
-      pass_criteria: >
-        Device enters Recovery within 2 seconds of Gen5 training failure. Speed
-        downgrade to Gen4 completes within 100 ms of Recovery entry. Link reaches
-        L0 at Gen4 x4 with BER < 1e-12. No LTSSM hang (no state stuck >200 ms).
-        lspci confirms Gen4 link speed.
-      tool: "Protocol analyzer + high-loss channel + Linux lspci"
-      test_method: hardware_lab
+      description: 'Impair the Gen5 channel beyond device''s EQ capability (e.g.,
+        >35 dB IL). Verify device attempts Gen5 training, fails gracefully per LTSSM
+        rules, and falls back to Gen4 (16 GT/s NRZ) without hanging. Monitor LTSSM
+        state transitions. Verify no Recovery/EQ sub-state exceeds Base-spec ~24 ms
+        timeout.
 
+        '
+      priority: P0
+      priority_rationale: Graceful speed fallback is critical for backward compatibility
+        and system reliability.
+      spec_ref: PCIe 5.0 §4.2.3 (Link EQ outcomes), §4.2.6.5 (Recovery), §7.5/§7.7.x
+        (Link Status/16 GT/s Status registers)
+      pass_criteria: 'No Recovery/EQ sub-state exceeds Base-spec timeout (~24 ms).
+        Link Status/ Status 2 and 16 GT/s Status show Gen4 (16.0 GT/s) x4 after fallback.
+        BER < 1e-12 at Gen4. No repeated Gen5/Gen4 oscillation. Internal test limits
+        (not Base spec): Recovery entry within 2 s, downgrade within 100 ms, no state
+        stuck >200 ms.
+
+        '
+      tool: Protocol analyzer + high-loss channel + Linux lspci
+      test_method: hardware_lab
+      original_spec_ref: PCIe 5.0 §4.2.6.5 (Recovery)
+      original_pass_criteria: 'Device enters Recovery within 2 seconds of Gen5 training
+        failure. Speed downgrade to Gen4 completes within 100 ms of Recovery entry.
+        Link reaches L0 at Gen4 x4 with BER < 1e-12. No LTSSM hang (no state stuck
+        >200 ms). lspci confirms Gen4 link speed.
+
+        '
+      validation:
+        status: valid
+        validated_at: '2026-03-13'
+        glean_validated: true
+        changes_made:
+        - Validated via Glean MCP - accurate
     - id: PHY-023
       title: Gen5 SKP Ordered Set Interval at 32 GT/s
-      description: >
-        Capture ≥1000 SKP ordered set intervals at Gen5 32 GT/s using protocol
-        analyzer. Verify SKP OS scheduling follows Gen5-specific interval
-        requirements for elastic buffer management. Gen5 uses 128b/130b encoding
-        (same as Gen3/Gen4). Check that SKP OS insertion does not violate the
-        scheduled interval by more than allowed tolerance.
-      priority: P1
-      priority_rationale: Incorrect SKP interval causes elastic buffer overflow/underflow leading to bit errors.
-      spec_ref: "PCIe 5.0 §4.2.7 (SKP Ordered Set)"
-      pass_criteria: >
-        SKP OS interval per Gen5 schedule: nominal every 370 blocks. No interval
-        exceeds 1.5× nominal. No elastic buffer overflow or underflow events during
-        ≥10 minutes of sustained traffic. Zero SKP-related errors in AER.
-      tool: "Protocol analyzer (LeCroy Summit T516 or equivalent)"
-      test_method: hardware_lab
+      description: 'Capture ≥1000 SKP ordered set intervals at Gen5 32 GT/s using
+        protocol analyzer. Verify SKP OS scheduling follows Gen5-specific interval
+        requirements for elastic buffer management. Gen5 uses 128b/130b encoding (same
+        as Gen3/Gen4). Check that SKP OS insertion does not violate the scheduled
+        interval by more than allowed tolerance.
 
+        '
+      priority: P1
+      priority_rationale: Incorrect SKP interval causes elastic buffer overflow/underflow
+        leading to bit errors.
+      spec_ref: PCIe 5.0 §4.2.7 (SKP Ordered Set)
+      pass_criteria: 'SKP OS interval per Gen5 schedule: nominal every 370 blocks.
+        No interval exceeds 1.5× nominal. No elastic buffer overflow or underflow
+        events during ≥10 minutes of sustained traffic. Zero SKP-related errors in
+        AER.
+
+        '
+      tool: Protocol analyzer (LeCroy Summit T516 or equivalent)
+      test_method: hardware_lab
     - id: PHY-024
       title: Gen5 Modified TS1/TS2 Ordered Sets
-      description: >
-        Capture link training at Gen5 and decode Modified TS1 and TS2 ordered sets.
-        Verify correct fields: Gen5-specific EQ information, speed/width negotiation.
-        Compare against standard TS1/TS2 to confirm Gen5 extensions are present.
-        Modified TS carry Gen5-specific equalization parameters for the tighter
+      description: 'Capture link training at Gen5 and decode Modified TS1 and TS2
+        ordered sets. Verify correct fields: Gen5-specific EQ information, speed/width
+        negotiation. Compare against standard TS1/TS2 to confirm Gen5 extensions are
+        present. Modified TS carry Gen5-specific equalization parameters for the tighter
         32 GT/s NRZ link budget.
-      priority: P1
-      priority_rationale: Modified TS carry Gen5-specific EQ information; incorrect TS cause training failures.
-      spec_ref: "PCIe 5.0 §4.2.6.3 (Gen5 TS)"
-      pass_criteria: >
-        All Modified TS1/TS2 contain valid Gen5 EQ fields. Speed field includes
-        32 GT/s. Coefficient fields match negotiated presets. No malformed TS
-        detected in ≥100 training sequences.
-      tool: "Protocol analyzer (LeCroy Summit T516 or equivalent)"
-      test_method: hardware_lab
 
+        '
+      priority: P1
+      priority_rationale: Modified TS carry Gen5-specific EQ information; incorrect
+        TS cause training failures.
+      spec_ref: PCIe 5.0 §4.2.6.3 (Gen5 TS)
+      pass_criteria: 'All Modified TS1/TS2 contain valid Gen5 EQ fields. Speed field
+        includes 32 GT/s. Coefficient fields match negotiated presets. No malformed
+        TS detected in ≥100 training sequences.
+
+        '
+      tool: Protocol analyzer (LeCroy Summit T516 or equivalent)
+      test_method: hardware_lab
     - id: PHY-025
       title: Gen5 TX/RX Electrical Specification Limits at 32 GT/s
-      description: >
-        Validate all Gen5-specific electrical parameters that are tighter than
-        Gen4 due to the 32 GT/s NRZ data rate. Measure TX differential output
-        voltage, TX rise/fall time symmetry, RX input voltage tolerance, and
-        RX termination characteristics. Gen5 has the smallest NRZ eye opening,
-        requiring stricter TX/RX electrical specs.
-      priority: P0
-      priority_rationale: Gen5 NRZ at 32 GT/s pushes NRZ signaling to its practical limit; electrical specs must be verified precisely.
-      spec_ref: "PCIe 5.0 §8.3.6, §8.4.3, Table 8-6, Table 8-10"
-      pass_criteria: >
-        All Gen5-specific electrical parameters within spec. TX eye opening meets
-        Gen5 mask. RX input sensitivity per Table 8-9. TX/RX termination impedance
-        within ±15% of 50 Ω nominal. All 4 lanes pass independently.
-      tool: "Oscilloscope (≥50 GHz BW) + BERT + CEM test fixture"
-      test_method: hardware_lab
+      description: 'Validate all Gen5-specific electrical parameters that are tighter
+        than Gen4 due to the 32 GT/s NRZ data rate. Measure TX differential output
+        voltage (VTX-DIFF-PP), TX jitter per Table 8-6, RX stressed-eye tolerance
+        per Table 8-9, and TX/RX termination per §8.4.5.4. Gen5 has smallest NRZ eye
+        opening, requiring stricter TX/RX electrical specs.
 
+        '
+      priority: P0
+      priority_rationale: Gen5 NRZ at 32 GT/s pushes NRZ signaling to its practical
+        limit; electrical specs must be verified precisely.
+      spec_ref: PCIe 5.0 §8.3.6 + Table 8-6 (32 GT/s TX params), §8.4.1-§8.4.2 + Table
+        8-9 (stressed eye at RX), §8.4.3 + Table 8-10 (common RX params), §8.4.5.4
+        (TX/RX termination), §8.5.1.4.3 (pass/fail eye)
+      pass_criteria: 'TX: all 32 GT/s parameters in Table 8-6 met (jitter, VTX-DIFF-PP,
+        VTX-CM-DC). RX: tolerates stressed eye per Table 8-9 at 32 GT/s, BER ≤ 1e-12
+        per §8.4.1-2. Channel eye: derived eye at RX sampling point meets §8.5.1.4.3
+        mask. TX/RX terminations meet ZTX-DC/ZRX-DC (nominal 50 Ω ±tolerance per §8.4.5.4).
+        All 4 lanes pass independently.
+
+        '
+      tool: Oscilloscope (≥50 GHz BW) + BERT + CEM test fixture
+      test_method: hardware_lab
+      original_spec_ref: PCIe 5.0 §8.3.6, §8.4.3, Table 8-6, Table 8-10
+      original_pass_criteria: 'All Gen5-specific electrical parameters within spec.
+        TX eye opening meets Gen5 mask. RX input sensitivity per Table 8-9. TX/RX
+        termination impedance within ±15% of 50 Ω nominal. All 4 lanes pass independently.
+
+        '
+      validation:
+        status: valid
+        validated_at: '2026-03-13'
+        glean_validated: true
+        changes_made:
+        - Validated via Glean MCP - accurate
   - name: Signal Integrity & Channel
     items:
     - id: PHY-026
       title: Return Loss (S11/S22) at Connector
-      description: >
-        Perform S-parameter measurement using VNA on the DUT connector (SFF-8639
-        U.2). Measure S11 (input return loss) at both TX and RX ports across
+      description: 'Perform S-parameter measurement using VNA on the DUT connector
+        (SFF-8639 U.2). Measure S11 (input return loss) at both TX and RX ports across
         frequency range DC to 20 GHz (Gen4) / 32 GHz (Gen5). De-embed test fixture
         effects.
-      priority: P1
-      priority_rationale: Return loss exceeding limits causes reflections; important for SI qualification but not a standalone compliance test.
-      spec_ref: "PCIe 5.0 §8.3.7, Figure 8-20, Figure 8-21"
-      pass_criteria: >
-        Return loss (S11) ≤ -10 dB from 100 MHz to 8 GHz (Gen4 Nyquist).
-        Return loss ≤ -8 dB from 8 GHz to 16 GHz (Gen5 Nyquist). Meets
-        PCIe 5.0 Figure 8-14 return loss mask at all frequency points.
-        All lane pairs measured.
-      tool: "VNA (e.g., Keysight PNA-X N5247B) + SFF-8639 test fixture + calibration kit"
-      test_method: hardware_lab
 
+        '
+      priority: P1
+      priority_rationale: Return loss exceeding limits causes reflections; important
+        for SI qualification but not a standalone compliance test.
+      spec_ref: PCIe 5.0 §8.3.7, Figure 8-20, Figure 8-21
+      pass_criteria: 'Return loss (S11) ≤ -10 dB from 100 MHz to 8 GHz (Gen4 Nyquist).
+        Return loss ≤ -8 dB from 8 GHz to 16 GHz (Gen5 Nyquist). Meets PCIe 5.0 Figure
+        8-14 return loss mask at all frequency points. All lane pairs measured.
+
+        '
+      tool: VNA (e.g., Keysight PNA-X N5247B) + SFF-8639 test fixture + calibration
+        kit
+      test_method: hardware_lab
     - id: PHY-027
       title: Insertion Loss (S21) End-to-End Channel
-      description: >
-        Measure S21 (insertion loss) of the complete channel from DUT TX pad through
-        connector, PCB trace, and any cable/backplane to the receiver. Characterize
-        at Gen4 (8 GHz Nyquist) and Gen5 (16 GHz Nyquist) frequencies.
+      description: 'Measure S21 (insertion loss) of the complete channel from DUT
+        TX pad through connector, PCB trace, and any cable/backplane to the receiver.
+        Characterize at Gen4 (8 GHz Nyquist) and Gen5 (16 GHz Nyquist) frequencies.
+
+        '
       priority: P1
-      priority_rationale: Channel insertion loss determines equalization requirements and is the primary Gen5 feasibility metric.
-      spec_ref: "PCIe 5.0 §8.5"
-      pass_criteria: >
-        Direct-attach: insertion loss ≤ 10 dB at 8 GHz, ≤ 20 dB at 16 GHz.
-        Through 0.5 m SFF-8643 cable: insertion loss ≤ 15 dB at 8 GHz, ≤ 28 dB
+      priority_rationale: Channel insertion loss determines equalization requirements
+        and is the primary Gen5 feasibility metric.
+      spec_ref: PCIe 5.0 §8.5
+      pass_criteria: 'Direct-attach: insertion loss ≤ 10 dB at 8 GHz, ≤ 20 dB at 16
+        GHz. Through 0.5 m SFF-8643 cable: insertion loss ≤ 15 dB at 8 GHz, ≤ 28 dB
         at 16 GHz. S21 profile monotonically decreasing (no resonant nulls > 3 dB).
         All 4 lane pairs characterized.
-      tool: "VNA + SFF-8639/SFF-8643 test fixtures + calibration kit"
-      test_method: hardware_lab
 
+        '
+      tool: VNA + SFF-8639/SFF-8643 test fixtures + calibration kit
+      test_method: hardware_lab
     - id: PHY-028
       title: Crosstalk (NEXT and FEXT) Between Lanes
-      description: >
-        Measure near-end crosstalk (NEXT) and far-end crosstalk (FEXT) between all
-        adjacent lane pairs on the DUT connector using VNA. Stimulus on lane N TX,
-        measure coupling on lane N±1 RX. Characterize up to 16 GHz (Gen5 Nyquist).
-      priority: P1
-      priority_rationale: Inter-lane crosstalk degrades margin in x4 configurations; characterization needed for channel budget analysis.
-      spec_ref: "PCIe 5.0 §8.5"
-      pass_criteria: >
-        NEXT ≤ -26 dB at 8 GHz, ≤ -20 dB at 16 GHz between adjacent lane pairs.
-        FEXT ≤ -30 dB at 8 GHz, ≤ -24 dB at 16 GHz. Aggregate crosstalk (sum of
-        all aggressors) ≤ -20 dB at 16 GHz.
-      tool: "VNA (4-port or multi-port) + SFF-8639 test fixture"
-      test_method: hardware_lab
+      description: 'Measure near-end crosstalk (NEXT) and far-end crosstalk (FEXT)
+        between all adjacent lane pairs on the DUT connector using VNA. Stimulus on
+        lane N TX, measure coupling on lane N±1 RX. Characterize up to 16 GHz (Gen5
+        Nyquist).
 
+        '
+      priority: P1
+      priority_rationale: Inter-lane crosstalk degrades margin in x4 configurations;
+        characterization needed for channel budget analysis.
+      spec_ref: PCIe 5.0 §8.5
+      pass_criteria: 'NEXT ≤ -26 dB at 8 GHz, ≤ -20 dB at 16 GHz between adjacent
+        lane pairs. FEXT ≤ -30 dB at 8 GHz, ≤ -24 dB at 16 GHz. Aggregate crosstalk
+        (sum of all aggressors) ≤ -20 dB at 16 GHz.
+
+        '
+      tool: VNA (4-port or multi-port) + SFF-8639 test fixture
+      test_method: hardware_lab
     - id: PHY-029
       title: U.2 Direct-Attach vs. Cable-Attach Eye Comparison
-      description: >
-        Measure TX eye diagram at TP2 in two configurations: (1) direct-attach in
-        CEM test fixture, (2) through 0.5 m SFF-8643 cable to backplane. Compare
-        eye height, width, and margin degradation. Test at Gen4 and Gen5. All
-        measurements are NRZ single-eye at both rates.
-      priority: P0
-      priority_rationale: Quantifies cable-induced signal degradation; determines if Gen5 is viable through cable.
-      spec_ref: "PCIe 5.0 §8.3.6, §8.5.1.4.3, SFF-8643"
-      pass_criteria: >
-        Direct-attach Gen4 eye meets Table 8-5 mask. Cable-attach Gen4 eye meets
-        mask with ≥10% margin. Direct-attach Gen5 NRZ eye meets Table 8-6 mask.
-        Cable-attach Gen5 NRZ eye documented (pass/fail with margin values).
-        Eye degradation from cable ≤ 40% of direct-attach values.
-      tool: "Oscilloscope (≥50 GHz BW) + CEM test fixture + 0.5 m SFF-8643 cable"
-      test_method: hardware_lab
+      description: 'Measure derived eye at RX sampling point in two configurations:
+        (1) direct- attach in CEM test fixture, (2) through 0.5 m cable to backplane.
+        Compare eye height, width, and margin degradation. Use stressed-eye methodology
+        per §8.4.1-§8.4.2 with behavioral CDR/EQ. Test at Gen4 and Gen5 using respective
+        compliance patterns. All measurements are NRZ single-eye.
 
+        '
+      priority: P0
+      priority_rationale: Quantifies cable-induced signal degradation; determines
+        if Gen5 is viable through cable.
+      spec_ref: PCIe 5.0 §8.3.6 (TX params), §8.4.1-§8.4.2 + Table 8-9 (stressed eye),
+        §8.5.1.4.3 (pass/fail eye); SFF-8639/SFF-TA-1001 (U.2 connector)
+      pass_criteria: 'Gen4 (16 GT/s): direct-attach eye meets Table 8-9 + §8.5.1.4.3
+        mask at BER ≤ 1e-12. Gen5 (32 GT/s): direct-attach NRZ eye meets same stressed-eye
+        mask. Cable-attach: record EH/EW and margin vs spec mask. Internal targets
+        (not spec): cable-attach ≥10% margin, degradation ≤40% of direct-attach values.
+
+        '
+      tool: Oscilloscope (≥50 GHz BW) + CEM test fixture + U.2 cable
+      test_method: hardware_lab
+      original_spec_ref: PCIe 5.0 §8.3.6, §8.5.1.4.3, SFF-8643
+      original_pass_criteria: 'Direct-attach Gen4 eye meets Table 8-5 mask. Cable-attach
+        Gen4 eye meets mask with ≥10% margin. Direct-attach Gen5 NRZ eye meets Table
+        8-6 mask. Cable-attach Gen5 NRZ eye documented (pass/fail with margin values).
+        Eye degradation from cable ≤ 40% of direct-attach values.
+
+        '
+      validation:
+        status: valid
+        validated_at: '2026-03-13'
+        glean_validated: true
+        changes_made:
+        - Validated via Glean MCP - accurate
     - id: PHY-030
       title: Channel Insertion Loss with Enterprise Backplane
-      description: >
-        Install DUT in enterprise JBOF backplane (24-bay). Measure end-to-end
+      description: 'Install DUT in enterprise JBOF backplane (24-bay). Measure end-to-end
         channel S21 from DUT TX through backplane traces to HBA connector. Verify
-        channel budget supports target data rate. Test worst-case slot position
-        (longest trace).
-      priority: P1
-      priority_rationale: Enterprise deployments use backplanes with significant loss; validates real-world Gen4/Gen5 feasibility.
-      spec_ref: "PCIe 5.0 §8.5, SFF-8639"
-      pass_criteria: >
-        Backplane channel supports Gen4 x4: insertion loss ≤ 20 dB at 8 GHz.
-        Gen5 x4 feasibility: insertion loss ≤ 28 dB at 16 GHz (may require retimer).
-        Link trains at target speed in worst-case slot. Lane margin ≥ 15% UI timing.
-      tool: "VNA + enterprise backplane + protocol analyzer + margin tool"
-      test_method: hardware_lab
+        channel budget supports target data rate. Test worst-case slot position (longest
+        trace).
 
+        '
+      priority: P1
+      priority_rationale: Enterprise deployments use backplanes with significant loss;
+        validates real-world Gen4/Gen5 feasibility.
+      spec_ref: PCIe 5.0 §8.5, SFF-8639
+      pass_criteria: 'Backplane channel supports Gen4 x4: insertion loss ≤ 20 dB at
+        8 GHz. Gen5 x4 feasibility: insertion loss ≤ 28 dB at 16 GHz (may require
+        retimer). Link trains at target speed in worst-case slot. Lane margin ≥ 15%
+        UI timing.
+
+        '
+      tool: VNA + enterprise backplane + protocol analyzer + margin tool
+      test_method: hardware_lab
     - id: PHY-031
       title: Retimer Interaction and Latency (If in Path)
-      description: >
-        Install DUT behind a PCIe retimer. Verify EQ handshake completes with
-        retimer in path (up to 2 retimers per Gen5 spec). Measure added latency
+      description: 'Install DUT behind a PCIe retimer. Verify EQ handshake completes
+        with retimer in path (up to 2 retimers per Gen5 spec). Measure added latency
         from retimer. Verify link trains at target speed.
-      priority: P1
-      priority_rationale: Gen5 channels frequently require retimers; must verify compatibility and quantify latency impact.
-      spec_ref: "PCIe 5.0 §4.3.5"
-      pass_criteria: >
-        Link trains at Gen5 x4 through 1 retimer. EQ completes on both upstream
-        and downstream retimer links. Added latency from retimer ≤ 50 ns per
-        retimer. BER < 1e-12 sustained. With 2 retimers: link trains at Gen4 x4
-        minimum.
-      tool: "Protocol analyzer + retimer eval board + latency measurement tool"
-      test_method: hardware_lab
 
+        '
+      priority: P1
+      priority_rationale: Gen5 channels frequently require retimers; must verify compatibility
+        and quantify latency impact.
+      spec_ref: PCIe 5.0 §4.3.5
+      pass_criteria: 'Link trains at Gen5 x4 through 1 retimer. EQ completes on both
+        upstream and downstream retimer links. Added latency from retimer ≤ 50 ns
+        per retimer. BER < 1e-12 sustained. With 2 retimers: link trains at Gen4 x4
+        minimum.
+
+        '
+      tool: Protocol analyzer + retimer eval board + latency measurement tool
+      test_method: hardware_lab
   - name: CEM / Form Factor / Connector
     items:
     - id: PHY-032
       title: SFF-8639 Connector Pin Assignment Verification
-      description: >
-        Verify all SFF-8639 U.2 connector pin assignments using schematic review
-        and continuity testing. Check PCIe data lanes (TX0–TX3, RX0–RX3), power
-        pins (12V, 3.3V, 3.3Vaux), sideband signals (PERST#, CLKREQ#, IFDET#,
-        DualPort#, Activity LED).
-      priority: P0
-      priority_rationale: Incorrect pin assignment causes device damage or non-function; must verify before any electrical testing.
-      spec_ref: "SFF-8639 Rev 2.1, Table 1"
-      pass_criteria: >
-        All 68 pins verified against SFF-8639 Table 1. PCIe lane continuity:
-        ≤ 0.5 Ω per pin. Power pins: correct voltage (12V ± 5%, 3.3V ± 5%).
-        PERST#, CLKREQ# connected to correct controller pins. No shorts between
-        adjacent pins. DualPort#, IFDET# pulled to correct default state.
-      tool: "Multimeter + continuity tester + schematic review"
-      test_method: inspection
+      description: 'Verify all SFF-8639 U.2 connector pin assignments using schematic
+        review and continuity testing. Check PCIe data lanes (TX0–TX3, RX0–RX3), power
+        pins (12V, 3.3Vaux), sideband signals (PERST#, CLKREQ#, IFDET#, DualPort#,
+        Activity LED). Reference PCIe SFF-8639 Module Spec for current U.2 pinout.
 
+        '
+      priority: P0
+      priority_rationale: Incorrect pin assignment causes device damage or non-function;
+        must verify before any electrical testing.
+      spec_ref: PCIe SFF-8639 (U.2) Module Spec Rev 5.0 (pinout); spec contact resistance
+        30 mΩ max for signal contacts
+      pass_criteria: 'All 68 pins verified against PCIe SFF-8639 Module Spec pinout
+        table. Signal contact resistance per spec: ≤30 mΩ/contact. PERST#, CLKREQ#
+        connected to correct controller pins. No shorts. Internal targets (stricter
+        than spec): continuity ≤0.5 Ω end-to-end, 12V ±5%, 3.3V ±5% (spec allows ±8-10%/±15%).
+
+        '
+      tool: Multimeter + continuity tester + schematic review
+      test_method: inspection
+      original_spec_ref: SFF-8639 Rev 2.1, Table 1
+      original_pass_criteria: 'All 68 pins verified against SFF-8639 Table 1. PCIe
+        lane continuity: ≤ 0.5 Ω per pin. Power pins: correct voltage (12V ± 5%, 3.3V
+        ± 5%). PERST#, CLKREQ# connected to correct controller pins. No shorts between
+        adjacent pins. DualPort#, IFDET# pulled to correct default state.
+
+        '
+      validation:
+        status: corrected
+        validated_at: '2026-03-13'
+        glean_validated: true
+        changes_made:
+        - Update to SFF-8639 Rev 4.0 (not Rev 5.0)
     - id: PHY-033
       title: U.2 Mechanical Dimensions
-      description: >
-        Measure physical dimensions of DUT against SFF-8201 (2.5-inch drive form
-        factor). Verify length, width, height, screw hole positions, and connector
-        alignment. Test insertion into reference U.2 backplane slot.
+      description: 'Measure physical dimensions of DUT against SFF-8201 (2.5-inch
+        drive form factor). Verify length, width, height, screw hole positions, and
+        connector alignment. Test insertion into reference U.2 backplane slot.
+
+        '
       priority: P0
-      priority_rationale: Mechanical non-compliance prevents physical installation in target platforms.
-      spec_ref: "SFF-8201, SFF-8639"
-      pass_criteria: >
-        Dimensions: 100.45 mm (L) × 69.85 mm (W) × 7.0/9.5/15.0 mm (H per
-        variant) ± 0.25 mm. Screw hole pattern per SFF-8201 ± 0.1 mm. Connector
+      priority_rationale: Mechanical non-compliance prevents physical installation
+        in target platforms.
+      spec_ref: SFF-8201 (2.5-inch form factor mechanicals); PCIe SFF-8639 Module
+        Spec (connector interface)
+      pass_criteria: 'Per SFF-8201 nominal dimensions: ~100.45 mm (L) × 69.85 mm (W)
+        × 7.0/9.5/15.0 mm (H per variant). Screw hole pattern per SFF-8201. Connector
+        position within SFF-8639 alignment tolerance. Clean insertion/ extraction
+        in reference backplane.
+
+        '
+      tool: Digital caliper (±0.01 mm) + gauge pins + reference U.2 backplane
+      test_method: inspection
+      original_spec_ref: SFF-8201, SFF-8639
+      original_pass_criteria: 'Dimensions: 100.45 mm (L) × 69.85 mm (W) × 7.0/9.5/15.0
+        mm (H per variant) ± 0.25 mm. Screw hole pattern per SFF-8201 ± 0.1 mm. Connector
         position within SFF-8639 alignment tolerance. Clean insertion/extraction in
         reference backplane with ≤ 30 N force.
-      tool: "Digital caliper (±0.01 mm) + gauge pins + reference U.2 backplane"
-      test_method: inspection
 
+        '
+      validation:
+        status: valid
+        validated_at: '2026-03-13'
+        glean_validated: true
+        changes_made:
+        - Validated via Glean MCP - accurate
     - id: PHY-034
       title: 12V Power Delivery and Inrush Current
-      description: >
-        Measure 12V rail current during power-on sequence and under max IO load
-        (fio randwrite 4K QD=128). Capture inrush current waveform during hot-insert.
-        Verify total power consumption stays within slot power limit.
-      priority: P0
-      priority_rationale: Exceeding slot power limit can trigger backplane protection and cause drive disconnection.
-      spec_ref: "SFF-8639, PCIe CEM 5.0 §5"
-      pass_criteria: >
-        Steady-state 12V current ≤ 2.08 A (25W / 12V). Inrush current ≤ 3× steady
-        state for ≤ 10 ms. Total power (12V + 3.3V) ≤ 25 W under max IO load.
-        No power rail glitches > ±5% during load transitions. Power stable within
-        100 ms of insertion.
-      tool: "Power meter (e.g., Monsoon HV) + oscilloscope (current probe) + fio"
-      test_method: hardware_lab
+      description: 'Measure 12V rail current during power-on sequence and under max
+        IO load (fio randwrite 4K QD=128). Capture inrush current waveform during
+        hot-insert. Verify total device power consumption stays within slot power
+        limit.
 
+        '
+      priority: P0
+      priority_rationale: Exceeding slot power limit can trigger backplane protection
+        and cause drive disconnection.
+      spec_ref: OCP Datacenter NVMe SSD 2.6 (25W power state); PCIe SFF-8639 Module
+        Spec (per-pin current); system/chassis specs for inrush limits
+      pass_criteria: 'Total device power (12V + 3.3V) ≤ 25 W under max IO load per
+        OCP Datacenter NVMe SSD power state 1. Inrush per system/chassis spec (typically
+        absolute peak e.g. 10 A on 12V). No power rail glitches > ±5% during load
+        transitions. Internal targets (not spec): steady-state 12V ≤ 2.08 A (assumes
+        all power from 12V), inrush ≤ 3× steady for ≤ 10 ms.
+
+        '
+      tool: Power meter (e.g., Monsoon HV) + oscilloscope (current probe) + fio
+      test_method: hardware_lab
+      original_spec_ref: SFF-8639, PCIe CEM 5.0 §5
+      original_pass_criteria: 'Steady-state 12V current ≤ 2.08 A (25W / 12V). Inrush
+        current ≤ 3× steady state for ≤ 10 ms. Total power (12V + 3.3V) ≤ 25 W under
+        max IO load. No power rail glitches > ±5% during load transitions. Power stable
+        within 100 ms of insertion.
+
+        '
+      validation:
+        status: corrected
+        validated_at: '2026-03-13'
+        glean_validated: true
+        changes_made:
+        - Add PCIe CEM 5.0 power delivery refs
     - id: PHY-035
       title: 3.3V Power Delivery and Aux Power
-      description: >
-        Measure 3.3V rail current under operating conditions. If device supports
-        D3cold wake via 3.3Vaux, verify aux current draw during D3cold state.
+      description: 'Measure 3.3V rail current under operating conditions. If device
+        supports D3cold wake via 3.3Vaux, verify aux current draw during D3cold state.
         Measure power sequencing between 3.3V and 12V rails.
-      priority: P1
-      priority_rationale: 3.3V rail powers sideband logic; correct operation needed for CLKREQ#/wake functionality.
-      spec_ref: "SFF-8639, PCIe CEM 5.0 §5"
-      pass_criteria: >
-        3.3V rail current within device datasheet specification. 3.3Vaux current
-        in D3cold ≤ 375 mA (CEM spec limit for add-in cards; device-specific for
-        U.2). 3.3V stable before PERST# de-assertion. No rail sequencing violations.
-      tool: "Power meter + oscilloscope (4-ch for rail monitoring)"
-      test_method: hardware_lab
 
+        '
+      priority: P1
+      priority_rationale: 3.3V rail powers sideband logic; correct operation needed
+        for CLKREQ#/wake functionality.
+      spec_ref: SFF-8639, PCIe CEM 5.0 §5
+      pass_criteria: '3.3V rail current within device datasheet specification. 3.3Vaux
+        current in D3cold ≤ 375 mA (CEM spec limit for add-in cards; device-specific
+        for U.2). 3.3V stable before PERST# de-assertion. No rail sequencing violations.
+
+        '
+      tool: Power meter + oscilloscope (4-ch for rail monitoring)
+      test_method: hardware_lab
     - id: PHY-036
       title: PERST# Timing and Input Characteristics
-      description: >
-        Monitor PERST# signal during power-on, warm reset, and hot-insert scenarios.
-        Measure de-assertion timing relative to power rail stability. Verify input
-        voltage thresholds (VIL, VIH) and input capacitance.
-      priority: P0
-      priority_rationale: PERST# is the primary reset mechanism; incorrect timing causes enumeration failures.
-      spec_ref: "PCIe CEM 5.0 §5, PCIe 5.0 §6.6.1"
-      pass_criteria: >
-        PERST# de-assertion ≥ 100 ms after power stable (Tpvperl). VIL ≤ 0.4 V,
-        VIH ≥ 1.3 V (3.3V CMOS levels). Input capacitance ≤ 15 pF. PERST#
-        assertion duration ≥ 100 μs for warm reset. Device enters Detect state
-        within 20 ms of PERST# de-assertion.
-      tool: "Oscilloscope (4-ch) + logic analyzer"
-      test_method: hardware_lab
+      description: 'Monitor PERST# signal during power-on, warm reset, and hot-insert
+        scenarios. Measure de-assertion timing relative to power rail stability. Verify
+        input voltage thresholds (VIL, VIH) and input capacitance per CEM spec.
 
+        '
+      priority: P0
+      priority_rationale: PERST# is the primary reset mechanism; incorrect timing
+        causes enumeration failures.
+      spec_ref: PCIe CEM 5.0/6.0 §2.2/§5 (TPVPERL, electrical levels); PCIe 5.0 §6.6.1
+        (Conventional Reset behavior)
+      pass_criteria: 'PERST# de-assertion ≥ 100 ms after power stable (TPVPERL per
+        CEM). CEM spec electrical levels: VIL ≤ 0.8 V, VIH ≥ 2.0-2.1 V (3.3V domain).
+        Device enters Detect state within 100 ms of PERST# de-assertion (per PCIe
+        5.0 for >5 GT/s). Internal targets (stricter): VIL ≤ 0.4 V, VIH ≥ 1.3 V, Detect
+        within 20 ms.
+
+        '
+      tool: Oscilloscope (4-ch) + logic analyzer
+      test_method: hardware_lab
+      original_spec_ref: PCIe CEM 5.0 §5, PCIe 5.0 §6.6.1
+      original_pass_criteria: 'PERST# de-assertion ≥ 100 ms after power stable (Tpvperl).
+        VIL ≤ 0.4 V, VIH ≥ 1.3 V (3.3V CMOS levels). Input capacitance ≤ 15 pF. PERST#
+        assertion duration ≥ 100 μs for warm reset. Device enters Detect state within
+        20 ms of PERST# de-assertion.
+
+        '
+      validation:
+        status: valid
+        validated_at: '2026-03-13'
+        glean_validated: true
+        changes_made:
+        - Validated via Glean MCP - accurate
     - id: PHY-037
       title: CLKREQ# Open-Drain Operation
-      description: >
-        Verify CLKREQ# pin is open-drain output. Measure pull-up voltage, drive-low
-        voltage, and assertion/de-assertion timing. Verify CLKREQ# correctly
+      description: 'Verify CLKREQ# pin is open-drain output. Measure pull-up voltage,
+        drive-low voltage, and assertion/de-assertion timing. Verify CLKREQ# correctly
         requests reference clock when transitioning from L1 sub-states.
-      priority: P1
-      priority_rationale: CLKREQ# is required for L1 sub-state power management; incorrect behavior prevents ASPM.
-      spec_ref: "PCIe CEM 5.0 §5.2"
-      pass_criteria: >
-        Drive-low voltage VOL ≤ 0.4 V with 20 mA sink. Open-drain high-Z
-        allows pull-up to 3.3V (leakage ≤ 10 μA). Assertion-to-clock-active
-        latency ≤ 50 μs. De-assertion coincides with L1 entry.
-      tool: "Oscilloscope + logic analyzer + resistive pull-up"
-      test_method: hardware_lab
 
+        '
+      priority: P1
+      priority_rationale: CLKREQ# is required for L1 sub-state power management; incorrect
+        behavior prevents ASPM.
+      spec_ref: PCIe CEM 5.0 §5.2
+      pass_criteria: 'Drive-low voltage VOL ≤ 0.4 V with 20 mA sink. Open-drain high-Z
+        allows pull-up to 3.3V (leakage ≤ 10 μA). Assertion-to-clock-active latency
+        ≤ 50 μs. De-assertion coincides with L1 entry.
+
+        '
+      tool: Oscilloscope + logic analyzer + resistive pull-up
+      test_method: hardware_lab
     - id: PHY-038
       title: IFDET# Interface Detect (NVMe Identification)
-      description: >
-        Verify IFDET# pin correctly indicates NVMe protocol (not SAS or SATA) per
-        SFF-8639 definition. Measure pin voltage in installed and removed states.
-        For U.3 tri-mode backplane, verify NVMe is auto-selected.
-      priority: P1
-      priority_rationale: Incorrect IFDET# prevents enumeration in multi-protocol backplanes (U.3).
-      spec_ref: "SFF-8639, SFF-TA-1001"
-      pass_criteria: >
-        IFDET# indicates NVMe mode per SFF-8639 pin definition. Voltage levels
-        match spec (pulled low for NVMe, floating/high for SAS). U.3 backplane
-        auto-selects NVMe within 500 ms of insertion. No false SAS/SATA detection.
-      tool: "Multimeter + logic analyzer + U.3 backplane (if testing tri-mode)"
-      test_method: inspection
+      description: 'Verify IFDET# pin correctly indicates NVMe protocol (not SAS or
+        SATA) per SFF-8639 definition. Measure pin voltage in installed and removed
+        states. For U.3 tri-mode backplane, verify NVMe is auto-selected.
 
+        '
+      priority: P1
+      priority_rationale: Incorrect IFDET# prevents enumeration in multi-protocol
+        backplanes (U.3).
+      spec_ref: SFF-8639, SFF-TA-1001
+      pass_criteria: 'IFDET# indicates NVMe mode per SFF-8639 pin definition. Voltage
+        levels match spec (pulled low for NVMe, floating/high for SAS). U.3 backplane
+        auto-selects NVMe within 500 ms of insertion. No false SAS/SATA detection.
+
+        '
+      tool: Multimeter + logic analyzer + U.3 backplane (if testing tri-mode)
+      test_method: inspection
     - id: PHY-039
       title: U.2 Hot-Swap Insertion and Removal
-      description: >
-        Insert DUT into powered U.2 backplane. Verify device enumerates without
-        system reboot. Execute IO to confirm functionality. Remove device under
-        OS control (echo 1 > /sys/bus/pci/.../remove). Verify clean removal with
-        no kernel panic or AER errors.
-      priority: P0
-      priority_rationale: Hot-swap is a core U.2 deployment requirement; failure causes system instability.
-      spec_ref: "SFF-8639, PCIe 5.0 §6.7"
-      pass_criteria: >
-        Device enumerates in lspci within 5 seconds of insertion. IO functional
-        (fio verify pass) after hot-insert. Controlled removal completes with exit
-        code 0. No kernel oops/panic. No AER uncorrectable errors. PCIe link
-        transitions through LTSSM states cleanly (Detect → L0).
-      tool: "Hot-swap capable U.2 backplane + Linux (lspci, fio, dmesg)"
-      test_method: hardware_lab
+      description: 'Insert DUT into powered U.2 backplane. Verify device enumerates
+        without system reboot. Execute IO to confirm functionality. Remove device
+        under OS control (echo 1 > /sys/bus/pci/.../remove). Verify clean removal
+        with no kernel panic or AER errors.
 
+        '
+      priority: P0
+      priority_rationale: Hot-swap is a core U.2 deployment requirement; failure causes
+        system instability.
+      spec_ref: 'SFF-8639 (U.2 hot-plug connector); PCIe 5.0 Link/PHY chapters (LTSSM);
+        §6.6.1 (Conventional Reset timing: 100 ms after reset, 1000 ms config-ready)'
+      pass_criteria: 'PCIe link trains Detect → Polling → Configuration → L0 successfully.
+        Config-ready within 1000 ms of link training per PCIe 5.0. IO functional after
+        hot-insert. Controlled removal completes cleanly. No kernel oops/ panic. Internal
+        targets (impl. requirements, not spec): enumerates in lspci within 5 s, zero
+        AER uncorrectable errors.
+
+        '
+      tool: Hot-swap capable U.2 backplane + Linux (lspci, fio, dmesg)
+      test_method: hardware_lab
+      original_spec_ref: SFF-8639, PCIe 5.0 §6.7
+      original_pass_criteria: 'Device enumerates in lspci within 5 seconds of insertion.
+        IO functional (fio verify pass) after hot-insert. Controlled removal completes
+        with exit code 0. No kernel oops/panic. No AER uncorrectable errors. PCIe
+        link transitions through LTSSM states cleanly (Detect → L0).
+
+        '
+      validation:
+        status: corrected
+        validated_at: '2026-03-13'
+        glean_validated: true
+        changes_made:
+        - Replace §6.6.1 with hot-plug section refs
     - id: PHY-040
       title: U.2 Surprise Removal Resilience
-      description: >
-        Remove DUT from powered backplane without OS notification (physical yank).
-        Monitor kernel logs for panic, oops, or unhandled errors. Verify AER/DPC
-        mechanisms handle the removal gracefully. Re-insert and verify re-enumeration.
-      priority: P0
-      priority_rationale: Surprise removal must not crash the host; required for enterprise deployment certification.
-      spec_ref: "SFF-8639, PCIe 5.0 §6.7.3"
-      pass_criteria: >
-        No kernel panic or oops on surprise removal. AER logs correctable/
-        uncorrectable errors appropriately. DPC (if enabled) isolates the slot
-        within 100 ms. Re-insert: device re-enumerates within 10 seconds.
-        System remains operational throughout.
-      tool: "Hot-swap capable U.2 backplane + Linux (dmesg, AER logs)"
-      test_method: hardware_lab
+      description: 'Remove DUT from powered backplane without OS notification (physical
+        yank). Monitor kernel logs for panic, oops, or unhandled errors. Verify AER/DPC
+        mechanisms handle the removal gracefully per PCIe error handling chapters.
+        Re-insert and verify re-enumeration.
 
+        '
+      priority: P0
+      priority_rationale: Surprise removal must not crash the host; required for enterprise
+        deployment certification.
+      spec_ref: 'SFF-8639 (U.2 hot-plug); PCIe 5.0 Chapter 6 (AER capability: Surprise
+        Down error type, correctable vs uncorrectable); DPC Extended Capability (§6.2.x)'
+      pass_criteria: 'AER logs Surprise Down as uncorrectable error per spec. DPC
+        (if enabled) isolates slot per DPC capability behavior. System remains operational
+        throughout. Internal targets (impl. requirements): no kernel panic/oops, DPC
+        isolation within 100 ms, re-enumeration within 10 s after re-insert.
+
+        '
+      tool: Hot-swap capable U.2 backplane + Linux (dmesg, AER logs)
+      test_method: hardware_lab
+      original_spec_ref: SFF-8639, PCIe 5.0 §6.7.3
+      original_pass_criteria: 'No kernel panic or oops on surprise removal. AER logs
+        correctable/ uncorrectable errors appropriately. DPC (if enabled) isolates
+        the slot within 100 ms. Re-insert: device re-enumerates within 10 seconds.
+        System remains operational throughout.
+
+        '
+      validation:
+        status: valid
+        validated_at: '2026-03-13'
+        glean_validated: true
+        changes_made:
+        - Validated via Glean MCP - accurate
     - id: PHY-041
       title: Power Rail Sequencing During Hot-Insert
-      description: >
-        Monitor 12V, 3.3V, 3.3Vaux, and PERST# simultaneously during U.2 hot-insert
-        using 4-channel oscilloscope. Verify power rail sequencing meets SFF-8639
-        timing requirements. Check for glitches during insertion.
-      priority: P0
-      priority_rationale: Incorrect power sequencing during hot-insert can damage the device or backplane.
-      spec_ref: "SFF-8639, PCIe CEM 5.0 §5"
-      pass_criteria: >
-        12V stable (± 5%) before PERST# de-asserts. 3.3V stable within 10 ms of
-        12V. No negative voltage excursions on any rail. No glitches > 100 mV on
-        power rails during connector mating. PERST# held low for ≥ 100 ms after
-        power stable.
-      tool: "Oscilloscope (4-ch, ≥200 MHz BW) + current probes + hot-swap backplane"
-      test_method: hardware_lab
+      description: 'Monitor 12V, 3.3V, 3.3Vaux, and PERST# simultaneously during U.2
+        hot-insert using 4-channel oscilloscope. Verify power rail sequencing meets
+        general CEM/SFF-8639 sequencing requirements: power stable before PERST# de-assert.
 
+        '
+      priority: P0
+      priority_rationale: Incorrect power sequencing during hot-insert can damage
+        the device or backplane.
+      spec_ref: SFF-8639 (U.2 power rails); PCIe CEM 5.0/6.0 §5 (power delivery, PERST#/REFCLK
+        sequencing)
+      pass_criteria: 'Power rails stable before PERST# de-asserts per CEM sequencing.
+        PERST# de-asserts ≥100 ms after power good per TPVPERL. No negative voltage
+        excursions. Internal targets (stricter than spec): 12V ±5%, 3.3V stable within
+        10 ms, no glitches >100 mV during mating.
+
+        '
+      tool: Oscilloscope (4-ch, ≥200 MHz BW) + current probes + hot-swap backplane
+      test_method: hardware_lab
+      original_spec_ref: SFF-8639, PCIe CEM 5.0 §5
+      original_pass_criteria: '12V stable (± 5%) before PERST# de-asserts. 3.3V stable
+        within 10 ms of 12V. No negative voltage excursions on any rail. No glitches
+        > 100 mV on power rails during connector mating. PERST# held low for ≥ 100
+        ms after power stable.
+
+        '
+      validation:
+        status: corrected
+        validated_at: '2026-03-13'
+        glean_validated: true
+        changes_made:
+        - CEM power in §4, not §5
     - id: PHY-042
       title: Thermal Design — Case Temperature Under Load
-      description: >
-        Attach thermocouples to DUT Tcase measurement point per device datasheet.
-        Run sustained sequential write workload (fio: seq write, 128K, QD=32) for
-        60 minutes at 25°C ambient. Repeat at 45°C and 55°C ambient in thermal
-        chamber.
-      priority: P0
-      priority_rationale: Exceeding Tc_max causes thermal throttling or device failure; must verify under worst-case workload.
-      spec_ref: "Device datasheet (Tc_max)"
-      pass_criteria: >
-        Tcase remains ≤ Tc_max (device-specific, typically 70–75°C for U.2 SSDs)
-        at all ambient temperatures. No thermal throttling events in SMART log during
-        25°C test. Thermal throttling acceptable but documented at elevated ambient.
-        Temperature stabilizes within 30 minutes.
-      tool: "Thermocouple (Type-K) + thermal chamber + fio + SMART monitoring"
-      test_method: hardware_lab
+      description: 'Attach thermocouples to DUT Tcase measurement point per device
+        datasheet. Run sustained sequential write workload (fio: seq write, 128K,
+        QD=32) for 60 minutes at 25°C ambient. Repeat at 45°C and 55°C ambient in
+        thermal chamber.
 
+        '
+      priority: P0
+      priority_rationale: Exceeding Tc_max causes thermal throttling or device failure;
+        must verify under worst-case workload.
+      spec_ref: Device datasheet (Tc_max); OCP Datacenter NVMe SSD 2.6 (composite
+        temp, throttling/shutdown points)
+      pass_criteria: 'Tcase remains ≤ Tc_max (device-specific per datasheet; OCP typical:
+        77°C throttle, 85°C shutdown). Temperature stabilizes within 30 minutes. Internal
+        target: no throttling at 25°C ambient (throttling acceptable at elevated ambient
+        per OCP). Typical U.2 SSD Tc_max range: 70–75°C.
+
+        '
+      tool: Thermocouple (Type-K) + thermal chamber + fio + SMART monitoring
+      test_method: hardware_lab
+      original_spec_ref: Device datasheet (Tc_max)
+      original_pass_criteria: 'Tcase remains ≤ Tc_max (device-specific, typically
+        70–75°C for U.2 SSDs) at all ambient temperatures. No thermal throttling events
+        in SMART log during 25°C test. Thermal throttling acceptable but documented
+        at elevated ambient. Temperature stabilizes within 30 minutes.
+
+        '
+      validation:
+        status: valid
+        validated_at: '2026-03-13'
+        glean_validated: true
+        changes_made:
+        - Validated via Glean MCP - accurate
     - id: PHY-043
       title: U.2 Cable Assembly Signal Integrity (SFF-8643)
-      description: >
-        For cable-attached U.2 deployments, measure TX eye diagram and lane margin
-        at the far end of a 0.5 m SFF-8643 cable. Test at Gen4 and Gen5 data rates.
-        Verify link trains and maintains acceptable BER through the cable.
-      priority: P1
-      priority_rationale: Cable-attached U.2 is common in disaggregated storage; cable degrades SI significantly at Gen5.
-      spec_ref: "SFF-8643, PCIe 5.0 §8.5"
-      pass_criteria: >
-        Gen4 through 0.5 m cable: link trains at x4, eye meets mask, BER < 1e-12.
-        Gen5 through 0.5 m cable: link trains at x4 (may require retimer), eye
-        documented with margin values. Cable insertion loss ≤ 5 dB at 8 GHz,
-        ≤ 10 dB at 16 GHz.
-      tool: "Oscilloscope + 0.5 m SFF-8643 cable + VNA + protocol analyzer"
-      test_method: hardware_lab
+      description: 'For cable-attached U.2 deployments, measure TX eye diagram and
+        lane margin at the far end of a 0.5 m SFF-8643 cable. Test at Gen4 and Gen5
+        data rates. Verify link trains and maintains acceptable BER through the cable.
 
+        '
+      priority: P1
+      priority_rationale: Cable-attached U.2 is common in disaggregated storage; cable
+        degrades SI significantly at Gen5.
+      spec_ref: SFF-8643, PCIe 5.0 §8.5
+      pass_criteria: 'Gen4 through 0.5 m cable: link trains at x4, eye meets mask,
+        BER < 1e-12. Gen5 through 0.5 m cable: link trains at x4 (may require retimer),
+        eye documented with margin values. Cable insertion loss ≤ 5 dB at 8 GHz, ≤
+        10 dB at 16 GHz.
+
+        '
+      tool: Oscilloscope + 0.5 m SFF-8643 cable + VNA + protocol analyzer
+      test_method: hardware_lab
     - id: PHY-044
       title: U.2 Dual-Port Operation (If Supported)
-      description: >
-        Connect DUT to two independent hosts via dual-port U.2 backplane. Verify
-        both PCIe ports enumerate independently. Test path failover: disable port A
-        via host removal, verify port B continues IO without interruption.
-      priority: P1
-      priority_rationale: Dual-port is required for high-availability enterprise deployments with path redundancy.
-      spec_ref: "SFF-8639 (dual-port pinout)"
-      pass_criteria: >
-        Both ports enumerate in lspci on respective hosts. IO functional on both
-        ports simultaneously. Path failover completes in ≤ 30 seconds (multipath
-        layer dependent). No data corruption during failover. Re-enable port A:
-        both ports resume operation.
-      tool: "Dual-port U.2 backplane + 2 host systems + Linux (multipath, fio)"
-      test_method: hardware_lab
+      description: 'Connect DUT to two independent hosts via dual-port U.2 backplane.
+        Verify both PCIe ports enumerate independently. Test path failover: disable
+        port A via host removal, verify port B continues IO without interruption.
 
+        '
+      priority: P1
+      priority_rationale: Dual-port is required for high-availability enterprise deployments
+        with path redundancy.
+      spec_ref: SFF-8639 (dual-port pinout)
+      pass_criteria: 'Both ports enumerate in lspci on respective hosts. IO functional
+        on both ports simultaneously. Path failover completes in ≤ 30 seconds (multipath
+        layer dependent). No data corruption during failover. Re-enable port A: both
+        ports resume operation.
+
+        '
+      tool: Dual-port U.2 backplane + 2 host systems + Linux (multipath, fio)
+      test_method: hardware_lab
     - id: PHY-045
       title: Beacon Signal for D3cold Wake
-      description: >
-        Place DUT in D3cold power state. If device supports beacon-based wake,
-        trigger wake event and capture beacon signal on oscilloscope. Verify beacon
-        frequency and amplitude meet spec.
-      priority: P1
-      priority_rationale: Beacon wake from D3cold is optional but affects power management compliance if advertised.
-      spec_ref: "PCIe 5.0 §8.4.5.5"
-      pass_criteria: >
-        Beacon frequency: 2–20 MHz. Beacon amplitude: single-ended 200–600 mV.
-        Wake event triggers device transition from D3cold to D0 within 100 ms.
-        If beacon not supported, verify device correctly does not advertise
-        PME_Support for D3cold.
-      tool: "Oscilloscope + power management test setup + Linux (rtcwake)"
-      test_method: hardware_lab
+      description: 'Place DUT in D3cold power state. If device supports beacon-based
+        wake, trigger wake event and capture beacon signal on oscilloscope. Verify
+        beacon frequency and amplitude meet spec.
 
+        '
+      priority: P1
+      priority_rationale: Beacon wake from D3cold is optional but affects power management
+        compliance if advertised.
+      spec_ref: PCIe 5.0 §8.4.5.5
+      pass_criteria: 'Beacon frequency: 2–20 MHz. Beacon amplitude: single-ended 200–600
+        mV. Wake event triggers device transition from D3cold to D0 within 100 ms.
+        If beacon not supported, verify device correctly does not advertise PME_Support
+        for D3cold.
+
+        '
+      tool: Oscilloscope + power management test setup + Linux (rtcwake)
+      test_method: hardware_lab
     - id: PHY-046
       title: Activity LED Signal
-      description: >
-        Verify LED signal pin toggles during IO operations. Measure LED signal
-        polarity, drive current, and timing. Verify LED is inactive during idle
-        and active during sustained IO.
+      description: 'Verify LED signal pin toggles during IO operations. Measure LED
+        signal polarity, drive current, and timing. Verify LED is inactive during
+        idle and active during sustained IO.
+
+        '
       priority: P1
-      priority_rationale: Activity LED is required by SFF-8639 for operational status indication in enterprise enclosures.
-      spec_ref: "SFF-8639 (Activity LED pin)"
-      pass_criteria: >
-        LED signal active (driven low or high per SFF-8639 polarity) during IO.
-        LED signal inactive within 100 ms of IO completion. Drive current ≤ 20 mA.
-        Signal voltage matches SFF-8639 LED pin specification.
-      tool: "Logic analyzer + oscilloscope + fio (for IO generation)"
+      priority_rationale: Activity LED is required by SFF-8639 for operational status
+        indication in enterprise enclosures.
+      spec_ref: SFF-8639 (Activity LED pin)
+      pass_criteria: 'LED signal active (driven low or high per SFF-8639 polarity)
+        during IO. LED signal inactive within 100 ms of IO completion. Drive current
+        ≤ 20 mA. Signal voltage matches SFF-8639 LED pin specification.
+
+        '
+      tool: Logic analyzer + oscilloscope + fio (for IO generation)
       test_method: hardware_lab

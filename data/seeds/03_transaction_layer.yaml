@@ -1,9 +1,8 @@
 metadata:
-  version: "5.0"
-  layer: "Transaction Layer"
+  version: '5.0'
+  layer: Transaction Layer
   spec_sources:
-    - "PCIe Base Spec 5.0"
-
+  - PCIe Base Spec 5.0
 categories:
 - name: Transaction Layer
   subcategories:
@@ -11,1222 +10,1457 @@ categories:
     items:
     - id: TXN-001
       title: Memory Read Request TLP Format Validation (32-bit and 64-bit)
-      description: >
-        Issue Memory Read Request TLPs with 32-bit addressing (Fmt 000b, Type 00000b)
-        and 64-bit addressing (Fmt 001b, Type 00000b) from the DUT. Capture each TLP
-        on a protocol analyzer and verify the header fields: Fmt, Type, TC, Attr,
-        TH, TD, EP, AT, Length, Requester ID, Tag, First BE, Last BE, and Address
+      description: 'Issue Memory Read Request TLPs with 32-bit addressing (Fmt 000b,
+        Type 00000b) and 64-bit addressing (Fmt 001b, Type 00000b) from the DUT. Capture
+        each TLP on a protocol analyzer and verify the header fields: Fmt, Type, TC,
+        Attr, TH, TD, EP, AT, Length, Requester ID, Tag, First BE, Last BE, and Address
         fields. Ensure 64-bit MRd uses a 4-DW header with the upper 32 address bits
         in DW2. Verify Length field encodes the correct number of DW requested and
         that the address is naturally aligned per the request size.
-      priority: P0
-      priority_rationale: Memory Read is the most fundamental TLP type; incorrect format breaks all data transfers.
-      spec_ref: "PCIe 5.0 §2.2.1, Table 2-2, Table 2-3, Figure 2-4"
-      pass_criteria: >
-        All captured MRd TLPs have correct Fmt/Type encoding per Table 2-3.
-        32-bit MRd uses 3-DW header (Fmt=000b), 64-bit MRd uses 4-DW header (Fmt=001b).
-        Length field range 1-1024 DW. Tag, Requester ID, and Byte Enables present in
-        correct header positions. Zero protocol errors reported by analyzer.
-      tool: "Protocol Analyzer (Lecroy/Keysight) + Traffic Generator"
-      test_method: protocol_analyzer
 
+        '
+      priority: P0
+      priority_rationale: Memory Read is the most fundamental TLP type; incorrect
+        format breaks all data transfers.
+      spec_ref: PCIe 5.0 §2.2.1 (common header), §2.2.7 (Memory Request Rules), Table
+        2-3 (Fmt/Type), Table 2-4 (Length)
+      pass_criteria: 'All MRd TLPs have correct Fmt/Type per Table 2-3: 32-bit MRd
+        Fmt=000b (3-DW), 64-bit MRd Fmt=001b (4-DW). Length field range 1-1024 DW
+        per Table 2-4. Tag, Requester ID, Byte Enables in correct positions. Zero
+        protocol errors.
+
+        '
+      tool: Protocol Analyzer (Lecroy/Keysight) + Traffic Generator
+      test_method: protocol_analyzer
+      validation:
+        status: valid
+        validated_at: '2026-03-14'
+        glean_validated: true
+        changes_made:
+        - Validated via Glean MCP - accurate
     - id: TXN-002
       title: Memory Write Request TLP Format and Data Payload
-      description: >
-        Generate Memory Write TLPs with both 32-bit (Fmt 010b, Type 00000b) and
-        64-bit (Fmt 011b, Type 00000b) addressing. Verify the TLP header layout
+      description: 'Generate Memory Write TLPs with both 32-bit (Fmt 010b, Type 00000b)
+        and 64-bit (Fmt 011b, Type 00000b) addressing. Verify the TLP header layout
         matches the Memory Request Header format in the specification. Confirm that
         MWr TLPs always include a data payload and that the payload length matches
         the Length field in the header. Validate that the data payload immediately
-        follows the header (and optional ECRC digest) with correct DW alignment.
-        Test with various payload sizes from 1 DW up to Max_Payload_Size.
-      priority: P0
-      priority_rationale: Memory Write is a posted transaction; silent corruption of format causes data loss without error signaling.
-      spec_ref: "PCIe 5.0 §2.2.1, Table 2-2, Table 2-3, Figure 2-5"
-      pass_criteria: >
-        All MWr TLPs carry Fmt bit [1]=1 indicating data payload present.
-        Payload byte count equals Length * 4 (adjusted for Byte Enables on first/last DW).
-        No MWr TLP exceeds Max_Payload_Size programmed in Device Control register.
-        Data payload DW-aligned in all captured TLPs.
-      tool: "Protocol Analyzer + DMA Traffic Generator"
-      test_method: protocol_analyzer
+        follows the header (and optional ECRC digest) with correct DW alignment. Test
+        with various payload sizes from 1 DW up to Max_Payload_Size.
 
+        '
+      priority: P0
+      priority_rationale: Memory Write is a posted transaction; silent corruption
+        of format causes data loss without error signaling.
+      spec_ref: PCIe 5.0 §2.2.1 (common header), §2.2.7 (Memory Request Rules), Table
+        2-3 (Fmt/Type), Table 2-4 (Length/DW alignment)
+      pass_criteria: 'All MWr TLPs: Fmt bit[1]=1 (data present). Payload = Length
+        * 4 bytes (adjusted for Byte Enables). No MWr exceeds Max_Payload_Size. Payload
+        DW-aligned.
+
+        '
+      tool: Protocol Analyzer + DMA Traffic Generator
+      test_method: protocol_analyzer
+      validation:
+        status: valid
+        validated_at: '2026-03-14'
+        glean_validated: true
+        changes_made:
+        - Validated via Glean MCP - accurate
     - id: TXN-003
       title: Configuration Type 0 and Type 1 Request TLP Format
-      description: >
-        Issue Configuration Read and Write requests as both Type 0 (Fmt 00x/01x,
-        Type 00100b) and Type 1 (Fmt 00x/01x, Type 00101b) TLPs. Verify the
+      description: 'Issue Configuration Read and Write requests as both Type 0 (Fmt
+        00x/01x, Type 00100b) and Type 1 (Fmt 00x/01x, Type 00101b) TLPs. Verify the
         Configuration Request header fields: Requester ID, Tag, Bus/Device/Function
         Number, Extended Register Number, and Register Number. Confirm Type 0 targets
         the device directly attached to the bus while Type 1 is forwarded by switches
-        and bridges. Validate that CfgWr carries exactly 1 DW of data and CfgRd
-        carries no data payload.
-      priority: P0
-      priority_rationale: Configuration access is required for device enumeration and setup; format errors prevent discovery.
-      spec_ref: "PCIe 5.0 §2.2.8, Figure 2-19, Figure 2-20, Table 2-3"
-      pass_criteria: >
-        CfgRd0/CfgRd1 TLPs have Fmt=000b (no data). CfgWr0/CfgWr1 TLPs have
-        Fmt=010b (with data, 1 DW). Bus/Device/Function fields correctly address
-        the target. Register Number + Ext Register Number correctly encode the
-        config register offset. Type 0 consumed locally, Type 1 forwarded per
-        secondary/subordinate bus number ranges.
-      tool: "Protocol Analyzer + PCIe Host/Root Complex"
-      test_method: protocol_analyzer
+        and bridges. Validate that CfgWr carries exactly 1 DW of data and CfgRd carries
+        no data payload.
 
+        '
+      priority: P0
+      priority_rationale: Configuration access is required for device enumeration
+        and setup; format errors prevent discovery.
+      spec_ref: PCIe 5.0 §2.2.6 (Configuration Requests), §2.2.4.2 (ID-Based Routing),
+        Table 2-6/2-7 (BDF mapping), Figures 2-9..2-12
+      pass_criteria: 'CfgRd0/CfgRd1: Fmt=000b (no data). CfgWr0/CfgWr1: Fmt=010b (1
+        DW data). Bus/Dev/Func fields address target correctly. Register Number +
+        Ext Reg encode config offset. Type 0 consumed locally, Type 1 forwarded per
+        BDF.
+
+        '
+      tool: Protocol Analyzer + PCIe Host/Root Complex
+      test_method: protocol_analyzer
+      validation:
+        status: valid
+        validated_at: '2026-03-14'
+        glean_validated: true
+        changes_made:
+        - Validated via Glean MCP - accurate
     - id: TXN-004
       title: IO Read and IO Write Request TLP Format
-      description: >
-        Generate IO Read (Fmt 000b, Type 00010b) and IO Write (Fmt 010b, Type 00010b)
-        TLPs targeting legacy IO address space. Verify header format includes
-        Requester ID, Tag, First BE, and a 32-bit IO address. Confirm IORd has no
-        data payload and IOWr has exactly 1 DW of data. Validate that IO transactions
-        use only 32-bit addressing (no 64-bit variant exists) and that Length is
-        always 1 DW. Test with First BE patterns covering 1-byte, 2-byte, and 4-byte
-        IO accesses.
-      priority: P1
-      priority_rationale: IO transactions are legacy but still required for some NVMe controller register access patterns.
-      spec_ref: "PCIe 5.0 §2.2.3, Figure 2-8, Table 2-3"
-      pass_criteria: >
-        IORd TLPs have Fmt=000b, IOWr TLPs have Fmt=010b. Length field = 1 in
-        all IO TLPs. Address fits in 32-bit field. First BE correctly reflects
-        the byte-level access size. No Last BE field used (must be 0000b for
-        1 DW transfers). IO requests generate Non-Posted completions.
-      tool: "Protocol Analyzer + Legacy IO Driver"
-      test_method: protocol_analyzer
+      description: 'Generate IO Read (Fmt 000b, Type 00010b) and IO Write (Fmt 010b,
+        Type 00010b) TLPs targeting legacy IO address space. Verify header format
+        includes Requester ID, Tag, First BE, and a 32-bit IO address. Confirm IORd
+        has no data payload and IOWr has exactly 1 DW of data. Validate that IO transactions
+        use only 32-bit addressing (no 64-bit variant exists) and that Length is always
+        1 DW. Test with First BE patterns covering 1-byte, 2-byte, and 4-byte IO accesses.
 
+        '
+      priority: P1
+      priority_rationale: IO transactions are legacy but still required for some NVMe
+        controller register access patterns.
+      spec_ref: PCIe 5.0 §2.2.3, Figure 2-8, Table 2-3
+      pass_criteria: 'IORd TLPs have Fmt=000b, IOWr TLPs have Fmt=010b. Length field
+        = 1 in all IO TLPs. Address fits in 32-bit field. First BE correctly reflects
+        the byte-level access size. No Last BE field used (must be 0000b for 1 DW
+        transfers). IO requests generate Non-Posted completions.
+
+        '
+      tool: Protocol Analyzer + Legacy IO Driver
+      test_method: protocol_analyzer
     - id: TXN-005
       title: TLP Fmt and Type Field Encoding Coverage
-      description: >
-        Systematically generate all defined TLP types from Table 2-3 and verify the
-        Fmt[2:0] and Type[4:0] field encodings on the wire. Cover Memory, IO,
-        Configuration, Message, Completion, AtomicOp, and TLP Prefix types. For
+      description: 'Systematically generate all defined TLP types from Table 2-3 and
+        verify the Fmt[2:0] and Type[4:0] field encodings on the wire. Cover Memory,
+        IO, Configuration, Message, Completion, AtomicOp, and TLP Prefix types. For
         each TLP type, confirm the Fmt field correctly indicates header size (3 DW
         vs 4 DW) and presence/absence of data payload. Verify that undefined Fmt/Type
         combinations are never generated by the DUT. Cross-reference each captured
         TLP against the master encoding table.
-      priority: P0
-      priority_rationale: Fmt/Type is the fundamental TLP classifier; any encoding error causes misrouting or silent drops.
-      spec_ref: "PCIe 5.0 Table 2-3, §2.2.1, Figure 2-2"
-      pass_criteria: >
-        Every TLP type listed in Table 2-3 is observed with correct Fmt and Type
-        encoding. No TLPs with reserved or undefined Fmt/Type combinations appear.
-        Fmt bit[0] correctly indicates 3-DW (0) vs 4-DW (1) header. Fmt bit[1]
-        correctly indicates data absent (0) vs present (1). 100% coverage of all
-        TLP types supported by the DUT.
-      tool: "Protocol Analyzer + Comprehensive Traffic Generator"
-      test_method: protocol_analyzer
 
+        '
+      priority: P0
+      priority_rationale: Fmt/Type is the fundamental TLP classifier; any encoding
+        error causes misrouting or silent drops.
+      spec_ref: PCIe 5.0 Table 2-3, §2.2.1, Figure 2-2
+      pass_criteria: 'Every TLP type listed in Table 2-3 is observed with correct
+        Fmt and Type encoding. No TLPs with reserved or undefined Fmt/Type combinations
+        appear. Fmt bit[0] correctly indicates 3-DW (0) vs 4-DW (1) header. Fmt bit[1]
+        correctly indicates data absent (0) vs present (1). 100% coverage of all TLP
+        types supported by the DUT.
+
+        '
+      tool: Protocol Analyzer + Comprehensive Traffic Generator
+      test_method: protocol_analyzer
+      validation:
+        status: valid
+        validated_at: '2026-03-14'
+        glean_validated: true
+        changes_made:
+        - Validated via Glean MCP - accurate
   - name: Memory Transactions
     items:
     - id: TXN-006
       title: Max_Payload_Size Enforcement for Memory Write
-      description: >
-        Program different Max_Payload_Size (MPS) values (128, 256, 512, 1024, 2048,
-        4096 bytes) in the Device Control register and issue Memory Write transactions
-        of various sizes. Verify that no single MWr TLP data payload exceeds the
-        programmed MPS. For write requests larger than MPS, confirm the DUT splits
-        them into multiple TLPs each within the MPS limit. Verify the Length field
-        in each TLP header is consistent with the actual payload bytes transferred.
-      priority: P0
-      priority_rationale: MPS violation causes Malformed TLP errors and potential data corruption across the fabric.
-      spec_ref: "PCIe 5.0 §2.2.2, §7.5.3.4"
-      pass_criteria: >
-        No MWr TLP payload exceeds the programmed MPS for any MPS setting.
-        Large transfers are correctly split into multiple TLPs. Each TLP Length
-        field matches the actual payload size. Device Control register MPS field
-        is correctly read back after programming. Total bytes transferred across
-        split TLPs equals the original request size.
-      tool: "Protocol Analyzer + DMA Engine"
-      test_method: protocol_analyzer
+      description: 'Program different Max_Payload_Size (MPS) values (128, 256, 512,
+        1024, 2048, 4096 bytes) in the Device Control register and issue Memory Write
+        transactions of various sizes. Verify that no single MWr TLP data payload
+        exceeds the programmed MPS. For write requests larger than MPS, confirm the
+        DUT splits them into multiple TLPs each within the MPS limit. Verify the Length
+        field in each TLP header is consistent with the actual payload bytes transferred.
 
+        '
+      priority: P0
+      priority_rationale: MPS violation causes Malformed TLP errors and potential
+        data corruption across the fabric.
+      spec_ref: PCIe 5.0 §2.2.2, §7.5.3.4
+      pass_criteria: 'No MWr TLP payload exceeds the programmed MPS for any MPS setting.
+        Large transfers are correctly split into multiple TLPs. Each TLP Length field
+        matches the actual payload size. Device Control register MPS field is correctly
+        read back after programming. Total bytes transferred across split TLPs equals
+        the original request size.
+
+        '
+      tool: Protocol Analyzer + DMA Engine
+      test_method: protocol_analyzer
+      validation:
+        status: valid
+        validated_at: '2026-03-14'
+        glean_validated: true
+        changes_made:
+        - Validated via Glean MCP - accurate
     - id: TXN-007
       title: Max_Read_Request_Size Enforcement for Memory Read
-      description: >
-        Program different Max_Read_Request_Size (MRRS) values (128, 256, 512, 1024,
-        2048, 4096 bytes) and issue Memory Read requests of various sizes. Verify
-        that no single MRd TLP requests more data than the programmed MRRS. For
-        read requests exceeding MRRS, confirm the DUT breaks them into multiple
+      description: 'Program different Max_Read_Request_Size (MRRS) values (128, 256,
+        512, 1024, 2048, 4096 bytes) and issue Memory Read requests of various sizes.
+        Verify that no single MRd TLP requests more data than the programmed MRRS.
+        For read requests exceeding MRRS, confirm the DUT breaks them into multiple
         MRd TLPs. Verify that each MRd Length field correctly encodes the requested
-        size. Validate that completions returning data honor the Requester's MPS
+        size. Validate that completions returning data honor the Requester''s MPS
         when splitting completion data.
-      priority: P0
-      priority_rationale: MRRS violations can overwhelm completion buffers and cause receiver overflow or ordering violations.
-      spec_ref: "PCIe 5.0 §2.2.2, §7.5.3.4"
-      pass_criteria: >
-        No MRd TLP Length exceeds the programmed MRRS. Large reads split into
-        multiple MRd TLPs with correct address progression. Total requested bytes
-        across split MRds equals the original request. Completion data for each
-        MRd does not exceed Completer's MPS per split completion.
-      tool: "Protocol Analyzer + DMA Engine"
-      test_method: protocol_analyzer
 
+        '
+      priority: P0
+      priority_rationale: MRRS violations can overwhelm completion buffers and cause
+        receiver overflow or ordering violations.
+      spec_ref: PCIe 5.0 §2.2.2, §7.5.3.4
+      pass_criteria: 'No MRd TLP Length exceeds the programmed MRRS. Large reads split
+        into multiple MRd TLPs with correct address progression. Total requested bytes
+        across split MRds equals the original request. Completion data for each MRd
+        does not exceed Completer''s MPS per split completion.
+
+        '
+      tool: Protocol Analyzer + DMA Engine
+      test_method: protocol_analyzer
+      validation:
+        status: corrected
+        validated_at: '2026-03-14'
+        glean_validated: true
+        changes_made:
+        - Add §2.2.1, §2.2.4.1, §2.3.1 for AtomicOp rules
     - id: TXN-008
       title: Memory Request Address Alignment Rules
-      description: >
-        Issue Memory Read and Write requests with various address alignments and
-        payload sizes. Verify that requests do not cross 4-KB address boundaries
-        as required by the specification. Test boundary cases where the start
-        address plus length would span a 4-KB page boundary and confirm the DUT
-        splits into two requests at the boundary. Validate that the lower address
-        bits are consistent with the First Byte Enable for sub-DW aligned accesses.
-      priority: P0
-      priority_rationale: 4-KB boundary crossing creates malformed TLPs that violate the PCIe ordering model.
-      spec_ref: "PCIe 5.0 §2.2.1, §2.2.2"
-      pass_criteria: >
-        No single Memory Request TLP spans a 4-KB address boundary. Requests
-        that would cross a 4-KB boundary are split into exactly two TLPs at the
-        boundary. Start address lower bits [1:0] are consistent with First DW BE
-        for sub-DW access. All address fields are naturally aligned per request size.
-      tool: "Protocol Analyzer + DMA Engine with programmable addresses"
-      test_method: protocol_analyzer
+      description: 'Issue Memory Read and Write requests with various address alignments
+        and payload sizes. Verify that requests do not cross 4-KB address boundaries
+        as required by the specification. Test boundary cases where the start address
+        plus length would span a 4-KB page boundary and confirm the DUT splits into
+        two requests at the boundary. Validate that the lower address bits are consistent
+        with the First Byte Enable for sub-DW aligned accesses.
 
+        '
+      priority: P0
+      priority_rationale: 4-KB boundary crossing creates malformed TLPs that violate
+        the PCIe ordering model.
+      spec_ref: PCIe 5.0 §2.2.1, §2.2.2
+      pass_criteria: 'No single Memory Request TLP spans a 4-KB address boundary.
+        Requests that would cross a 4-KB boundary are split into exactly two TLPs
+        at the boundary. Start address lower bits [1:0] are consistent with First
+        DW BE for sub-DW access. All address fields are naturally aligned per request
+        size.
+
+        '
+      tool: Protocol Analyzer + DMA Engine with programmable addresses
+      test_method: protocol_analyzer
+      validation:
+        status: valid
+        validated_at: '2026-03-14'
+        glean_validated: true
+        changes_made:
+        - Validated via Glean MCP - accurate
     - id: TXN-009
       title: Read Completion Boundary (RCB) Splitting Rules
-      description: >
-        Determine the Completer's Read Completion Boundary (64 or 128 bytes) from
-        the Link Control register and issue Memory Read requests that cross RCB
-        boundaries. Verify that completion data is split at RCB boundaries such
-        that no single CplD spans an RCB. Test with both 64-byte and 128-byte RCB
-        settings. Confirm the first completion returns data up to the next RCB
-        boundary and subsequent completions are RCB-aligned. Validate Byte Count
-        and Lower Address fields in each split completion.
-      priority: P1
-      priority_rationale: RCB split errors corrupt completion reassembly and cause silent data misplacement.
-      spec_ref: "PCIe 5.0 §2.3.1.1, §7.5.3.8"
-      pass_criteria: >
-        No single CplD spans an RCB boundary. First CplD returns data up to the
-        next RCB-aligned address. Subsequent CplDs start at RCB-aligned addresses.
-        Byte Count in each CplD correctly reflects remaining bytes. Lower Address
-        field matches the starting byte address within each CplD. Total data across
-        all CplDs equals the original MRd request size.
-      tool: "Protocol Analyzer + DMA Read Engine"
-      test_method: protocol_analyzer
+      description: 'Determine the Completer''s Read Completion Boundary (64 or 128
+        bytes) from the Link Control register and issue Memory Read requests that
+        cross RCB boundaries. Verify that completion data is split at RCB boundaries
+        such that no single CplD spans an RCB. Test with both 64-byte and 128-byte
+        RCB settings. Confirm the first completion returns data up to the next RCB
+        boundary and subsequent completions are RCB-aligned. Validate Byte Count and
+        Lower Address fields in each split completion.
 
+        '
+      priority: P1
+      priority_rationale: RCB split errors corrupt completion reassembly and cause
+        silent data misplacement.
+      spec_ref: PCIe 5.0 §2.3.1.1, §7.5.3.8
+      pass_criteria: 'No single CplD spans an RCB boundary. First CplD returns data
+        up to the next RCB-aligned address. Subsequent CplDs start at RCB-aligned
+        addresses. Byte Count in each CplD correctly reflects remaining bytes. Lower
+        Address field matches the starting byte address within each CplD. Total data
+        across all CplDs equals the original MRd request size.
+
+        '
+      tool: Protocol Analyzer + DMA Read Engine
+      test_method: protocol_analyzer
     - id: TXN-010
       title: Posted Request Acceptance Latency (10 us Limit)
-      description: >
-        Send Posted requests (Memory Write, Message) to the DUT and measure the
-        time from TLP arrival at the receiver to flow control credit return
-        indicating acceptance. Verify the DUT accepts Posted requests within the
-        10 microsecond limit specified for Posted Request acceptance. Stress test
-        by flooding Posted requests at maximum rate and monitoring for credit
-        stalls exceeding 10 us. Test under both idle and heavy traffic conditions.
+      description: 'Send Posted requests (Memory Write, Message) to the DUT and measure
+        the time from TLP arrival at the receiver to flow control credit return indicating
+        acceptance. Verify the DUT accepts Posted requests within the 10 microsecond
+        limit specified for Posted Request acceptance. Stress test by flooding Posted
+        requests at maximum rate and monitoring for credit stalls exceeding 10 us.
+        Test under both idle and heavy traffic conditions.
+
+        '
       priority: P1
-      priority_rationale: Exceeding the 10 us acceptance limit can cause deadlocks in the PCIe ordering model.
-      spec_ref: "PCIe 5.0 §2.3.1"
-      pass_criteria: >
-        All Posted requests accepted within 10 us of arrival under all tested
-        conditions. Flow control credits returned promptly. No Posted request
+      priority_rationale: Exceeding the 10 us acceptance limit can cause deadlocks
+        in the PCIe ordering model.
+      spec_ref: PCIe 5.0 §2.3.1
+      pass_criteria: 'All Posted requests accepted within 10 us of arrival under all
+        tested conditions. Flow control credits returned promptly. No Posted request
         stalls observed exceeding the specification limit. Test passes under both
         idle and maximum sustained traffic loading.
-      tool: "Protocol Analyzer with timestamp capture + Traffic Generator"
-      test_method: protocol_analyzer
 
+        '
+      tool: Protocol Analyzer with timestamp capture + Traffic Generator
+      test_method: protocol_analyzer
   - name: Configuration Transactions
     items:
     - id: TXN-011
       title: Configuration Request Retry Status (CRS) Handling
-      description: >
-        Issue Configuration Read requests to a Function during its initialization
-        period when it may return Configuration Request Retry Status (CRS)
-        completions. Verify the Root Complex correctly handles CRS by re-issuing
-        the request. Program the CRS Software Visibility in Root Control register
-        and verify that CRS completions for Vendor ID reads return 0001h in the
-        Vendor ID field with all other bytes as FFh. Validate that non-Vendor ID
-        CfgRd requests returning CRS are automatically retried without software
-        visibility.
-      priority: P1
-      priority_rationale: CRS is critical for hot-plug and slow-initializing devices; incorrect handling causes enumeration failures.
-      spec_ref: "PCIe 5.0 §2.3.2, §6.23"
-      pass_criteria: >
-        CRS completions are correctly retried by the Root Complex. With CRS
-        Software Visibility enabled, Vendor ID reads returning CRS show 0001h.
-        Non-Vendor ID CfgRd with CRS are retried transparently. After device
-        initialization completes, CfgRd returns Successful Completion. No
-        hang or timeout during CRS retry sequence.
-      tool: "Protocol Analyzer + Hot-plug capable platform"
-      test_method: protocol_analyzer
+      description: 'Issue Configuration Read requests to a Function during its initialization
+        period when it may return Configuration Request Retry Status (CRS) completions.
+        Verify the Root Complex correctly handles CRS by re-issuing the request. Program
+        the CRS Software Visibility in Root Control register and verify that CRS completions
+        for Vendor ID reads return 0001h in the Vendor ID field with all other bytes
+        as FFh. Validate that non-Vendor ID CfgRd requests returning CRS are automatically
+        retried without software visibility.
 
+        '
+      priority: P1
+      priority_rationale: CRS is critical for hot-plug and slow-initializing devices;
+        incorrect handling causes enumeration failures.
+      spec_ref: PCIe 5.0 §2.3.2, §6.23
+      pass_criteria: 'CRS completions are correctly retried by the Root Complex. With
+        CRS Software Visibility enabled, Vendor ID reads returning CRS show 0001h.
+        Non-Vendor ID CfgRd with CRS are retried transparently. After device initialization
+        completes, CfgRd returns Successful Completion. No hang or timeout during
+        CRS retry sequence.
+
+        '
+      tool: Protocol Analyzer + Hot-plug capable platform
+      test_method: protocol_analyzer
     - id: TXN-012
       title: Configuration Type 0/1 Routing by Switch/Bridge
-      description: >
-        Set up a PCIe topology with at least one switch (virtual or physical) and
-        verify Configuration Request routing. Issue CfgRd1/CfgWr1 (Type 1) from
+      description: 'Set up a PCIe topology with at least one switch (virtual or physical)
+        and verify Configuration Request routing. Issue CfgRd1/CfgWr1 (Type 1) from
         Root Complex and verify the switch converts to CfgRd0/CfgWr0 (Type 0) when
-        the target Bus number matches the switch's Secondary Bus Number. Verify
-        Type 1 requests are forwarded downstream when the target bus falls within
-        Secondary-to-Subordinate range. Confirm Type 1 requests outside the range
-        are completed with Unsupported Request.
-      priority: P1
-      priority_rationale: Correct Type 0/1 conversion is essential for hierarchical enumeration of multi-device topologies.
-      spec_ref: "PCIe 5.0 §2.2.8, §7.5.1.7, Table 2-17"
-      pass_criteria: >
-        Type 1 requests targeting the switch's Secondary Bus are converted to
-        Type 0 and consumed locally. Type 1 requests for buses within Secondary-
-        Subordinate range are forwarded to the correct downstream port. Type 1
-        requests for buses outside the range return UR completion. Correct
-        Bus/Dev/Fn fields maintained through conversion.
-      tool: "Protocol Analyzer + PCIe Switch platform"
-      test_method: protocol_analyzer
+        the target Bus number matches the switch''s Secondary Bus Number. Verify Type
+        1 requests are forwarded downstream when the target bus falls within Secondary-to-Subordinate
+        range. Confirm Type 1 requests outside the range are completed with Unsupported
+        Request.
 
+        '
+      priority: P1
+      priority_rationale: Correct Type 0/1 conversion is essential for hierarchical
+        enumeration of multi-device topologies.
+      spec_ref: PCIe 5.0 §2.2.8, §7.5.1.7, Table 2-17
+      pass_criteria: 'Type 1 requests targeting the switch''s Secondary Bus are converted
+        to Type 0 and consumed locally. Type 1 requests for buses within Secondary-
+        Subordinate range are forwarded to the correct downstream port. Type 1 requests
+        for buses outside the range return UR completion. Correct Bus/Dev/Fn fields
+        maintained through conversion.
+
+        '
+      tool: Protocol Analyzer + PCIe Switch platform
+      test_method: protocol_analyzer
   - name: IO Transactions
     items:
     - id: TXN-013
       title: IO Request and Completion Handshake
-      description: >
-        Issue IO Read and IO Write requests to a device implementing IO-mapped
+      description: 'Issue IO Read and IO Write requests to a device implementing IO-mapped
         registers. Verify that each IO request generates a corresponding Completion
-        TLP. Confirm IO Read completions carry exactly 1 DW of data (CplD) while
-        IO Write completions carry no data (Cpl). Validate Completion Status is
-        Successful Completion (000b) for valid addresses. Test with invalid IO
-        addresses and verify Unsupported Request (001b) completion status. Measure
-        IO transaction latency from request to completion.
-      priority: P1
-      priority_rationale: IO transactions are Non-Posted requiring completion; handshake errors stall the requester indefinitely.
-      spec_ref: "PCIe 5.0 §2.2.3, §2.2.9, Table 2-35"
-      pass_criteria: >
-        Every IORd receives a CplD with 1 DW data. Every IOWr receives a Cpl
-        (no data). Completion Requester ID and Tag match the original request.
-        Valid addresses return SC (000b) status. Invalid addresses return UR
-        (001b) status. Completion latency < 10 us under unloaded conditions.
-      tool: "Protocol Analyzer + IO-mapped device"
-      test_method: protocol_analyzer
+        TLP. Confirm IO Read completions carry exactly 1 DW of data (CplD) while IO
+        Write completions carry no data (Cpl). Validate Completion Status is Successful
+        Completion (000b) for valid addresses. Test with invalid IO addresses and
+        verify Unsupported Request (001b) completion status. Measure IO transaction
+        latency from request to completion.
 
+        '
+      priority: P1
+      priority_rationale: IO transactions are Non-Posted requiring completion; handshake
+        errors stall the requester indefinitely.
+      spec_ref: PCIe 5.0 §2.2.3, §2.2.9, Table 2-35
+      pass_criteria: 'Every IORd receives a CplD with 1 DW data. Every IOWr receives
+        a Cpl (no data). Completion Requester ID and Tag match the original request.
+        Valid addresses return SC (000b) status. Invalid addresses return UR (001b)
+        status. Completion latency < 10 us under unloaded conditions.
+
+        '
+      tool: Protocol Analyzer + IO-mapped device
+      test_method: protocol_analyzer
   - name: Message Transactions
     items:
     - id: TXN-014
       title: INTx Interrupt Message Routing
-      description: >
-        Configure the DUT to use legacy INTx interrupt signaling and trigger
-        interrupts. Capture the Assert_INTx and Deassert_INTx Message TLPs on
-        the link. Verify Message Code correctly identifies INTA/INTB/INTC/INTD.
-        Confirm Assert and Deassert messages are paired and use implicit routing
-        (Route to Root Complex). Validate that the Requester ID in the Message
-        TLP matches the DUT's Bus/Device/Function number.
-      priority: P1
-      priority_rationale: INTx messages are required for legacy interrupt compatibility before MSI/MSI-X setup.
-      spec_ref: "PCIe 5.0 §2.2.8.1, Table 2-17, Table 2-19"
-      pass_criteria: >
-        Assert_INTx message observed with correct Message Code (0020h-0023h).
-        Corresponding Deassert_INTx observed after interrupt serviced. Messages
-        use implicit routing (Route to Root Complex). Requester ID matches DUT
-        BDF. No orphaned Assert without Deassert.
-      tool: "Protocol Analyzer + INTx-capable endpoint"
-      test_method: protocol_analyzer
+      description: 'Configure the DUT to use legacy INTx interrupt signaling and trigger
+        interrupts. Capture the Assert_INTx and Deassert_INTx Message TLPs on the
+        link. Verify Message Code correctly identifies INTA/INTB/INTC/INTD. Confirm
+        Assert and Deassert messages are paired and use implicit routing (Route to
+        Root Complex). Validate that the Requester ID in the Message TLP matches the
+        DUT''s Bus/Device/Function number.
 
+        '
+      priority: P1
+      priority_rationale: INTx messages are required for legacy interrupt compatibility
+        before MSI/MSI-X setup.
+      spec_ref: PCIe 5.0 §2.2.8.1, Table 2-17, Table 2-19
+      pass_criteria: 'Assert_INTx message observed with correct Message Code (0020h-0023h).
+        Corresponding Deassert_INTx observed after interrupt serviced. Messages use
+        implicit routing (Route to Root Complex). Requester ID matches DUT BDF. No
+        orphaned Assert without Deassert.
+
+        '
+      tool: Protocol Analyzer + INTx-capable endpoint
+      test_method: protocol_analyzer
     - id: TXN-015
       title: Power Management Messages (PME and PME_TO_Ack)
-      description: >
-        Transition the DUT through power management states (D0->D3hot->D0) and
-        capture PM-related Message TLPs. Verify PME (Power Management Event)
-        messages are sent by the DUT when it requests wake-up from a low-power
-        state. Confirm PME_Turn_Off message is broadcast by the Root Complex
-        before platform power removal. Validate PME_TO_Ack is sent upstream by
-        each intermediate switch port. Verify correct Message Codes per the
-        PM message encoding table.
-      priority: P1
-      priority_rationale: PM message errors prevent proper power state transitions, causing wake failures or power leaks.
-      spec_ref: "PCIe 5.0 §2.2.8.2, Table 2-17, Table 2-20"
-      pass_criteria: >
-        PME message observed on D3hot->D0 wake transition with correct Message
-        Code (0018h). PME_Turn_Off broadcast observed before power down. PME_TO_Ack
-        sent upstream within 200 us of receiving PME_Turn_Off. All PM messages
-        use correct routing (implicit to Root Complex or broadcast).
-      tool: "Protocol Analyzer + PM-capable platform"
-      test_method: protocol_analyzer
+      description: 'Transition the DUT through power management states (D0->D3hot->D0)
+        and capture PM-related Message TLPs. Verify PME (Power Management Event) messages
+        are sent by the DUT when it requests wake-up from a low-power state. Confirm
+        PME_Turn_Off message is broadcast by the Root Complex before platform power
+        removal. Validate PME_TO_Ack is sent upstream by each intermediate switch
+        port. Verify correct Message Codes per the PM message encoding table.
 
+        '
+      priority: P1
+      priority_rationale: PM message errors prevent proper power state transitions,
+        causing wake failures or power leaks.
+      spec_ref: PCIe 5.0 §2.2.8.2, Table 2-17, Table 2-20
+      pass_criteria: 'PME message observed on D3hot->D0 wake transition with correct
+        Message Code (0018h). PME_Turn_Off broadcast observed before power down. PME_TO_Ack
+        sent upstream within 200 us of receiving PME_Turn_Off. All PM messages use
+        correct routing (implicit to Root Complex or broadcast).
+
+        '
+      tool: Protocol Analyzer + PM-capable platform
+      test_method: protocol_analyzer
     - id: TXN-016
       title: Error Signaling Messages (ERR_COR, ERR_NONFATAL, ERR_FATAL)
-      description: >
-        Inject correctable and uncorrectable errors on the link and verify the
-        DUT transmits the appropriate Error Message TLPs. Confirm ERR_COR is sent
-        for correctable errors (e.g., bad TLP, bad DLLP), ERR_NONFATAL for
-        non-fatal uncorrectable errors (e.g., completion timeout), and ERR_FATAL
-        for fatal uncorrectable errors (e.g., malformed TLP in certain contexts).
-        Verify each Error Message uses implicit routing to Root Complex and carries
-        the correct Message Code.
-      priority: P0
-      priority_rationale: Error messages are the primary error reporting mechanism; failure to signal masks hardware faults.
-      spec_ref: "PCIe 5.0 §2.2.8.3, Table 2-17, Table 2-21, §6.2"
-      pass_criteria: >
-        ERR_COR (Message Code 0030h) observed for injected correctable errors.
-        ERR_NONFATAL (0031h) observed for non-fatal uncorrectable errors.
-        ERR_FATAL (0033h) observed for fatal uncorrectable errors. All error
-        messages routed to Root Complex. Error messages correlate 1:1 with
-        injected error events.
-      tool: "Protocol Analyzer + Error Injection Tool"
-      test_method: protocol_analyzer
+      description: 'Inject correctable and uncorrectable errors on the link and verify
+        the DUT transmits the appropriate Error Message TLPs. Confirm ERR_COR is sent
+        for correctable errors (e.g., bad TLP, bad DLLP), ERR_NONFATAL for non-fatal
+        uncorrectable errors (e.g., completion timeout), and ERR_FATAL for fatal uncorrectable
+        errors (e.g., malformed TLP in certain contexts). Verify each Error Message
+        uses implicit routing to Root Complex and carries the correct Message Code.
 
+        '
+      priority: P0
+      priority_rationale: Error messages are the primary error reporting mechanism;
+        failure to signal masks hardware faults.
+      spec_ref: PCIe 5.0 §2.2.8.3, Table 2-17, Table 2-21, §6.2
+      pass_criteria: 'ERR_COR (Message Code 0030h) observed for injected correctable
+        errors. ERR_NONFATAL (0031h) observed for non-fatal uncorrectable errors.
+        ERR_FATAL (0033h) observed for fatal uncorrectable errors. All error messages
+        routed to Root Complex. Error messages correlate 1:1 with injected error events.
+
+        '
+      tool: Protocol Analyzer + Error Injection Tool
+      test_method: protocol_analyzer
+      validation:
+        status: valid
+        validated_at: '2026-03-14'
+        glean_validated: true
+        changes_made:
+        - Validated via Glean MCP - accurate
     - id: TXN-017
       title: Vendor-Defined Messages Type 0 and Type 1
-      description: >
-        If the DUT supports Vendor-Defined Messages, generate VDM Type 0
-        (silently dropped if not claimed) and Type 1 (generates UR if not claimed)
-        messages. Verify the correct Fmt/Type encoding, Vendor ID in the header,
-        and routing method (address routed, ID routed, or implicit). Confirm
-        Type 0 VDMs are silently discarded by receivers that do not understand
-        them. Confirm Type 1 VDMs return Unsupported Request completion when
-        unrecognized.
-      priority: P2
-      priority_rationale: VDMs are optional but used by vendor-specific features; incorrect handling causes interop issues.
-      spec_ref: "PCIe 5.0 §2.2.8.6, Table 2-17, Table 2-28"
-      pass_criteria: >
-        VDM Type 0 silently dropped by non-supporting receivers (no UR generated).
-        VDM Type 1 generates UR completion from non-supporting receivers. Vendor
-        ID field correctly populated. Message routing matches the routing subfield.
-        No unexpected errors or link-down events from VDM traffic.
-      tool: "Protocol Analyzer + VDM-capable traffic generator"
-      test_method: protocol_analyzer
+      description: 'If the DUT supports Vendor-Defined Messages, generate VDM Type
+        0 (silently dropped if not claimed) and Type 1 (generates UR if not claimed)
+        messages. Verify the correct Fmt/Type encoding, Vendor ID in the header, and
+        routing method (address routed, ID routed, or implicit). Confirm Type 0 VDMs
+        are silently discarded by receivers that do not understand them. Confirm Type
+        1 VDMs return Unsupported Request completion when unrecognized.
 
+        '
+      priority: P2
+      priority_rationale: VDMs are optional but used by vendor-specific features;
+        incorrect handling causes interop issues.
+      spec_ref: PCIe 5.0 §2.2.8.6, Table 2-17, Table 2-28
+      pass_criteria: 'VDM Type 0 silently dropped by non-supporting receivers (no
+        UR generated). VDM Type 1 generates UR completion from non-supporting receivers.
+        Vendor ID field correctly populated. Message routing matches the routing subfield.
+        No unexpected errors or link-down events from VDM traffic.
+
+        '
+      tool: Protocol Analyzer + VDM-capable traffic generator
+      test_method: protocol_analyzer
     - id: TXN-018
       title: Latency Tolerance Reporting (LTR) Messages
-      description: >
-        Enable LTR capability on the DUT and verify it sends LTR Messages
-        reporting its latency tolerance for both snoop and no-snoop paths.
-        Capture LTR Message TLPs and validate the Message Code, snoop latency
-        value/scale, and no-snoop latency value/scale fields. Vary DUT workload
-        from idle to active and confirm LTR values change appropriately. Verify
-        LTR messages use implicit routing to Root Complex.
-      priority: P2
-      priority_rationale: LTR enables platform power optimization; incorrect values cause either excess power or performance loss.
-      spec_ref: "PCIe 5.0 §2.2.8.8, §6.18, Table 2-17"
-      pass_criteria: >
-        LTR Messages observed with correct Message Code. Snoop and no-snoop
-        latency fields contain valid scale (0-5) and value (0-1023) encodings.
-        LTR values decrease under active workload and increase when idle.
-        Messages routed to Root Complex via implicit routing.
-      tool: "Protocol Analyzer + Workload generator"
-      test_method: protocol_analyzer
+      description: 'Enable LTR capability on the DUT and verify it sends LTR Messages
+        reporting its latency tolerance for both snoop and no-snoop paths. Capture
+        LTR Message TLPs and validate the Message Code, snoop latency value/scale,
+        and no-snoop latency value/scale fields. Vary DUT workload from idle to active
+        and confirm LTR values change appropriately. Verify LTR messages use implicit
+        routing to Root Complex.
 
+        '
+      priority: P2
+      priority_rationale: LTR enables platform power optimization; incorrect values
+        cause either excess power or performance loss.
+      spec_ref: PCIe 5.0 §2.2.8.8, §6.18, Table 2-17
+      pass_criteria: 'LTR Messages observed with correct Message Code. Snoop and no-snoop
+        latency fields contain valid scale (0-5) and value (0-1023) encodings. LTR
+        values decrease under active workload and increase when idle. Messages routed
+        to Root Complex via implicit routing.
+
+        '
+      tool: Protocol Analyzer + Workload generator
+      test_method: protocol_analyzer
   - name: Completion Handling
     items:
     - id: TXN-019
       title: Completion Status Codes (SC, UR, CRS, CA)
-      description: >
-        Trigger all four Completion Status codes and verify correct encoding in
-        the Completion header. Issue requests to valid addresses for Successful
+      description: 'Trigger all four Completion Status codes and verify correct encoding
+        in the Completion header. Issue requests to valid addresses for Successful
         Completion (SC=000b), invalid addresses for Unsupported Request (UR=001b),
-        during initialization for Configuration Request Retry Status (CRS=010b),
-        and to completer-aborted targets for Completer Abort (CA=100b). Verify
-        the 3-bit Completion Status field encoding in each captured Completion TLP.
-      priority: P0
-      priority_rationale: Completion Status drives error handling; wrong status codes mask real errors or create false positives.
-      spec_ref: "PCIe 5.0 §2.2.9, Table 2-35, Figure 2-38"
-      pass_criteria: >
-        SC (000b) returned for valid requests. UR (001b) returned for unsupported
-        request types or invalid addresses. CRS (010b) returned during CRS-eligible
-        initialization. CA (100b) returned for completer-abort conditions. Status
-        encoding matches Table 2-35 in all cases.
-      tool: "Protocol Analyzer + Targeted Traffic Generator"
-      test_method: protocol_analyzer
+        during initialization for Configuration Request Retry Status (CRS=010b), and
+        to completer-aborted targets for Completer Abort (CA=100b). Verify the 3-bit
+        Completion Status field encoding in each captured Completion TLP.
 
+        '
+      priority: P0
+      priority_rationale: Completion Status drives error handling; wrong status codes
+        mask real errors or create false positives.
+      spec_ref: PCIe 5.0 §2.2.9, Table 2-35, Figure 2-38
+      pass_criteria: 'SC (000b) returned for valid requests. UR (001b) returned for
+        unsupported request types or invalid addresses. CRS (010b) returned during
+        CRS-eligible initialization. CA (100b) returned for completer-abort conditions.
+        Status encoding matches Table 2-35 in all cases.
+
+        '
+      tool: Protocol Analyzer + Targeted Traffic Generator
+      test_method: protocol_analyzer
+      validation:
+        status: corrected
+        validated_at: '2026-03-14'
+        glean_validated: true
+        changes_made:
+        - Use §2.8.10 for Completion Timeout
     - id: TXN-020
       title: Completion Byte Count and Lower Address Fields
-      description: >
-        Issue Memory Read requests of various sizes and alignments, then verify
-        the Byte Count and Lower Address fields in each returned CplD. Confirm
-        Byte Count indicates the number of remaining bytes to be transferred
-        (including current completion) for the original request. Verify Lower
-        Address [6:0] indicates the byte address for the first byte of data in
-        the current completion. Test with split completions where multiple CplDs
-        satisfy a single MRd and confirm Byte Count decrements correctly.
+      description: 'Issue Memory Read requests of various sizes and alignments, then
+        verify the Byte Count and Lower Address fields in each returned CplD. Confirm
+        Byte Count indicates the number of remaining bytes to be transferred (including
+        current completion) for the original request. Verify Lower Address [6:0] indicates
+        the byte address for the first byte of data in the current completion. Test
+        with split completions where multiple CplDs satisfy a single MRd and confirm
+        Byte Count decrements correctly.
+
+        '
       priority: P0
-      priority_rationale: Byte Count and Lower Address errors cause data misplacement in completion reassembly.
-      spec_ref: "PCIe 5.0 §2.2.9, Figure 2-38, §2.3.1.1"
-      pass_criteria: >
-        First CplD Byte Count equals total bytes requested. Lower Address matches
-        the starting byte offset of the first requested byte. In split completions,
+      priority_rationale: Byte Count and Lower Address errors cause data misplacement
+        in completion reassembly.
+      spec_ref: PCIe 5.0 §2.2.9, Figure 2-38, §2.3.1.1
+      pass_criteria: 'First CplD Byte Count equals total bytes requested. Lower Address
+        matches the starting byte offset of the first requested byte. In split completions,
         each subsequent CplD has Byte Count decremented by previous CplD payload.
         Final CplD Byte Count equals its own payload size. Lower Address advances
         correctly across split completions.
-      tool: "Protocol Analyzer + DMA Read Engine"
-      test_method: protocol_analyzer
 
+        '
+      tool: Protocol Analyzer + DMA Read Engine
+      test_method: protocol_analyzer
+      validation:
+        status: corrected
+        validated_at: '2026-03-14'
+        glean_validated: true
+        changes_made:
+        - Use §2.2.6.1 and §6.5.2 for Tag handling
     - id: TXN-021
       title: Completion Requester ID and Tag Matching
-      description: >
-        Issue multiple outstanding Non-Posted requests (Memory Read, IO Read,
-        Configuration Read) with unique Tags and verify each Completion's
-        Requester ID and Tag fields match the original request. Inject a
-        completion with mismatched Tag or Requester ID and verify the receiver
-        treats it as an Unexpected Completion. Test with up to 256 outstanding
-        requests (8-bit Tag) to stress the tag matching logic. Verify Completer
-        ID in completion header identifies the completing device.
-      priority: P0
-      priority_rationale: Tag/ID mismatch causes completion data to be applied to wrong request, corrupting data silently.
-      spec_ref: "PCIe 5.0 §2.2.9, §2.3.1, Figure 2-38"
-      pass_criteria: >
-        All completions have Requester ID matching the original request's
-        Requester ID. Tag in completion matches the outstanding request Tag.
-        Mismatched completions flagged as Unexpected Completion errors. Completer
-        ID correctly identifies the responding device. No completion misrouting
-        under 256-tag stress.
-      tool: "Protocol Analyzer + Multi-threaded DMA Engine"
-      test_method: protocol_analyzer
+      description: 'Issue multiple outstanding Non-Posted requests (Memory Read, IO
+        Read, Configuration Read) with unique Tags and verify each Completion''s Requester
+        ID and Tag fields match the original request. Inject a completion with mismatched
+        Tag or Requester ID and verify the receiver treats it as an Unexpected Completion.
+        Test with up to 256 outstanding requests (8-bit Tag) to stress the tag matching
+        logic. Verify Completer ID in completion header identifies the completing
+        device.
 
+        '
+      priority: P0
+      priority_rationale: Tag/ID mismatch causes completion data to be applied to
+        wrong request, corrupting data silently.
+      spec_ref: PCIe 5.0 §2.2.9, §2.3.1, Figure 2-38
+      pass_criteria: 'All completions have Requester ID matching the original request''s
+        Requester ID. Tag in completion matches the outstanding request Tag. Mismatched
+        completions flagged as Unexpected Completion errors. Completer ID correctly
+        identifies the responding device. No completion misrouting under 256-tag stress.
+
+        '
+      tool: Protocol Analyzer + Multi-threaded DMA Engine
+      test_method: protocol_analyzer
+      validation:
+        status: valid
+        validated_at: '2026-03-14'
+        glean_validated: true
+        changes_made:
+        - Validated via Glean MCP - accurate
     - id: TXN-022
       title: Completion Timeout Detection and Recovery
-      description: >
-        Issue Non-Posted requests (Memory Read, IO Read) to a target that
-        deliberately does not respond, and verify the Requester detects a
-        Completion Timeout. Confirm the timeout period falls within the range
-        programmed in the Device Control 2 register. Verify the device signals
-        a Completion Timeout error (uncorrectable, non-fatal by default) and
-        logs it in the Device Status register. Test all four timeout ranges
-        (50us-50ms, 1ms-10s, 16ms-55ms, 65ms-210ms).
-      priority: P0
-      priority_rationale: Missing completion timeout causes permanent resource leak and potential system hang.
-      spec_ref: "PCIe 5.0 §2.8.1, §7.5.3.16, Table 2-40"
-      pass_criteria: >
-        Completion Timeout detected within the programmed range for each setting.
-        Uncorrectable Error Status register shows Completion Timeout bit set.
-        No system hang or resource leak after timeout. Timeout fires for all
-        Non-Posted request types. Device remains functional after timeout recovery.
-      tool: "Protocol Analyzer + Error Injection (suppress completions)"
-      test_method: protocol_analyzer
+      description: 'Issue Non-Posted requests (Memory Read, IO Read) to a target that
+        deliberately does not respond, and verify the Requester detects a Completion
+        Timeout. Confirm the timeout period falls within the range programmed in the
+        Device Control 2 register. Verify the device signals a Completion Timeout
+        error (uncorrectable, non-fatal by default) and logs it in the Device Status
+        register. Test all four timeout ranges (50us-50ms, 1ms-10s, 16ms-55ms, 65ms-210ms).
 
+        '
+      priority: P0
+      priority_rationale: Missing completion timeout causes permanent resource leak
+        and potential system hang.
+      spec_ref: PCIe 5.0 §2.8.1, §7.5.3.16, Table 2-40
+      pass_criteria: 'Completion Timeout detected within the programmed range for
+        each setting. Uncorrectable Error Status register shows Completion Timeout
+        bit set. No system hang or resource leak after timeout. Timeout fires for
+        all Non-Posted request types. Device remains functional after timeout recovery.
+
+        '
+      tool: Protocol Analyzer + Error Injection (suppress completions)
+      test_method: protocol_analyzer
+      validation:
+        status: corrected
+        validated_at: '2026-03-14'
+        glean_validated: true
+        changes_made:
+        - 14-bit Tag from Tag Scaling ECN/PCIe 6.x, not PCIe 5.0
   - name: Transaction Descriptor and Tags
     items:
     - id: TXN-023
       title: Transaction Descriptor Field Layout
-      description: >
-        Capture TLPs from the DUT and verify the Transaction Descriptor fields:
-        Requester ID (16-bit Bus/Device/Function), Tag (8-bit base), Traffic
-        Class (3-bit TC), and Attributes (3-bit: No Snoop, Relaxed Ordering,
-        ID-based Ordering). Confirm Requester ID matches the DUT's assigned
-        BDF after enumeration. Verify TC field matches the traffic class
-        programmed for the transaction. Validate Attribute bits are set according
-        to the requested transaction properties.
-      priority: P0
-      priority_rationale: Transaction Descriptor errors corrupt routing, ordering, and cache coherency decisions.
-      spec_ref: "PCIe 5.0 §2.2.6, Figure 2-14, Figure 2-15"
-      pass_criteria: >
-        Requester ID correctly encodes the DUT's Bus (8b), Device (5b), and
-        Function (3b). Tag field is unique among outstanding requests from the
-        same Requester. TC field matches the programmed traffic class. Attribute
-        bits match the requested transaction properties. All descriptor fields
-        are in correct bit positions per Figure 2-14.
-      tool: "Protocol Analyzer"
-      test_method: protocol_analyzer
+      description: 'Capture TLPs from the DUT and verify the Transaction Descriptor
+        fields: Requester ID (16-bit Bus/Device/Function), Tag (8-bit base), Traffic
+        Class (3-bit TC), and Attributes (3-bit: No Snoop, Relaxed Ordering, ID-based
+        Ordering). Confirm Requester ID matches the DUT''s assigned BDF after enumeration.
+        Verify TC field matches the traffic class programmed for the transaction.
+        Validate Attribute bits are set according to the requested transaction properties.
 
+        '
+      priority: P0
+      priority_rationale: Transaction Descriptor errors corrupt routing, ordering,
+        and cache coherency decisions.
+      spec_ref: PCIe 5.0 §2.2.6, Figure 2-14, Figure 2-15
+      pass_criteria: 'Requester ID correctly encodes the DUT''s Bus (8b), Device (5b),
+        and Function (3b). Tag field is unique among outstanding requests from the
+        same Requester. TC field matches the programmed traffic class. Attribute bits
+        match the requested transaction properties. All descriptor fields are in correct
+        bit positions per Figure 2-14.
+
+        '
+      tool: Protocol Analyzer
+      test_method: protocol_analyzer
+      validation:
+        status: valid
+        validated_at: '2026-03-14'
+        glean_validated: true
+        changes_made:
+        - Validated via Glean MCP - accurate
     - id: TXN-024
       title: 10-Bit Tag Support and Extended Tag Capability
-      description: >
-        Enable 10-Bit Tag Requester capability in Device Control 2 register and
-        verify the DUT uses Tags in the range 0-767 (using T9 and T8 bits in the
-        TLP header). Confirm the DUT advertises 10-Bit Tag Completer capability.
-        Issue enough outstanding Non-Posted requests to exceed the 8-bit tag
-        space (256) and verify Tags 256-767 are utilized. Verify backward
-        compatibility: when 10-Bit Tag is disabled, only Tags 0-255 are used.
-        Confirm T9:T8 bits are in Byte 0 bits [1:0] of the TLP header.
-      priority: P1
-      priority_rationale: 10-Bit Tag triples outstanding NPR capacity; critical for high-queue-depth NVMe performance.
-      spec_ref: "PCIe 5.0 §2.2.6.2, §7.5.3.16, Figure 2-15"
-      pass_criteria: >
-        With 10-Bit Tag enabled, Tags 256-767 observed in captured TLPs. T9:T8
-        bits correctly encoded in header Byte 0 bits [1:0]. More than 256
-        outstanding Non-Posted requests sustained simultaneously. With 10-Bit
-        Tag disabled, maximum Tag value is 255. Device Capabilities 2 correctly
-        advertises 10-Bit Tag Requester and Completer capabilities.
-      tool: "Protocol Analyzer + High-queue-depth NVMe workload"
-      test_method: protocol_analyzer
+      description: 'Enable 10-Bit Tag Requester capability in Device Control 2 register
+        and verify the DUT uses Tags in the range 0-767 (using T9 and T8 bits in the
+        TLP header). Confirm the DUT advertises 10-Bit Tag Completer capability. Issue
+        enough outstanding Non-Posted requests to exceed the 8-bit tag space (256)
+        and verify Tags 256-767 are utilized. Verify backward compatibility: when
+        10-Bit Tag is disabled, only Tags 0-255 are used. Confirm T9:T8 bits are in
+        Byte 0 bits [1:0] of the TLP header.
 
+        '
+      priority: P1
+      priority_rationale: 10-Bit Tag triples outstanding NPR capacity; critical for
+        high-queue-depth NVMe performance.
+      spec_ref: PCIe 5.0 §2.2.6.2, §7.5.3.16, Figure 2-15
+      pass_criteria: 'With 10-Bit Tag enabled, Tags 256-767 observed in captured TLPs.
+        T9:T8 bits correctly encoded in header Byte 0 bits [1:0]. More than 256 outstanding
+        Non-Posted requests sustained simultaneously. With 10-Bit Tag disabled, maximum
+        Tag value is 255. Device Capabilities 2 correctly advertises 10-Bit Tag Requester
+        and Completer capabilities.
+
+        '
+      tool: Protocol Analyzer + High-queue-depth NVMe workload
+      test_method: protocol_analyzer
     - id: TXN-025
       title: Extended Tag Field (8-bit) Enable and Operation
-      description: >
-        Enable the Extended Tag Field in Device Control register and verify the
-        DUT uses 8-bit Tags (0-255) instead of the default 5-bit range (0-31).
+      description: 'Enable the Extended Tag Field in Device Control register and verify
+        the DUT uses 8-bit Tags (0-255) instead of the default 5-bit range (0-31).
         Issue more than 32 outstanding Non-Posted requests and confirm Tags above
         31 are utilized. Verify backward compatibility: with Extended Tag disabled,
-        Tags are limited to 0-31. Confirm the Tag field occupies bits [7:0] in
-        the correct header byte position.
-      priority: P1
-      priority_rationale: Extended Tag enables 256 outstanding NPRs vs 32; essential for NVMe queue depth scaling.
-      spec_ref: "PCIe 5.0 §2.2.6.2, §7.5.3.4"
-      pass_criteria: >
-        With Extended Tag enabled, Tags 32-255 are observed. More than 32
-        outstanding Non-Posted requests sustained. With Extended Tag disabled,
-        maximum Tag is 31. Tag field is unique across all outstanding requests.
-        Device Capabilities correctly reports Extended Tag Field Supported.
-      tool: "Protocol Analyzer + Multi-queue NVMe workload"
-      test_method: protocol_analyzer
+        Tags are limited to 0-31. Confirm the Tag field occupies bits [7:0] in the
+        correct header byte position.
 
+        '
+      priority: P1
+      priority_rationale: Extended Tag enables 256 outstanding NPRs vs 32; essential
+        for NVMe queue depth scaling.
+      spec_ref: PCIe 5.0 §2.2.6.2, §7.5.3.4
+      pass_criteria: 'With Extended Tag enabled, Tags 32-255 are observed. More than
+        32 outstanding Non-Posted requests sustained. With Extended Tag disabled,
+        maximum Tag is 31. Tag field is unique across all outstanding requests. Device
+        Capabilities correctly reports Extended Tag Field Supported.
+
+        '
+      tool: Protocol Analyzer + Multi-queue NVMe workload
+      test_method: protocol_analyzer
   - name: Transaction Attributes
     items:
     - id: TXN-026
       title: No Snoop Attribute Handling
-      description: >
-        Issue Memory Read and Write requests with the No Snoop (NS) attribute
-        bit set and cleared. Verify the NS bit is correctly encoded in Attr[0]
-        of the TLP header. Confirm that when NS=1, the system does not perform
-        cache coherency snoops for the transaction, improving latency. Verify
-        that when NS=0, normal cache coherency is maintained. Test with both
-        cacheable and non-cacheable memory regions to validate correct NS behavior
-        in each context.
-      priority: P1
-      priority_rationale: No Snoop optimization is critical for DMA performance; incorrect use causes cache coherency violations.
-      spec_ref: "PCIe 5.0 §2.2.6.3, Table 2-9"
-      pass_criteria: >
-        NS bit (Attr[0]) correctly set/cleared in captured TLPs. With NS=1,
-        DMA transfers complete without cache snoop overhead (measurable latency
-        reduction). With NS=0, cache coherency maintained (data consistent
-        between CPU cache and DMA buffer). No data corruption in either mode.
-      tool: "Protocol Analyzer + DMA Engine with NS control"
-      test_method: protocol_analyzer
+      description: 'Issue Memory Read and Write requests with the No Snoop (NS) attribute
+        bit set and cleared. Verify the NS bit is correctly encoded in Attr[0] of
+        the TLP header. Confirm that when NS=1, the system does not perform cache
+        coherency snoops for the transaction, improving latency. Verify that when
+        NS=0, normal cache coherency is maintained. Test with both cacheable and non-cacheable
+        memory regions to validate correct NS behavior in each context.
 
+        '
+      priority: P1
+      priority_rationale: No Snoop optimization is critical for DMA performance; incorrect
+        use causes cache coherency violations.
+      spec_ref: PCIe 5.0 §2.2.6.3, Table 2-9
+      pass_criteria: 'NS bit (Attr[0]) correctly set/cleared in captured TLPs. With
+        NS=1, DMA transfers complete without cache snoop overhead (measurable latency
+        reduction). With NS=0, cache coherency maintained (data consistent between
+        CPU cache and DMA buffer). No data corruption in either mode.
+
+        '
+      tool: Protocol Analyzer + DMA Engine with NS control
+      test_method: protocol_analyzer
     - id: TXN-027
       title: Relaxed Ordering Attribute Handling
-      description: >
-        Issue Memory Write requests with Relaxed Ordering (RO) attribute bit set
-        and verify the bit is correctly encoded in Attr[1] of the TLP header.
-        With RO=1, verify that Memory Writes may pass other Memory Writes in the
-        same direction (relaxed producer-consumer ordering). Confirm that with
-        RO=0, strict ordering is maintained per the default rules in Table 2-40.
-        Test by issuing two Memory Writes to different addresses and checking if
-        they can arrive out of order at the completer when RO=1.
-      priority: P1
-      priority_rationale: Relaxed Ordering enables write combining optimization; incorrect use violates producer-consumer ordering.
-      spec_ref: "PCIe 5.0 §2.2.6.4, Table 2-9, Table 2-40"
-      pass_criteria: >
-        RO bit (Attr[1]) correctly set/cleared in captured TLPs. With RO=1,
-        reordering of Memory Writes observed when back pressure exists. With
-        RO=0, strict write ordering maintained. No data corruption or coherency
-        errors in either mode. Ordering behavior matches Table 2-40 rules.
-      tool: "Protocol Analyzer + DMA Engine with RO control"
-      test_method: protocol_analyzer
+      description: 'Issue Memory Write requests with Relaxed Ordering (RO) attribute
+        bit set and verify the bit is correctly encoded in Attr[1] of the TLP header.
+        With RO=1, verify that Memory Writes may pass other Memory Writes in the same
+        direction (relaxed producer-consumer ordering). Confirm that with RO=0, strict
+        ordering is maintained per the default rules in Table 2-40. Test by issuing
+        two Memory Writes to different addresses and checking if they can arrive out
+        of order at the completer when RO=1.
 
+        '
+      priority: P1
+      priority_rationale: Relaxed Ordering enables write combining optimization; incorrect
+        use violates producer-consumer ordering.
+      spec_ref: PCIe 5.0 §2.2.6.4, Table 2-9, Table 2-40
+      pass_criteria: 'RO bit (Attr[1]) correctly set/cleared in captured TLPs. With
+        RO=1, reordering of Memory Writes observed when back pressure exists. With
+        RO=0, strict write ordering maintained. No data corruption or coherency errors
+        in either mode. Ordering behavior matches Table 2-40 rules.
+
+        '
+      tool: Protocol Analyzer + DMA Engine with RO control
+      test_method: protocol_analyzer
     - id: TXN-028
       title: ID-Based Ordering (IDO) Attribute Handling
-      description: >
-        Issue Memory requests with ID-based Ordering (IDO) attribute bit set
-        (Attr[2]=1) and verify the bit encoding in the TLP header. With IDO=1,
-        verify that requests from different Requester IDs may pass each other
-        regardless of address ordering. Confirm that requests from the same
-        Requester ID still maintain ordering. Test with traffic from multiple
-        Functions (e.g., SR-IOV VFs) and verify cross-function reordering is
-        permitted while same-function ordering is preserved.
-      priority: P2
-      priority_rationale: IDO enables per-function ordering for SR-IOV; misuse causes cross-function data hazards.
-      spec_ref: "PCIe 5.0 §2.2.6.5, Table 2-10"
-      pass_criteria: >
-        IDO bit (Attr[2]) correctly encoded in TLP header. With IDO=1, requests
-        from different Requester IDs reorder when congestion exists. Requests
-        from same Requester ID maintain ordering. No data corruption with IDO
-        traffic from multiple SR-IOV VFs. Device Capabilities 2 correctly
-        advertises IDO Requester/Completer support.
-      tool: "Protocol Analyzer + SR-IOV enabled platform"
-      test_method: protocol_analyzer
+      description: 'Issue Memory requests with ID-based Ordering (IDO) attribute bit
+        set (Attr[2]=1) and verify the bit encoding in the TLP header. With IDO=1,
+        verify that requests from different Requester IDs may pass each other regardless
+        of address ordering. Confirm that requests from the same Requester ID still
+        maintain ordering. Test with traffic from multiple Functions (e.g., SR-IOV
+        VFs) and verify cross-function reordering is permitted while same-function
+        ordering is preserved.
 
+        '
+      priority: P2
+      priority_rationale: IDO enables per-function ordering for SR-IOV; misuse causes
+        cross-function data hazards.
+      spec_ref: PCIe 5.0 §2.2.6.5, Table 2-10
+      pass_criteria: 'IDO bit (Attr[2]) correctly encoded in TLP header. With IDO=1,
+        requests from different Requester IDs reorder when congestion exists. Requests
+        from same Requester ID maintain ordering. No data corruption with IDO traffic
+        from multiple SR-IOV VFs. Device Capabilities 2 correctly advertises IDO Requester/Completer
+        support.
+
+        '
+      tool: Protocol Analyzer + SR-IOV enabled platform
+      test_method: protocol_analyzer
     - id: TXN-029
       title: Traffic Class (TC) Field and TC-to-VC Mapping
-      description: >
-        Issue transactions with Traffic Class values TC0 through TC7 and verify
-        the 3-bit TC field is correctly encoded in the TLP header. Configure
-        TC-to-VC mapping in the VC Capability registers to assign different TCs
-        to different Virtual Channels. Verify that TLPs with different TC values
-        are placed into the correct VC buffer per the programmed mapping. Confirm
-        TC0 always maps to VC0 (default, hardwired). Test that traffic from higher
-        TCs receives appropriate arbitration priority.
-      priority: P1
-      priority_rationale: TC/VC mapping enables QoS differentiation; misconfiguration defeats traffic prioritization entirely.
-      spec_ref: "PCIe 5.0 §2.2.6.6, Table 2-11, §2.5"
-      pass_criteria: >
-        TC field correctly encoded in all TLPs (3-bit, values 0-7). TC0 maps
-        to VC0 in all configurations. Non-default TC-to-VC mappings route TLPs
-        to the correct VC. VC arbitration reflects TC priority under congestion.
-        VC Capability registers correctly report supported TCs and VCs.
-      tool: "Protocol Analyzer + VC-capable switch/endpoint"
-      test_method: protocol_analyzer
+      description: 'Issue transactions with Traffic Class values TC0 through TC7 and
+        verify the 3-bit TC field is correctly encoded in the TLP header. Configure
+        TC-to-VC mapping in the VC Capability registers to assign different TCs to
+        different Virtual Channels. Verify that TLPs with different TC values are
+        placed into the correct VC buffer per the programmed mapping. Confirm TC0
+        always maps to VC0 (default, hardwired). Test that traffic from higher TCs
+        receives appropriate arbitration priority.
 
+        '
+      priority: P1
+      priority_rationale: TC/VC mapping enables QoS differentiation; misconfiguration
+        defeats traffic prioritization entirely.
+      spec_ref: PCIe 5.0 §2.2.6.6, Table 2-11, §2.5
+      pass_criteria: 'TC field correctly encoded in all TLPs (3-bit, values 0-7).
+        TC0 maps to VC0 in all configurations. Non-default TC-to-VC mappings route
+        TLPs to the correct VC. VC arbitration reflects TC priority under congestion.
+        VC Capability registers correctly report supported TCs and VCs.
+
+        '
+      tool: Protocol Analyzer + VC-capable switch/endpoint
+      test_method: protocol_analyzer
   - name: Byte Enables
     items:
     - id: TXN-030
       title: First DW Byte Enable Encoding and Rules
-      description: >
-        Issue Memory and IO requests with all valid First DW Byte Enable (1st DW BE)
-        patterns and capture the TLP headers. Verify contiguous byte enable patterns
-        for Length=1 requests (all 16 combinations valid per Table 2-8). For Length>1
-        requests, verify First DW BE must be non-zero (at least one byte enabled).
-        Test the special case of Length=1 with 1st DW BE=0000b (zero-length read).
-        Confirm the First DW BE field occupies the correct 4-bit position in the
-        header.
-      priority: P0
-      priority_rationale: Byte Enable errors cause incorrect byte-level addressing, corrupting sub-DW data transfers.
-      spec_ref: "PCIe 5.0 §2.2.5, Table 2-8, Figure 2-13"
-      pass_criteria: >
-        All 16 First DW BE patterns accepted for Length=1 requests. For Length>1,
-        First DW BE is always non-zero. Zero-length read (Length=1, 1st DW BE=0000b,
-        Last DW BE=0000b) is correctly handled. Byte Enable encoding matches
-        Table 2-8 rules. No malformed TLP errors from valid BE patterns.
-      tool: "Protocol Analyzer + Byte-addressable DMA Engine"
-      test_method: protocol_analyzer
+      description: 'Issue Memory and IO requests with all valid First DW Byte Enable
+        (1st DW BE) patterns and capture the TLP headers. Verify contiguous byte enable
+        patterns for Length=1 requests (all 16 combinations valid per Table 2-8).
+        For Length>1 requests, verify First DW BE must be non-zero (at least one byte
+        enabled). Test the special case of Length=1 with 1st DW BE=0000b (zero-length
+        read). Confirm the First DW BE field occupies the correct 4-bit position in
+        the header.
 
+        '
+      priority: P0
+      priority_rationale: Byte Enable errors cause incorrect byte-level addressing,
+        corrupting sub-DW data transfers.
+      spec_ref: PCIe 5.0 §2.2.5, Table 2-8, Figure 2-13
+      pass_criteria: 'All 16 First DW BE patterns accepted for Length=1 requests.
+        For Length>1, First DW BE is always non-zero. Zero-length read (Length=1,
+        1st DW BE=0000b, Last DW BE=0000b) is correctly handled. Byte Enable encoding
+        matches Table 2-8 rules. No malformed TLP errors from valid BE patterns.
+
+        '
+      tool: Protocol Analyzer + Byte-addressable DMA Engine
+      test_method: protocol_analyzer
+      validation:
+        status: corrected
+        validated_at: '2026-03-14'
+        glean_validated: true
+        changes_made:
+        - Use §2.4/§2.4.1 + Table 2-40 for RO
     - id: TXN-031
       title: Last DW Byte Enable Rules for Multi-DW Transfers
-      description: >
-        Issue Memory requests with Length > 1 DW and verify the Last DW Byte Enable
-        (Last DW BE) field encoding. Confirm that for Length > 1, Last DW BE must
-        be non-zero. Verify that for Length = 1, Last DW BE must be 0000b. Test
-        contiguous and non-contiguous byte enable patterns and verify compliance
-        with Table 2-8. Validate the combined effect of First and Last DW BE on
-        the total byte count of the transfer.
-      priority: P0
-      priority_rationale: Last DW BE violations cause payload size mismatch, triggering Malformed TLP errors.
-      spec_ref: "PCIe 5.0 §2.2.5, Table 2-8, Figure 2-13"
-      pass_criteria: >
-        For Length > 1, Last DW BE is always non-zero. For Length = 1, Last DW BE
-        is always 0000b. Combined First + Last DW BE correctly indicate the total
-        transfer size. Non-contiguous BE patterns (if supported) comply with
-        Table 2-8 rules. No malformed TLP errors from valid BE combinations.
-      tool: "Protocol Analyzer + DMA Engine"
-      test_method: protocol_analyzer
+      description: 'Issue Memory requests with Length > 1 DW and verify the Last DW
+        Byte Enable (Last DW BE) field encoding. Confirm that for Length > 1, Last
+        DW BE must be non-zero. Verify that for Length = 1, Last DW BE must be 0000b.
+        Test contiguous and non-contiguous byte enable patterns and verify compliance
+        with Table 2-8. Validate the combined effect of First and Last DW BE on the
+        total byte count of the transfer.
 
+        '
+      priority: P0
+      priority_rationale: Last DW BE violations cause payload size mismatch, triggering
+        Malformed TLP errors.
+      spec_ref: PCIe 5.0 §2.2.5, Table 2-8, Figure 2-13
+      pass_criteria: 'For Length > 1, Last DW BE is always non-zero. For Length =
+        1, Last DW BE is always 0000b. Combined First + Last DW BE correctly indicate
+        the total transfer size. Non-contiguous BE patterns (if supported) comply
+        with Table 2-8 rules. No malformed TLP errors from valid BE combinations.
+
+        '
+      tool: Protocol Analyzer + DMA Engine
+      test_method: protocol_analyzer
+      validation:
+        status: corrected
+        validated_at: '2026-03-14'
+        glean_validated: true
+        changes_made:
+        - IDO in §2.4/§2.4.1 and §2.2, not §2.4.4
   - name: Flow Control
     items:
     - id: TXN-032
       title: Flow Control Initialization (FC_INIT1 and FC_INIT2)
-      description: >
-        Monitor the link during training and verify the Flow Control initialization
-        sequence. Confirm the Requester sends InitFC1 DLLPs advertising initial
-        credit values for all six credit types (PH, PD, NPH, NPD, CplH, CplD).
-        Verify the receiver acknowledges with InitFC2 DLLPs. Confirm initialization
-        completes for all three flow control types (Posted, Non-Posted, Completion)
-        before any TLPs are transmitted. Validate that advertised credits match the
-        receiver's buffer capacity.
-      priority: P0
-      priority_rationale: FC initialization failure blocks all TLP transmission; link is useless without credits.
-      spec_ref: "PCIe 5.0 §2.6, Table 2-42, Table 2-43, Figure 2-42"
-      pass_criteria: >
-        InitFC1 DLLPs observed for all six credit types (PH, PD, NPH, NPD, CplH,
-        CplD). InitFC2 DLLPs observed acknowledging each credit type. FC
-        initialization completes before first TLP transmitted. Advertised credit
-        values are non-zero for required credit types. All three FC types
-        (Posted, Non-Posted, Completion) initialized.
-      tool: "Protocol Analyzer with DLLP capture"
-      test_method: protocol_analyzer
+      description: 'Monitor the link during training and verify the Flow Control initialization
+        sequence. Confirm the Requester sends InitFC1 DLLPs advertising initial credit
+        values for all six credit types (PH, PD, NPH, NPD, CplH, CplD). Verify the
+        receiver acknowledges with InitFC2 DLLPs. Confirm initialization completes
+        for all three flow control types (Posted, Non-Posted, Completion) before any
+        TLPs are transmitted. Validate that advertised credits match the receiver''s
+        buffer capacity.
 
+        '
+      priority: P0
+      priority_rationale: FC initialization failure blocks all TLP transmission; link
+        is useless without credits.
+      spec_ref: PCIe 5.0 §2.6, Table 2-42, Table 2-43, Figure 2-42
+      pass_criteria: 'InitFC1 DLLPs observed for all six credit types (PH, PD, NPH,
+        NPD, CplH, CplD). InitFC2 DLLPs observed acknowledging each credit type. FC
+        initialization completes before first TLP transmitted. Advertised credit values
+        are non-zero for required credit types. All three FC types (Posted, Non-Posted,
+        Completion) initialized.
+
+        '
+      tool: Protocol Analyzer with DLLP capture
+      test_method: protocol_analyzer
+      validation:
+        status: corrected
+        validated_at: '2026-03-14'
+        glean_validated: true
+        changes_made:
+        - No Snoop in §2.2.6.5, not §2.4.5
     - id: TXN-033
       title: Flow Control Credit Consumption and Return
-      description: >
-        Monitor flow control credit exchange during active traffic. Verify that
-        each TLP transmission consumes the correct number of header credits (1 per
-        TLP) and data credits (based on payload size in credit units). Confirm
+      description: 'Monitor flow control credit exchange during active traffic. Verify
+        that each TLP transmission consumes the correct number of header credits (1
+        per TLP) and data credits (based on payload size in credit units). Confirm
         UpdateFC DLLPs are sent by the receiver to return credits after processing
-        TLPs. Verify credit accounting: consumed credits + available credits =
-        total advertised credits at all times. Test under heavy traffic to confirm
-        no credit leaks or underflows.
-      priority: P0
-      priority_rationale: Credit accounting errors cause link stall (no credits) or buffer overflow (excess credits).
-      spec_ref: "PCIe 5.0 §2.6, §2.6.1, Table 2-44"
-      pass_criteria: >
-        Header credit consumption = 1 per TLP transmitted. Data credit consumption
-        matches TLP payload in credit units (1 credit = 16 bytes or 4 DW).
-        UpdateFC DLLPs return credits within reasonable latency. Credit balance
-        never goes negative. No credit leak over 1M+ TLP sustained traffic.
-        Link never stalls due to credit exhaustion when receiver has buffer space.
-      tool: "Protocol Analyzer with FC credit tracking + Traffic Generator"
-      test_method: protocol_analyzer
+        TLPs. Verify credit accounting: consumed credits + available credits = total
+        advertised credits at all times. Test under heavy traffic to confirm no credit
+        leaks or underflows.
 
+        '
+      priority: P0
+      priority_rationale: Credit accounting errors cause link stall (no credits) or
+        buffer overflow (excess credits).
+      spec_ref: PCIe 5.0 §2.6, §2.6.1, Table 2-44
+      pass_criteria: 'Header credit consumption = 1 per TLP transmitted. Data credit
+        consumption matches TLP payload in credit units (1 credit = 16 bytes or 4
+        DW). UpdateFC DLLPs return credits within reasonable latency. Credit balance
+        never goes negative. No credit leak over 1M+ TLP sustained traffic. Link never
+        stalls due to credit exhaustion when receiver has buffer space.
+
+        '
+      tool: Protocol Analyzer with FC credit tracking + Traffic Generator
+      test_method: protocol_analyzer
+      validation:
+        status: valid
+        validated_at: '2026-03-14'
+        glean_validated: true
+        changes_made:
+        - Validated via Glean MCP - accurate
     - id: TXN-034
       title: Infinite Flow Control Credits for Posted Data
-      description: >
-        Verify that the receiver advertises infinite credits for Posted Data (PD)
-        and Posted Header (PH) as required for endpoints that must accept all
-        Posted requests. Confirm infinite credits are indicated by the credit
-        value encoding defined in the specification (all-ones or no UpdateFC
-        needed). Verify that Posted transactions are never blocked by flow
-        control even under extreme traffic conditions. Confirm infinite credit
-        advertisement occurs during FC initialization.
-      priority: P1
-      priority_rationale: Finite Posted credits can cause deadlocks; infinite credits are architecturally required for ordering model.
-      spec_ref: "PCIe 5.0 §2.6, Table 2-42"
-      pass_criteria: >
-        Posted Header and Data credits advertised as infinite in InitFC DLLPs.
-        Posted transactions never stalled by flow control. Credit value encoding
-        matches the specification's infinite credit representation. Posted
-        writes sustain maximum throughput without FC-induced back pressure.
-      tool: "Protocol Analyzer with FC tracking + Sustained write traffic"
-      test_method: protocol_analyzer
+      description: 'Verify that the receiver advertises infinite credits for Posted
+        Data (PD) and Posted Header (PH) as required for endpoints that must accept
+        all Posted requests. Confirm infinite credits are indicated by the credit
+        value encoding defined in the specification (all-ones or no UpdateFC needed).
+        Verify that Posted transactions are never blocked by flow control even under
+        extreme traffic conditions. Confirm infinite credit advertisement occurs during
+        FC initialization.
 
+        '
+      priority: P1
+      priority_rationale: Finite Posted credits can cause deadlocks; infinite credits
+        are architecturally required for ordering model.
+      spec_ref: PCIe 5.0 §2.6, Table 2-42
+      pass_criteria: 'Posted Header and Data credits advertised as infinite in InitFC
+        DLLPs. Posted transactions never stalled by flow control. Credit value encoding
+        matches the specification''s infinite credit representation. Posted writes
+        sustain maximum throughput without FC-induced back pressure.
+
+        '
+      tool: Protocol Analyzer with FC tracking + Sustained write traffic
+      test_method: protocol_analyzer
     - id: TXN-035
       title: Flow Control Update Frequency and Timeout
-      description: >
-        Monitor UpdateFC DLLP frequency during active traffic and idle periods.
-        Verify that the receiver sends UpdateFC DLLPs frequently enough to prevent
-        the transmitter from running out of credits (UpdateFC latency < 30 us
-        typical). During idle periods, verify periodic UpdateFC DLLPs are still
-        sent to keep the credit counter fresh. Test the scenario where UpdateFC
-        is delayed and verify the transmitter stalls gracefully without data loss
-        rather than overflowing the receiver buffer.
-      priority: P1
-      priority_rationale: Slow credit updates reduce effective bandwidth; missing updates cause unnecessary link stalls.
-      spec_ref: "PCIe 5.0 §2.6.1, §3.4"
-      pass_criteria: >
-        UpdateFC DLLPs observed at regular intervals during active traffic.
-        Periodic UpdateFC sent during idle periods. Transmitter stalls when
-        credits exhausted (no overflow). Link recovers promptly when credits
-        are returned. No data loss during credit stall conditions.
-      tool: "Protocol Analyzer with timestamp + Traffic Generator"
-      test_method: protocol_analyzer
+      description: 'Monitor UpdateFC DLLP frequency during active traffic and idle
+        periods. Verify that the receiver sends UpdateFC DLLPs frequently enough to
+        prevent the transmitter from running out of credits (UpdateFC latency < 30
+        us typical). During idle periods, verify periodic UpdateFC DLLPs are still
+        sent to keep the credit counter fresh. Test the scenario where UpdateFC is
+        delayed and verify the transmitter stalls gracefully without data loss rather
+        than overflowing the receiver buffer.
 
+        '
+      priority: P1
+      priority_rationale: Slow credit updates reduce effective bandwidth; missing
+        updates cause unnecessary link stalls.
+      spec_ref: PCIe 5.0 §2.6.1, §3.4
+      pass_criteria: 'UpdateFC DLLPs observed at regular intervals during active traffic.
+        Periodic UpdateFC sent during idle periods. Transmitter stalls when credits
+        exhausted (no overflow). Link recovers promptly when credits are returned.
+        No data loss during credit stall conditions.
+
+        '
+      tool: Protocol Analyzer with timestamp + Traffic Generator
+      test_method: protocol_analyzer
   - name: Ordering Rules
     items:
     - id: TXN-036
       title: Posted-Before-Non-Posted Ordering (Table 2-40 Row A2a)
-      description: >
-        Issue a sequence of Posted (Memory Write) requests followed by Non-Posted
-        (Memory Read) requests to the same address range. Verify that the switch
-        or root complex does not allow the Non-Posted request to pass the earlier
-        Posted request in the same direction (Row A2a of Table 2-40: "No" for
-        Non-Posted passing Posted). This prevents a read from returning stale data
-        before a preceding write takes effect. Monitor at both ingress and egress
-        of a switch port.
-      priority: P0
-      priority_rationale: Violating Posted-before-Non-Posted ordering breaks producer-consumer model and causes stale reads.
-      spec_ref: "PCIe 5.0 §2.4, Table 2-40"
-      pass_criteria: >
-        Non-Posted requests never pass earlier Posted requests to same address
-        in the same direction. Order preserved at switch ingress and egress.
-        Memory Read always returns data written by preceding Memory Write.
-        Table 2-40 Row A2a "No" rule verified. Test passes under traffic
-        congestion conditions.
-      tool: "Protocol Analyzer + Switch + Ordering-sensitive traffic pattern"
-      test_method: protocol_analyzer
+      description: 'Issue a sequence of Posted (Memory Write) requests followed by
+        Non-Posted (Memory Read) requests to the same address range. Verify that the
+        switch or root complex does not allow the Non-Posted request to pass the earlier
+        Posted request in the same direction (Row A2a of Table 2-40: "No" for Non-Posted
+        passing Posted). This prevents a read from returning stale data before a preceding
+        write takes effect. Monitor at both ingress and egress of a switch port.
 
+        '
+      priority: P0
+      priority_rationale: Violating Posted-before-Non-Posted ordering breaks producer-consumer
+        model and causes stale reads.
+      spec_ref: PCIe 5.0 §2.4, Table 2-40
+      pass_criteria: 'Non-Posted requests never pass earlier Posted requests to same
+        address in the same direction. Order preserved at switch ingress and egress.
+        Memory Read always returns data written by preceding Memory Write. Table 2-40
+        Row A2a "No" rule verified. Test passes under traffic congestion conditions.
+
+        '
+      tool: Protocol Analyzer + Switch + Ordering-sensitive traffic pattern
+      test_method: protocol_analyzer
+      validation:
+        status: corrected
+        validated_at: '2026-03-14'
+        glean_validated: true
+        changes_made:
+        - FC credits in Ch6 (§6.2.2), not §2.6
     - id: TXN-037
       title: Completion-Passing-Posted Ordering (Table 2-40 Row A3b)
-      description: >
-        Verify that Completions are allowed to pass Posted requests per Table 2-40
-        Row A3b ("Yes"). Set up a traffic pattern where a Completion and a Memory
-        Write are queued in the same direction. Confirm the Completion can be
-        forwarded ahead of the Posted Write. This is essential for preventing
-        deadlocks where Completion traffic is blocked behind Posted traffic.
-        Verify at switch ports with congested Posted queues.
-      priority: P0
-      priority_rationale: Blocking completions behind posted writes causes system deadlocks in multi-device topologies.
-      spec_ref: "PCIe 5.0 §2.4, Table 2-40"
-      pass_criteria: >
-        Completions observed passing earlier Posted requests in the same direction.
-        No deadlock when Completion and Posted traffic compete. Table 2-40 Row
-        A3b "Yes" rule verified. Switch correctly allows Completion bypass of
-        queued Posted writes. System remains deadlock-free under sustained mixed
-        traffic.
-      tool: "Protocol Analyzer + Switch + Mixed traffic generator"
-      test_method: protocol_analyzer
+      description: 'Verify that Completions are allowed to pass Posted requests per
+        Table 2-40 Row A3b ("Yes"). Set up a traffic pattern where a Completion and
+        a Memory Write are queued in the same direction. Confirm the Completion can
+        be forwarded ahead of the Posted Write. This is essential for preventing deadlocks
+        where Completion traffic is blocked behind Posted traffic. Verify at switch
+        ports with congested Posted queues.
 
+        '
+      priority: P0
+      priority_rationale: Blocking completions behind posted writes causes system
+        deadlocks in multi-device topologies.
+      spec_ref: PCIe 5.0 §2.4, Table 2-40
+      pass_criteria: 'Completions observed passing earlier Posted requests in the
+        same direction. No deadlock when Completion and Posted traffic compete. Table
+        2-40 Row A3b "Yes" rule verified. Switch correctly allows Completion bypass
+        of queued Posted writes. System remains deadlock-free under sustained mixed
+        traffic.
+
+        '
+      tool: Protocol Analyzer + Switch + Mixed traffic generator
+      test_method: protocol_analyzer
+      validation:
+        status: corrected
+        validated_at: '2026-03-14'
+        glean_validated: true
+        changes_made:
+        - Credit mgmt in §6.3/§6.3.2, not §2.6
     - id: TXN-038
       title: Non-Posted Request Ordering with Completions (Table 2-40)
-      description: >
-        Verify the ordering relationship between Non-Posted requests and Completions
-        per Table 2-40. Confirm that Completions must pass Non-Posted requests in
-        the same direction (Row A3a: "Yes" for Cpl passing NPR). Also verify that
-        Non-Posted requests must not pass Completions in the same direction when
-        both target the same address. Set up bidirectional traffic patterns where
+      description: 'Verify the ordering relationship between Non-Posted requests and
+        Completions per Table 2-40. Confirm that Completions must pass Non-Posted
+        requests in the same direction (Row A3a: "Yes" for Cpl passing NPR). Also
+        verify that Non-Posted requests must not pass Completions in the same direction
+        when both target the same address. Set up bidirectional traffic patterns where
         NPR and Cpl contend for the same egress port.
-      priority: P1
-      priority_rationale: NPR/Completion ordering errors can cause resource deadlocks in nested request chains.
-      spec_ref: "PCIe 5.0 §2.4, Table 2-40"
-      pass_criteria: >
-        Completions pass Non-Posted requests per Table 2-40 rules. Ordering
-        between NPR and Completions matches all applicable rows in Table 2-40.
-        No resource deadlock observed under bidirectional stress. Switch
-        correctly arbitrates NPR and Completion ordering.
-      tool: "Protocol Analyzer + Switch + Bidirectional traffic"
-      test_method: protocol_analyzer
 
+        '
+      priority: P1
+      priority_rationale: NPR/Completion ordering errors can cause resource deadlocks
+        in nested request chains.
+      spec_ref: PCIe 5.0 §2.4, Table 2-40
+      pass_criteria: 'Completions pass Non-Posted requests per Table 2-40 rules. Ordering
+        between NPR and Completions matches all applicable rows in Table 2-40. No
+        resource deadlock observed under bidirectional stress. Switch correctly arbitrates
+        NPR and Completion ordering.
+
+        '
+      tool: Protocol Analyzer + Switch + Bidirectional traffic
+      test_method: protocol_analyzer
     - id: TXN-039
       title: Relaxed Ordering Override of Default Rules
-      description: >
-        Issue Memory Write requests with Relaxed Ordering attribute set (RO=1) and
-        verify that these writes may pass preceding Memory Writes without RO in
-        the same direction, overriding the default strict ordering. Confirm that
-        writes with RO=0 still maintain strict ordering among themselves. Verify
-        that RO does not affect the ordering of Non-Posted or Completion
-        transactions. Test at a switch to confirm ordering policy is applied per
-        the RO attribute on a per-TLP basis.
+      description: 'Issue Memory Write requests with Relaxed Ordering attribute set
+        (RO=1) and verify that these writes may pass preceding Memory Writes without
+        RO in the same direction, overriding the default strict ordering. Confirm
+        that writes with RO=0 still maintain strict ordering among themselves. Verify
+        that RO does not affect the ordering of Non-Posted or Completion transactions.
+        Test at a switch to confirm ordering policy is applied per the RO attribute
+        on a per-TLP basis.
+
+        '
       priority: P1
-      priority_rationale: RO enables write combining; incorrect override behavior causes data corruption or unnecessary serialization.
-      spec_ref: "PCIe 5.0 §2.4, §2.2.6.4, Table 2-40"
-      pass_criteria: >
-        RO=1 writes pass earlier RO=0 writes in same direction. RO=0 writes
-        maintain strict ordering among themselves. RO attribute does not affect
+      priority_rationale: RO enables write combining; incorrect override behavior
+        causes data corruption or unnecessary serialization.
+      spec_ref: PCIe 5.0 §2.4, §2.2.6.4, Table 2-40
+      pass_criteria: 'RO=1 writes pass earlier RO=0 writes in same direction. RO=0
+        writes maintain strict ordering among themselves. RO attribute does not affect
         NPR or Completion ordering. Per-TLP RO policy applied correctly at switch.
         No data corruption with mixed RO/non-RO write streams.
-      tool: "Protocol Analyzer + Switch + RO traffic pattern"
-      test_method: protocol_analyzer
 
+        '
+      tool: Protocol Analyzer + Switch + RO traffic pattern
+      test_method: protocol_analyzer
   - name: ECRC
     items:
     - id: TXN-040
       title: ECRC Generation and Verification
-      description: >
-        Enable ECRC Generation in the AER Capability register of the transmitter
-        and ECRC Checking in the receiver. Issue Memory Read and Write TLPs and
-        verify the TLP Digest (TD) bit is set and a 32-bit ECRC is appended to
-        each TLP. Verify the ECRC polynomial is 04C11DB7h (CRC-32c). Confirm
-        that invariant header fields (Fmt, Type, TC, Attr, etc.) are included in
-        the CRC calculation while variant fields (EP bit, certain reserved fields)
-        are treated as defined in the specification.
-      priority: P1
-      priority_rationale: ECRC provides end-to-end data integrity across switches; without it, silent corruption is undetectable.
-      spec_ref: "PCIe 5.0 §2.7, Table 2-49, §6.2.3.2"
-      pass_criteria: >
-        TD bit = 1 in all TLPs when ECRC Generation enabled. 32-bit ECRC appended
-        after TLP payload (or header for non-data TLPs). ECRC computed using
-        polynomial 04C11DB7h matches independent calculation. Invariant and variant
-        fields treated correctly per spec. ECRC Check passes at receiver for all
-        valid TLPs.
-      tool: "Protocol Analyzer + ECRC-capable endpoint"
-      test_method: protocol_analyzer
+      description: 'Enable ECRC Generation in the AER Capability register of the transmitter
+        and ECRC Checking in the receiver. Issue Memory Read and Write TLPs and verify
+        the TLP Digest (TD) bit is set and a 32-bit ECRC is appended to each TLP.
+        Verify the ECRC polynomial is 04C11DB7h (CRC-32c). Confirm that invariant
+        header fields (Fmt, Type, TC, Attr, etc.) are included in the CRC calculation
+        while variant fields (EP bit, certain reserved fields) are treated as defined
+        in the specification.
 
+        '
+      priority: P1
+      priority_rationale: ECRC provides end-to-end data integrity across switches;
+        without it, silent corruption is undetectable.
+      spec_ref: PCIe 5.0 §2.7, Table 2-49, §6.2.3.2
+      pass_criteria: 'TD bit = 1 in all TLPs when ECRC Generation enabled. 32-bit
+        ECRC appended after TLP payload (or header for non-data TLPs). ECRC computed
+        using polynomial 04C11DB7h matches independent calculation. Invariant and
+        variant fields treated correctly per spec. ECRC Check passes at receiver for
+        all valid TLPs.
+
+        '
+      tool: Protocol Analyzer + ECRC-capable endpoint
+      test_method: protocol_analyzer
     - id: TXN-041
       title: ECRC Error Detection and Reporting
-      description: >
-        Enable ECRC Checking at the receiver and inject TLPs with corrupted ECRC
-        values. Verify the receiver detects the ECRC mismatch and reports an ECRC
-        error in the Advanced Error Reporting (AER) Correctable or Uncorrectable
+      description: 'Enable ECRC Checking at the receiver and inject TLPs with corrupted
+        ECRC values. Verify the receiver detects the ECRC mismatch and reports an
+        ECRC error in the Advanced Error Reporting (AER) Correctable or Uncorrectable
         Error Status register. Confirm the error severity (correctable if TLP can
-        be recovered via retry, uncorrectable otherwise). Verify the Header Log
-        register captures the offending TLP header. Test with single-bit and
-        multi-bit ECRC corruption patterns.
-      priority: P1
-      priority_rationale: ECRC detection failure allows corrupted data to propagate silently through the fabric.
-      spec_ref: "PCIe 5.0 §2.7, §6.2.3.2, §6.2.4"
-      pass_criteria: >
-        ECRC errors detected for all corrupted TLPs (single-bit and multi-bit).
-        AER Error Status register shows ECRC error bit set. Header Log captures
-        the correct TLP header. Error signaled via ERR_COR or ERR_NONFATAL message
-        as appropriate. Valid TLPs with correct ECRC pass check without error.
-      tool: "Protocol Analyzer + Error Injection + AER-capable endpoint"
-      test_method: protocol_analyzer
+        be recovered via retry, uncorrectable otherwise). Verify the Header Log register
+        captures the offending TLP header. Test with single-bit and multi-bit ECRC
+        corruption patterns.
 
+        '
+      priority: P1
+      priority_rationale: ECRC detection failure allows corrupted data to propagate
+        silently through the fabric.
+      spec_ref: PCIe 5.0 §2.7, §6.2.3.2, §6.2.4
+      pass_criteria: 'ECRC errors detected for all corrupted TLPs (single-bit and
+        multi-bit). AER Error Status register shows ECRC error bit set. Header Log
+        captures the correct TLP header. Error signaled via ERR_COR or ERR_NONFATAL
+        message as appropriate. Valid TLPs with correct ECRC pass check without error.
+
+        '
+      tool: Protocol Analyzer + Error Injection + AER-capable endpoint
+      test_method: protocol_analyzer
     - id: TXN-042
       title: Error Forwarding (Data Poisoning) via EP Bit
-      description: >
-        Set the Error/Poison (EP) bit in a Memory Write TLP data payload and
-        verify the receiver correctly identifies the TLP as poisoned. Confirm the
-        receiver logs a Poisoned TLP Received error in the AER Uncorrectable Error
-        Status register. Verify that poisoned data is not silently written to
-        memory but instead triggers error handling. Test with Completions carrying
-        the EP bit to verify the requester also detects poisoned completion data.
-        Confirm EP bit position in the TLP header is correctly encoded.
-      priority: P1
-      priority_rationale: Data poisoning is the mechanism for propagating error status; ignoring EP causes silent data corruption.
-      spec_ref: "PCIe 5.0 §2.7.2, §6.2.3.3"
-      pass_criteria: >
-        EP bit correctly identified in captured TLPs. Receiver logs Poisoned TLP
-        Received error for EP=1 TLPs. Poisoned data not written to target memory
-        without error flag. Poisoned completions detected by requester. EP=0 TLPs
-        processed normally without false positive errors.
-      tool: "Protocol Analyzer + Error Injection + AER-capable endpoint"
-      test_method: protocol_analyzer
+      description: 'Set the Error/Poison (EP) bit in a Memory Write TLP data payload
+        and verify the receiver correctly identifies the TLP as poisoned. Confirm
+        the receiver logs a Poisoned TLP Received error in the AER Uncorrectable Error
+        Status register. Verify that poisoned data is not silently written to memory
+        but instead triggers error handling. Test with Completions carrying the EP
+        bit to verify the requester also detects poisoned completion data. Confirm
+        EP bit position in the TLP header is correctly encoded.
 
+        '
+      priority: P1
+      priority_rationale: Data poisoning is the mechanism for propagating error status;
+        ignoring EP causes silent data corruption.
+      spec_ref: PCIe 5.0 §2.7.2, §6.2.3.3
+      pass_criteria: 'EP bit correctly identified in captured TLPs. Receiver logs
+        Poisoned TLP Received error for EP=1 TLPs. Poisoned data not written to target
+        memory without error flag. Poisoned completions detected by requester. EP=0
+        TLPs processed normally without false positive errors.
+
+        '
+      tool: Protocol Analyzer + Error Injection + AER-capable endpoint
+      test_method: protocol_analyzer
   - name: AtomicOps
     items:
     - id: TXN-043
       title: FetchAdd Atomic Operation (32-bit and 64-bit)
-      description: >
-        Issue FetchAdd AtomicOp requests with both 32-bit and 64-bit operand sizes
-        to a Completer that supports AtomicOp operations. Verify the TLP format
-        uses Fmt/Type encoding per Table 2-3 for AtomicOp requests. Confirm the
-        Completer reads the target location, adds the operand value atomically,
-        writes the result back, and returns the original value in a Completion
-        with data. Verify atomicity by issuing concurrent FetchAdd operations
-        from multiple requesters to the same address.
-      priority: P1
-      priority_rationale: FetchAdd enables lock-free data structures in NVMe; atomicity failures cause race conditions.
-      spec_ref: "PCIe 5.0 §2.2.7, Table 2-12, Table 2-3"
-      pass_criteria: >
-        FetchAdd TLP uses correct Fmt/Type encoding. 32-bit FetchAdd carries 1 DW
-        operand, 64-bit carries 2 DW. Completion returns original value before
-        addition. Target memory contains original + operand after operation.
-        Concurrent FetchAdd from multiple requesters produces correct atomic
-        results with no lost updates.
-      tool: "Protocol Analyzer + AtomicOp-capable endpoint + Multi-requester setup"
-      test_method: protocol_analyzer
+      description: 'Issue FetchAdd AtomicOp requests with both 32-bit and 64-bit operand
+        sizes to a Completer that supports AtomicOp operations. Verify the TLP format
+        uses Fmt/Type encoding per Table 2-3 for AtomicOp requests. Confirm the Completer
+        reads the target location, adds the operand value atomically, writes the result
+        back, and returns the original value in a Completion with data. Verify atomicity
+        by issuing concurrent FetchAdd operations from multiple requesters to the
+        same address.
 
+        '
+      priority: P1
+      priority_rationale: FetchAdd enables lock-free data structures in NVMe; atomicity
+        failures cause race conditions.
+      spec_ref: PCIe 5.0 §2.2.7, Table 2-12, Table 2-3
+      pass_criteria: 'FetchAdd TLP uses correct Fmt/Type encoding. 32-bit FetchAdd
+        carries 1 DW operand, 64-bit carries 2 DW. Completion returns original value
+        before addition. Target memory contains original + operand after operation.
+        Concurrent FetchAdd from multiple requesters produces correct atomic results
+        with no lost updates.
+
+        '
+      tool: Protocol Analyzer + AtomicOp-capable endpoint + Multi-requester setup
+      test_method: protocol_analyzer
     - id: TXN-044
       title: Swap Atomic Operation (32-bit and 64-bit)
-      description: >
-        Issue Swap AtomicOp requests with 32-bit and 64-bit operand sizes. Verify
-        the Completer atomically replaces the target location value with the
-        operand and returns the original value in a CplD. Confirm the TLP format
-        carries the swap value as the data payload. Test atomicity by performing
-        concurrent Swap operations and verifying that each original value is
-        returned exactly once. Verify that Swap operations are non-posted and
-        always generate completions.
-      priority: P2
-      priority_rationale: Swap is used for lock acquisition patterns; non-atomic swap creates critical section violations.
-      spec_ref: "PCIe 5.0 §2.2.7, Table 2-12, Table 2-3"
-      pass_criteria: >
-        Swap TLP carries correct operand size (1 DW for 32-bit, 2 DW for 64-bit).
-        Completion returns the pre-swap original value. Target memory contains
-        the swap operand value after operation. Concurrent Swap operations are
-        atomic (no torn reads/writes). All Swap requests receive completions.
-      tool: "Protocol Analyzer + AtomicOp-capable endpoint"
-      test_method: protocol_analyzer
+      description: 'Issue Swap AtomicOp requests with 32-bit and 64-bit operand sizes.
+        Verify the Completer atomically replaces the target location value with the
+        operand and returns the original value in a CplD. Confirm the TLP format carries
+        the swap value as the data payload. Test atomicity by performing concurrent
+        Swap operations and verifying that each original value is returned exactly
+        once. Verify that Swap operations are non-posted and always generate completions.
 
+        '
+      priority: P2
+      priority_rationale: Swap is used for lock acquisition patterns; non-atomic swap
+        creates critical section violations.
+      spec_ref: PCIe 5.0 §2.2.7, Table 2-12, Table 2-3
+      pass_criteria: 'Swap TLP carries correct operand size (1 DW for 32-bit, 2 DW
+        for 64-bit). Completion returns the pre-swap original value. Target memory
+        contains the swap operand value after operation. Concurrent Swap operations
+        are atomic (no torn reads/writes). All Swap requests receive completions.
+
+        '
+      tool: Protocol Analyzer + AtomicOp-capable endpoint
+      test_method: protocol_analyzer
     - id: TXN-045
       title: Compare-and-Swap (CAS) Atomic Operation
-      description: >
-        Issue Compare-and-Swap (CAS) AtomicOp requests with 32-bit and 64-bit
-        operand sizes. The CAS TLP carries two operands: compare value and swap
-        value (2 DW for 32-bit CAS, 4 DW for 64-bit CAS). Verify the Completer
-        reads the target, compares with the compare operand, and only writes the
-        swap value if they match. Verify the original value is returned in the
-        completion regardless of match. Test both match (swap occurs) and no-match
-        (no swap) scenarios under concurrent access.
-      priority: P1
-      priority_rationale: CAS is the fundamental synchronization primitive for NVMe submission/completion queue management.
-      spec_ref: "PCIe 5.0 §2.2.7, Table 2-12, Table 2-3"
-      pass_criteria: >
-        CAS TLP carries compare and swap operands (2 DW for 32-bit, 4 DW for
-        64-bit). On match: target updated to swap value, original returned.
-        On no-match: target unchanged, original returned. Atomicity verified
-        under concurrent access. CAS operations always generate completions
-        with original value.
-      tool: "Protocol Analyzer + AtomicOp-capable endpoint + Concurrent requesters"
-      test_method: protocol_analyzer
+      description: 'Issue Compare-and-Swap (CAS) AtomicOp requests with 32-bit and
+        64-bit operand sizes. The CAS TLP carries two operands: compare value and
+        swap value (2 DW for 32-bit CAS, 4 DW for 64-bit CAS). Verify the Completer
+        reads the target, compares with the compare operand, and only writes the swap
+        value if they match. Verify the original value is returned in the completion
+        regardless of match. Test both match (swap occurs) and no-match (no swap)
+        scenarios under concurrent access.
 
+        '
+      priority: P1
+      priority_rationale: CAS is the fundamental synchronization primitive for NVMe
+        submission/completion queue management.
+      spec_ref: PCIe 5.0 §2.2.7, Table 2-12, Table 2-3
+      pass_criteria: 'CAS TLP carries compare and swap operands (2 DW for 32-bit,
+        4 DW for 64-bit). On match: target updated to swap value, original returned.
+        On no-match: target unchanged, original returned. Atomicity verified under
+        concurrent access. CAS operations always generate completions with original
+        value.
+
+        '
+      tool: Protocol Analyzer + AtomicOp-capable endpoint + Concurrent requesters
+      test_method: protocol_analyzer
     - id: TXN-046
       title: AtomicOp Requester and Completer Capability Negotiation
-      description: >
-        Verify AtomicOp capability advertisement in Device Capabilities 2 register:
-        AtomicOp Routing, 32-bit AtomicOp Completer, 64-bit AtomicOp Completer,
-        and 128-bit CAS Completer capabilities. Enable AtomicOp Requester in
-        Device Control 2. Verify that requests to a non-capable Completer return
-        Unsupported Request completion. Verify switches advertise AtomicOp Routing
-        capability and correctly forward AtomicOp TLPs.
-      priority: P1
-      priority_rationale: Capability mismatch causes UR completions, breaking atomic operations silently in multi-device setups.
-      spec_ref: "PCIe 5.0 §2.2.7, §7.5.3.15, §7.5.3.16"
-      pass_criteria: >
-        Device Capabilities 2 correctly advertises AtomicOp support bits.
-        AtomicOp Requester Enable in Device Control 2 allows AtomicOp TLP
-        generation. Non-capable Completers return UR for AtomicOp requests.
-        Switches with AtomicOp Routing forward AtomicOps downstream. Capability
-        bits match actual device behavior.
-      tool: "Protocol Analyzer + Mixed AtomicOp-capable/non-capable devices"
-      test_method: protocol_analyzer
+      description: 'Verify AtomicOp capability advertisement in Device Capabilities
+        2 register: AtomicOp Routing, 32-bit AtomicOp Completer, 64-bit AtomicOp Completer,
+        and 128-bit CAS Completer capabilities. Enable AtomicOp Requester in Device
+        Control 2. Verify that requests to a non-capable Completer return Unsupported
+        Request completion. Verify switches advertise AtomicOp Routing capability
+        and correctly forward AtomicOp TLPs.
 
+        '
+      priority: P1
+      priority_rationale: Capability mismatch causes UR completions, breaking atomic
+        operations silently in multi-device setups.
+      spec_ref: PCIe 5.0 §2.2.7, §7.5.3.15, §7.5.3.16
+      pass_criteria: 'Device Capabilities 2 correctly advertises AtomicOp support
+        bits. AtomicOp Requester Enable in Device Control 2 allows AtomicOp TLP generation.
+        Non-capable Completers return UR for AtomicOp requests. Switches with AtomicOp
+        Routing forward AtomicOps downstream. Capability bits match actual device
+        behavior.
+
+        '
+      tool: Protocol Analyzer + Mixed AtomicOp-capable/non-capable devices
+      test_method: protocol_analyzer
   - name: TLP Prefix
     items:
     - id: TXN-047
       title: Local TLP Prefix Format and Processing
-      description: >
-        Generate TLPs with Local TLP Prefix (Fmt[2:0]=100b) and verify the prefix
-        is placed before the TLP header in the correct byte position. Confirm the
-        Local TLP Prefix is processed and stripped at each link hop (not forwarded
-        end-to-end). Verify the prefix Type field identifies the local prefix
-        subtype. Test that the receiver correctly parses the TLP header following
-        the local prefix. Confirm that the presence of a local prefix is indicated
-        by the TLP Prefix bit in the TLP header.
-      priority: P2
-      priority_rationale: Local TLP Prefixes carry per-link metadata; misparse corrupts the subsequent TLP header decode.
-      spec_ref: "PCIe 5.0 §2.2.10, Table 2-36, Figure 2-39"
-      pass_criteria: >
-        Local TLP Prefix correctly positioned before TLP header. Prefix stripped
-        at each link hop (not forwarded to next link). Prefix Type field correctly
-        identifies the subtype. TLP following the prefix is correctly parsed.
-        TLP Prefix presence bit in header matches actual prefix presence.
-      tool: "Protocol Analyzer + Prefix-capable device"
-      test_method: protocol_analyzer
+      description: 'Generate TLPs with Local TLP Prefix (Fmt[2:0]=100b) and verify
+        the prefix is placed before the TLP header in the correct byte position. Confirm
+        the Local TLP Prefix is processed and stripped at each link hop (not forwarded
+        end-to-end). Verify the prefix Type field identifies the local prefix subtype.
+        Test that the receiver correctly parses the TLP header following the local
+        prefix. Confirm that the presence of a local prefix is indicated by the TLP
+        Prefix bit in the TLP header.
 
+        '
+      priority: P2
+      priority_rationale: Local TLP Prefixes carry per-link metadata; misparse corrupts
+        the subsequent TLP header decode.
+      spec_ref: PCIe 5.0 §2.2.10, Table 2-36, Figure 2-39
+      pass_criteria: 'Local TLP Prefix correctly positioned before TLP header. Prefix
+        stripped at each link hop (not forwarded to next link). Prefix Type field
+        correctly identifies the subtype. TLP following the prefix is correctly parsed.
+        TLP Prefix presence bit in header matches actual prefix presence.
+
+        '
+      tool: Protocol Analyzer + Prefix-capable device
+      test_method: protocol_analyzer
     - id: TXN-048
       title: End-End TLP Prefix Format and Forwarding
-      description: >
-        Generate TLPs with End-End TLP Prefix and verify the prefix is forwarded
-        through intermediate switches without modification. Confirm the End-End
-        prefix is present at both the source and destination of the TLP. Verify
-        the prefix Type field identifies PASID, which is the primary End-End
-        prefix type. Test that switches forward the prefix along with the TLP
-        without stripping or modifying it. Validate that up to 4 TLP prefixes
-        (mixed Local and End-End) can be present on a single TLP.
-      priority: P2
-      priority_rationale: End-End prefixes carry PASID for address translation; stripping breaks IOMMU-based isolation.
-      spec_ref: "PCIe 5.0 §2.2.10, Table 2-37, Figure 2-39"
-      pass_criteria: >
-        End-End TLP Prefix forwarded through switches unmodified. Prefix present
-        at both source and destination. PASID prefix Type field correctly encoded.
-        Up to 4 TLP prefixes supported per TLP. Switches do not strip or alter
-        End-End prefixes.
-      tool: "Protocol Analyzer + Switch + PASID-capable endpoint"
-      test_method: protocol_analyzer
+      description: 'Generate TLPs with End-End TLP Prefix and verify the prefix is
+        forwarded through intermediate switches without modification. Confirm the
+        End-End prefix is present at both the source and destination of the TLP. Verify
+        the prefix Type field identifies PASID, which is the primary End-End prefix
+        type. Test that switches forward the prefix along with the TLP without stripping
+        or modifying it. Validate that up to 4 TLP prefixes (mixed Local and End-End)
+        can be present on a single TLP.
 
+        '
+      priority: P2
+      priority_rationale: End-End prefixes carry PASID for address translation; stripping
+        breaks IOMMU-based isolation.
+      spec_ref: PCIe 5.0 §2.2.10, Table 2-37, Figure 2-39
+      pass_criteria: 'End-End TLP Prefix forwarded through switches unmodified. Prefix
+        present at both source and destination. PASID prefix Type field correctly
+        encoded. Up to 4 TLP prefixes supported per TLP. Switches do not strip or
+        alter End-End prefixes.
+
+        '
+      tool: Protocol Analyzer + Switch + PASID-capable endpoint
+      test_method: protocol_analyzer
   - name: Virtual Channels
     items:
     - id: TXN-049
       title: VC0 Default Operation and VC Capability
-      description: >
-        Verify that VC0 is always present and operational as the default Virtual
-        Channel. Read the VC Capability registers and confirm VC0 is hardwired
-        enabled. Verify all TLPs with TC0 are mapped to VC0 by default. Issue
-        traffic on TC0 and confirm it flows through VC0 with correct flow control
-        (independent FC credits for VC0). If additional VCs are supported, read
-        the Extended VC Count and verify each VC can be independently enabled
-        and assigned TC mappings.
-      priority: P1
-      priority_rationale: VC0 is the mandatory baseline channel; VC0 failure blocks all traffic on the link.
-      spec_ref: "PCIe 5.0 §2.5, §7.9.1"
-      pass_criteria: >
-        VC0 reported as always enabled in VC Capability. TC0 maps to VC0 by
-        default (hardwired). TC0 traffic flows through VC0 with independent FC.
-        VC Capability registers correctly report Extended VC Count. Additional
-        VCs (if supported) can be enabled and configured independently.
-      tool: "Protocol Analyzer + VC-capable device"
-      test_method: protocol_analyzer
+      description: 'Verify that VC0 is always present and operational as the default
+        Virtual Channel. Read the VC Capability registers and confirm VC0 is hardwired
+        enabled. Verify all TLPs with TC0 are mapped to VC0 by default. Issue traffic
+        on TC0 and confirm it flows through VC0 with correct flow control (independent
+        FC credits for VC0). If additional VCs are supported, read the Extended VC
+        Count and verify each VC can be independently enabled and assigned TC mappings.
 
+        '
+      priority: P1
+      priority_rationale: VC0 is the mandatory baseline channel; VC0 failure blocks
+        all traffic on the link.
+      spec_ref: PCIe 5.0 §2.5, §7.9.1
+      pass_criteria: 'VC0 reported as always enabled in VC Capability. TC0 maps to
+        VC0 by default (hardwired). TC0 traffic flows through VC0 with independent
+        FC. VC Capability registers correctly report Extended VC Count. Additional
+        VCs (if supported) can be enabled and configured independently.
+
+        '
+      tool: Protocol Analyzer + VC-capable device
+      test_method: protocol_analyzer
     - id: TXN-050
       title: Multi-VC Arbitration and TC Mapping
-      description: >
-        On a device supporting multiple VCs (VC0 + at least one extended VC),
-        configure TC-to-VC mapping to assign TC1 to VC1 and TC0 to VC0. Generate
+      description: 'On a device supporting multiple VCs (VC0 + at least one extended
+        VC), configure TC-to-VC mapping to assign TC1 to VC1 and TC0 to VC0. Generate
         concurrent traffic on TC0 and TC1 and verify they use separate VC buffers
         and flow control credit pools. Verify the VC Arbitration mechanism (strict
-        priority, weighted round robin, or hardware-fixed) operates per the VC
-        Arbitration Capability field. Confirm higher-priority VC traffic is
-        forwarded preferentially under congestion.
-      priority: P2
-      priority_rationale: Multi-VC enables QoS; incorrect arbitration defeats traffic isolation between priority classes.
-      spec_ref: "PCIe 5.0 §2.5, Table 2-11, §7.9.1"
-      pass_criteria: >
-        TC0 traffic on VC0 and TC1 traffic on VC1 use independent FC credits.
-        VC arbitration matches the configured scheme (strict priority or WRR).
-        Higher-priority VC receives more bandwidth under congestion. VC
-        Arbitration Table correctly programmed and effective. No cross-VC
-        credit contamination.
-      tool: "Protocol Analyzer + Multi-VC switch + Traffic generator with TC control"
-      test_method: protocol_analyzer
+        priority, weighted round robin, or hardware-fixed) operates per the VC Arbitration
+        Capability field. Confirm higher-priority VC traffic is forwarded preferentially
+        under congestion.
 
+        '
+      priority: P2
+      priority_rationale: Multi-VC enables QoS; incorrect arbitration defeats traffic
+        isolation between priority classes.
+      spec_ref: PCIe 5.0 §2.5, Table 2-11, §7.9.1
+      pass_criteria: 'TC0 traffic on VC0 and TC1 traffic on VC1 use independent FC
+        credits. VC arbitration matches the configured scheme (strict priority or
+        WRR). Higher-priority VC receives more bandwidth under congestion. VC Arbitration
+        Table correctly programmed and effective. No cross-VC credit contamination.
+
+        '
+      tool: Protocol Analyzer + Multi-VC switch + Traffic generator with TC control
+      test_method: protocol_analyzer
   - name: Received TLP Processing
     items:
     - id: TXN-051
       title: Malformed TLP Detection
-      description: >
-        Inject TLPs with deliberately malformed headers: incorrect Length for the
-        TLP type, undefined Fmt/Type combinations, non-zero reserved fields,
-        and TLPs that violate header format rules. Verify the receiver detects
-        each malformed TLP and reports a Malformed TLP error as an uncorrectable
-        fatal error in AER. Confirm the receiver does not process the malformed
-        TLP payload. Verify the Header Log register captures the malformed header
-        for diagnostic purposes.
-      priority: P0
-      priority_rationale: Undetected malformed TLPs cause unpredictable behavior including data corruption and system crashes.
-      spec_ref: "PCIe 5.0 §2.3, §6.2.3.1"
-      pass_criteria: >
-        All injected malformed TLPs detected by receiver. AER Uncorrectable Error
-        Status shows Malformed TLP bit set. Error severity is fatal (default).
-        Malformed TLP payload not processed or written to target. Header Log
-        captures the offending TLP header. Receiver remains functional after
-        error logging.
-      tool: "Protocol Analyzer + Error Injection Tool"
-      test_method: protocol_analyzer
+      description: 'Inject TLPs with deliberately malformed headers: incorrect Length
+        for the TLP type, undefined Fmt/Type combinations, non-zero reserved fields,
+        and TLPs that violate header format rules. Verify the receiver detects each
+        malformed TLP and reports a Malformed TLP error as an uncorrectable fatal
+        error in AER. Confirm the receiver does not process the malformed TLP payload.
+        Verify the Header Log register captures the malformed header for diagnostic
+        purposes.
 
+        '
+      priority: P0
+      priority_rationale: Undetected malformed TLPs cause unpredictable behavior including
+        data corruption and system crashes.
+      spec_ref: PCIe 5.0 §2.3, §6.2.3.1
+      pass_criteria: 'All injected malformed TLPs detected by receiver. AER Uncorrectable
+        Error Status shows Malformed TLP bit set. Error severity is fatal (default).
+        Malformed TLP payload not processed or written to target. Header Log captures
+        the offending TLP header. Receiver remains functional after error logging.
+
+        '
+      tool: Protocol Analyzer + Error Injection Tool
+      test_method: protocol_analyzer
+      validation:
+        status: corrected
+        validated_at: '2026-03-14'
+        glean_validated: true
+        changes_made:
+        - MSI/MSI-X in §2.2.4 + §7.7.1/§7.7.2, not §2.2.8.1
     - id: TXN-052
       title: Unsupported Request (UR) Detection and Completion
-      description: >
-        Send TLP requests to addresses or functions not implemented by the target
-        device. Verify the receiver generates an Unsupported Request (UR)
-        Completion with Status=001b for Non-Posted requests. For Posted requests
-        (Memory Write) to unsupported addresses, verify the receiver silently
-        discards the TLP and optionally logs a UR error. Confirm UR is signaled
-        via ERR_NONFATAL message (default severity). Verify AER records the UR
-        in the Uncorrectable Error Status register.
-      priority: P0
-      priority_rationale: Missing UR detection causes silent request loss; missing UR completion hangs the requester.
-      spec_ref: "PCIe 5.0 §2.3.1, §2.3.2, §6.2.3.1"
-      pass_criteria: >
-        Non-Posted requests to invalid targets receive UR completion (Status=001b).
-        Posted requests to invalid targets silently discarded. AER Uncorrectable
-        Error Status shows UR bit set. ERR_NONFATAL message sent for UR events
-        (default severity). No system hang from unsupported requests.
-      tool: "Protocol Analyzer + Targeted traffic to invalid addresses"
-      test_method: protocol_analyzer
+      description: 'Send TLP requests to addresses or functions not implemented by
+        the target device. Verify the receiver generates an Unsupported Request (UR)
+        Completion with Status=001b for Non-Posted requests. For Posted requests (Memory
+        Write) to unsupported addresses, verify the receiver silently discards the
+        TLP and optionally logs a UR error. Confirm UR is signaled via ERR_NONFATAL
+        message (default severity). Verify AER records the UR in the Uncorrectable
+        Error Status register.
 
+        '
+      priority: P0
+      priority_rationale: Missing UR detection causes silent request loss; missing
+        UR completion hangs the requester.
+      spec_ref: PCIe 5.0 §2.3.1, §2.3.2, §6.2.3.1
+      pass_criteria: 'Non-Posted requests to invalid targets receive UR completion
+        (Status=001b). Posted requests to invalid targets silently discarded. AER
+        Uncorrectable Error Status shows UR bit set. ERR_NONFATAL message sent for
+        UR events (default severity). No system hang from unsupported requests.
+
+        '
+      tool: Protocol Analyzer + Targeted traffic to invalid addresses
+      test_method: protocol_analyzer
+      validation:
+        status: corrected
+        validated_at: '2026-03-14'
+        glean_validated: true
+        changes_made:
+        - INTx in §2.2.4 + §6.1.2-3, not §2.2.8.2
     - id: TXN-053
       title: Unexpected Completion Handling
-      description: >
-        Inject Completion TLPs that do not match any outstanding Non-Posted request
-        (wrong Tag, wrong Requester ID, or no pending request). Verify the receiver
-        detects the Unexpected Completion and reports it as an error. Confirm the
-        Unexpected Completion is discarded and not applied to any request buffer.
-        Verify AER logs the error and captures the header of the unexpected
-        completion. Test with completions for already-completed requests (duplicate
-        completion scenario).
-      priority: P1
-      priority_rationale: Unexpected completions can overwrite valid data if not detected; they indicate routing errors in the fabric.
-      spec_ref: "PCIe 5.0 §2.3.2, §6.2.3.1"
-      pass_criteria: >
-        Unexpected Completions detected and discarded. AER error status shows
-        Unexpected Completion bit. Header Log captures the offending completion.
-        No data corruption from injected unexpected completions. Duplicate
-        completions for already-satisfied requests are also detected.
-      tool: "Protocol Analyzer + Completion injection tool"
-      test_method: protocol_analyzer
+      description: 'Inject Completion TLPs that do not match any outstanding Non-Posted
+        request (wrong Tag, wrong Requester ID, or no pending request). Verify the
+        receiver detects the Unexpected Completion and reports it as an error. Confirm
+        the Unexpected Completion is discarded and not applied to any request buffer.
+        Verify AER logs the error and captures the header of the unexpected completion.
+        Test with completions for already-completed requests (duplicate completion
+        scenario).
 
+        '
+      priority: P1
+      priority_rationale: Unexpected completions can overwrite valid data if not detected;
+        they indicate routing errors in the fabric.
+      spec_ref: PCIe 5.0 §2.3.2, §6.2.3.1
+      pass_criteria: 'Unexpected Completions detected and discarded. AER error status
+        shows Unexpected Completion bit. Header Log captures the offending completion.
+        No data corruption from injected unexpected completions. Duplicate completions
+        for already-satisfied requests are also detected.
+
+        '
+      tool: Protocol Analyzer + Completion injection tool
+      test_method: protocol_analyzer
   - name: TLP Routing
     items:
     - id: TXN-054
       title: Address-Based Routing for Memory and IO Requests
-      description: >
-        Verify address-based routing for Memory and IO requests through a switch
-        fabric. Configure BAR address ranges on downstream devices and issue
+      description: 'Verify address-based routing for Memory and IO requests through
+        a switch fabric. Configure BAR address ranges on downstream devices and issue
         Memory Read/Write requests to addresses within each BAR range. Confirm the
-        switch forwards each request to the correct downstream port based on the
-        address matching the programmed Base/Limit registers. Test with 32-bit
-        and 64-bit memory addresses. Verify requests to addresses not matching
-        any downstream BAR are forwarded to the default (upstream) direction or
-        generate UR.
-      priority: P0
-      priority_rationale: Address routing is the primary forwarding mechanism; misrouting causes data delivery to wrong device.
-      spec_ref: "PCIe 5.0 §2.2.1, Table 2-5, §7.5.1.7"
-      pass_criteria: >
-        Memory requests routed to correct downstream port based on address match.
-        IO requests routed based on IO Base/Limit address decode. 32-bit and
-        64-bit address routing both functional. Unmatched addresses handled
-        correctly (UR or upstream forwarding). BAR address decode matches
-        programmed Base/Limit in bridge configuration.
-      tool: "Protocol Analyzer + PCIe Switch + Multiple downstream devices"
-      test_method: protocol_analyzer
+        switch forwards each request to the correct downstream port based on the address
+        matching the programmed Base/Limit registers. Test with 32-bit and 64-bit
+        memory addresses. Verify requests to addresses not matching any downstream
+        BAR are forwarded to the default (upstream) direction or generate UR.
 
+        '
+      priority: P0
+      priority_rationale: Address routing is the primary forwarding mechanism; misrouting
+        causes data delivery to wrong device.
+      spec_ref: PCIe 5.0 §2.2.1, Table 2-5, §7.5.1.7
+      pass_criteria: 'Memory requests routed to correct downstream port based on address
+        match. IO requests routed based on IO Base/Limit address decode. 32-bit and
+        64-bit address routing both functional. Unmatched addresses handled correctly
+        (UR or upstream forwarding). BAR address decode matches programmed Base/Limit
+        in bridge configuration.
+
+        '
+      tool: Protocol Analyzer + PCIe Switch + Multiple downstream devices
+      test_method: protocol_analyzer
+      validation:
+        status: valid
+        validated_at: '2026-03-14'
+        glean_validated: true
+        changes_made:
+        - Validated via Glean MCP - accurate
     - id: TXN-055
       title: ID-Based Routing for Configuration and Completion TLPs
-      description: >
-        Verify ID-based routing for Configuration requests and Completion TLPs.
-        Issue CfgRd/CfgWr with target Bus/Device/Function numbers and confirm
+      description: 'Verify ID-based routing for Configuration requests and Completion
+        TLPs. Issue CfgRd/CfgWr with target Bus/Device/Function numbers and confirm
         routing through switches based on Secondary/Subordinate Bus Number ranges.
-        For Completions, verify routing uses the Requester ID to direct the
-        completion back to the originating device. Test with multi-level switch
-        topologies to verify correct hierarchical ID routing at each switch level.
-      priority: P0
-      priority_rationale: ID routing errors prevent device enumeration (Config) and cause completion misdelivery (Cpl).
-      spec_ref: "PCIe 5.0 §2.2.1, Table 2-6, Table 2-7"
-      pass_criteria: >
-        Config requests routed based on Bus/Dev/Fn within Secondary-Subordinate
-        range. Completions routed using Requester ID back to originator. Multi-level
-        switch topology routes correctly at each hop. Requests targeting buses
-        outside Secondary-Subordinate range return UR. ID routing functional for
-        all ID-routed TLP types.
-      tool: "Protocol Analyzer + Multi-level switch topology"
-      test_method: protocol_analyzer
+        For Completions, verify routing uses the Requester ID to direct the completion
+        back to the originating device. Test with multi-level switch topologies to
+        verify correct hierarchical ID routing at each switch level.
 
+        '
+      priority: P0
+      priority_rationale: ID routing errors prevent device enumeration (Config) and
+        cause completion misdelivery (Cpl).
+      spec_ref: PCIe 5.0 §2.2.1, Table 2-6, Table 2-7
+      pass_criteria: 'Config requests routed based on Bus/Dev/Fn within Secondary-Subordinate
+        range. Completions routed using Requester ID back to originator. Multi-level
+        switch topology routes correctly at each hop. Requests targeting buses outside
+        Secondary-Subordinate range return UR. ID routing functional for all ID-routed
+        TLP types.
+
+        '
+      tool: Protocol Analyzer + Multi-level switch topology
+      test_method: protocol_analyzer
+      validation:
+        status: valid
+        validated_at: '2026-03-14'
+        glean_validated: true
+        changes_made:
+        - Validated via Glean MCP - accurate
     - id: TXN-056
       title: Implicit Routing for Messages
-      description: >
-        Verify implicit routing for Message TLPs that use broadcast or route-to-
-        Root-Complex routing. Send INTx messages and verify they route upstream
+      description: 'Verify implicit routing for Message TLPs that use broadcast or
+        route-to- Root-Complex routing. Send INTx messages and verify they route upstream
         to the Root Complex. Send PME_Turn_Off messages and verify they broadcast
-        downstream to all endpoints. Verify the routing subfield in the Message
-        TLP Type field correctly indicates the routing method (000b=Route to RC,
-        011b=Broadcast from RC). Confirm switches correctly handle each implicit
-        routing type.
+        downstream to all endpoints. Verify the routing subfield in the Message TLP
+        Type field correctly indicates the routing method (000b=Route to RC, 011b=Broadcast
+        from RC). Confirm switches correctly handle each implicit routing type.
+
+        '
       priority: P1
-      priority_rationale: Implicit routing errors misdirect system management messages, breaking interrupt and power management.
-      spec_ref: "PCIe 5.0 §2.2.1, Table 2-17, Table 2-5"
-      pass_criteria: >
-        Route-to-Root-Complex messages arrive at RC from any topology depth.
-        Broadcast messages reach all downstream endpoints. Routing subfield
-        correctly encoded per Table 2-17. Switches forward implicit-routed
-        messages per routing type. No implicit-routed messages misdelivered.
-      tool: "Protocol Analyzer + Switch topology + Message traffic"
+      priority_rationale: Implicit routing errors misdirect system management messages,
+        breaking interrupt and power management.
+      spec_ref: PCIe 5.0 §2.2.1, Table 2-17, Table 2-5
+      pass_criteria: 'Route-to-Root-Complex messages arrive at RC from any topology
+        depth. Broadcast messages reach all downstream endpoints. Routing subfield
+        correctly encoded per Table 2-17. Switches forward implicit-routed messages
+        per routing type. No implicit-routed messages misdelivered.
+
+        '
+      tool: Protocol Analyzer + Switch topology + Message traffic
       test_method: protocol_analyzer
