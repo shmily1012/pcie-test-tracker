@@ -1,5 +1,7 @@
+import { useState, useEffect } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
-import { LayoutDashboard, List, FileText, Upload, History } from 'lucide-react';
+import { LayoutDashboard, List, FileText, Upload, History, Search } from 'lucide-react';
+import FindDialog from './FindDialog';
 
 const navItems = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
@@ -10,6 +12,19 @@ const navItems = [
 ];
 
 export default function Layout() {
+  const [findOpen, setFindOpen] = useState(false);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setFindOpen(v => !v);
+      }
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, []);
+
   return (
     <div className="flex h-screen" style={{ background: '#0f0e0d' }}>
       <aside
@@ -22,6 +37,15 @@ export default function Layout() {
           </h1>
           <p className="text-xs mt-1" style={{ color: '#55250c' }}>Test Plan Manager</p>
         </div>
+        <button onClick={() => setFindOpen(true)}
+          className="mx-2 mt-2 flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors"
+          style={{ background: 'rgba(254, 123, 35, 0.08)', color: '#fff5e3aa', border: '1px solid #803812' }}>
+          <Search size={16} />
+          <span className="flex-1 text-left">Find...</span>
+          <kbd className="text-[10px] border rounded px-1 py-0.5" style={{ borderColor: '#803812', color: '#55250c' }}>
+            Ctrl K
+          </kbd>
+        </button>
         <nav className="flex-1 p-2 space-y-1">
           {navItems.map(item => (
             <NavLink key={item.to} to={item.to}
@@ -47,6 +71,7 @@ export default function Layout() {
       <main className="flex-1 overflow-auto">
         <Outlet />
       </main>
+      <FindDialog open={findOpen} onClose={() => setFindOpen(false)} />
     </div>
   );
 }

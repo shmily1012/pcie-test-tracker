@@ -1,10 +1,10 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useReactTable, getCoreRowModel, getSortedRowModel,
          getPaginationRowModel, flexRender, type ColumnDef, type SortingState } from '@tanstack/react-table';
 import { fetchTestCases, fetchFilters, updateStatus, type TestCase, type FilterOptions } from '../lib/api';
 import { PriorityBadge } from '../components/StatusBadge';
-import { Search, ChevronUp, ChevronDown } from 'lucide-react';
+import { Search, ChevronUp, ChevronDown, X } from 'lucide-react';
 
 const statusOptions = ['not_started', 'pass', 'fail', 'blocked', 'skip'];
 
@@ -12,25 +12,41 @@ export default function TestCases() {
   const [data, setData] = useState<TestCase[]>([]);
   const [filters, setFilters] = useState<FilterOptions | null>(null);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [catFilter, setCatFilter] = useState<string>('');
   const [priFilter, setPriFilter] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('');
+  const [specSourceFilter, setSpecSourceFilter] = useState<string>('');
   const [sorting, setSorting] = useState<SortingState>([]);
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialPage = parseInt(searchParams.get('page') || '1', 10) - 1;
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
-  const load = () => {
+  // Debounce search input
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => setDebouncedSearch(search), 250);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [search]);
+
+  const load = useCallback(() => {
     const params: Record<string, string> = {};
-    if (search) params.search = search;
+    if (debouncedSearch) params.search = debouncedSearch;
     if (catFilter) params.category = catFilter;
     if (priFilter) params.priority = priFilter;
     if (statusFilter) params.status = statusFilter;
+    if (specSourceFilter) params.spec_source = specSourceFilter;
     fetchTestCases(params).then(setData);
-  };
+  }, [debouncedSearch, catFilter, priFilter, statusFilter, specSourceFilter]);
 
   useEffect(() => { load(); fetchFilters().then(setFilters); }, []);
-  useEffect(() => { load(); }, [search, catFilter, priFilter, statusFilter]);
+  useEffect(() => { load(); }, [debouncedSearch, catFilter, priFilter, statusFilter, specSourceFilter]);
+
+  const hasActiveFilters = catFilter || priFilter || statusFilter || specSourceFilter || debouncedSearch;
+  const clearAllFilters = () => {
+    setSearch(''); setCatFilter(''); setPriFilter(''); setStatusFilter(''); setSpecSourceFilter('');
+  };
 
   const handleStatusChange = async (id: string, status: string) => {
     await updateStatus(id, status);
@@ -96,9 +112,14 @@ export default function TestCases() {
       <div className="flex gap-3 items-center flex-wrap">
         <div className="relative">
           <Search size={16} className="absolute left-3 top-2.5 text-slate-500" />
-          <input type="text" placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)}
-            className="bg-slate-900 border border-slate-700 rounded-lg pl-9 pr-3 py-2 text-sm text-slate-200 w-64
+          <input type="text" placeholder="Search ID, title, description..." value={search} onChange={e => setSearch(e.target.value)}
+            className="bg-slate-900 border border-slate-700 rounded-lg pl-9 pr-8 py-2 text-sm text-slate-200 w-72
               focus:outline-none focus:border-blue-500" />
+          {search && (
+            <button onClick={() => setSearch('')} className="absolute right-2.5 top-2.5 text-slate-500 hover:text-slate-300">
+              <X size={16} />
+            </button>
+          )}
         </div>
         <select value={catFilter} onChange={e => setCatFilter(e.target.value)}
           className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200">
@@ -115,6 +136,18 @@ export default function TestCases() {
           <option value="">All Statuses</option>
           {statusOptions.map(s => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
         </select>
+        <select value={specSourceFilter} onChange={e => setSpecSourceFilter(e.target.value)}
+          className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200">
+          <option value="">All Spec Sources</option>
+          {filters?.spec_sources.map(s => <option key={s} value={s}>{s}</option>)}
+        </select>
+        {hasActiveFilters && (
+          <button onClick={clearAllFilters}
+            className="flex items-center gap-1 px-3 py-2 text-sm text-slate-400 hover:text-slate-200
+              bg-slate-900 border border-slate-700 rounded-lg transition-colors">
+            <X size={14} /> Clear
+          </button>
+        )}
       </div>
 
       <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
